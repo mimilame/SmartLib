@@ -16,7 +16,7 @@ class CategorySeeder extends Seeder
      */
     public function run()
     {
-        Category::create([
+        $categories =
         [
             ['category_id' => 1, 'classname' => 'General Reference'],
             ['category_id' => 2, 'classname' => 'English and Literature'],
@@ -38,8 +38,8 @@ class CategorySeeder extends Seeder
             ['category_id' => 18, 'classname' => 'Digital Resources'],
             ['category_id' => 19, 'classname' => 'History and Archaeology'],
             ['category_id' => 20, 'classname' => 'Education and Teaching Resources'],
-        ]
-        ]);
+        ];
+        Category::insert($categories);
         
     }
 }

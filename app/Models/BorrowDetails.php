@@ -9,7 +9,7 @@ class BorrowDetails extends Model
 {
     use HasFactory;
     
-    protected $table = 'borrowdetails';
+    protected $table = 'borrow_details';
     protected $primaryKey = 'borrow_details_id';
     public $timestamps = false;
     

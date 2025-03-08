@@ -15,8 +15,21 @@ class LostBookSeeder extends Seeder
      */
     public function run()
     {
-        // Since there's no sample data for lost books in the original SQL dump,
-        // we'll just create a few examples
-        LostBook::factory(5)->create();
+        $lostBooks = [
+            [
+                'book_id' => 15,  
+                'isbn' => '1-85435-628-3', 
+                'Member_No' => 39, 
+                'date_lost' => '2023-05-10', 
+            ],
+            [
+                'book_id' => 16, 
+                'isbn' => '0-7172-0119-8', 
+                'Member_No' => 40, 
+                'date_lost' => '2023-06-12', 
+            ],
+        ];
+
+        LostBook::insert($lostBooks); 
     }
 }

@@ -9,7 +9,7 @@ class Type extends Model
 {
     use HasFactory;
     
-    protected $table = 'type';
+    protected $table = 'types';
     protected $primaryKey = 'id';
     public $timestamps = false;
     

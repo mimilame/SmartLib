@@ -19,7 +19,8 @@ class MemberSeeder extends Seeder
         Member::factory()->count(50)->create();
         
         // Create specific members for testing
-        Member::create([
+        $member = 
+        [
             'firstname' => 'Admin',
             'lastname' => 'User',
             'gender' => 'Male',
@@ -34,7 +35,7 @@ class MemberSeeder extends Seeder
             'email' => 'admin@wmsu.edu.ph',
             'id_number' => 'ADMIN-001',
             'department' => 'Library'
-        ]);
-
+        ];
+        Member::insert($member);
     }
 }

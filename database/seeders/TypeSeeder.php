@@ -9,7 +9,7 @@ class TypeSeeder extends Seeder
 {
     public function run()
     {
-        Type::create([
+        $types = 
         [
             ['id' => 1, 'borrowertype' => 'Student'],
             ['id' => 2, 'borrowertype' => 'Teacher'],
@@ -21,8 +21,7 @@ class TypeSeeder extends Seeder
             ['id' => 8, 'borrowertype' => 'Guest'],
             ['id' => 9, 'borrowertype' => 'Visiting Scholar'],
             ['id' => 10, 'borrowertype' => 'Contruction'],
-        ]
-        ]);
-
+        ];
+        Type::insert($types);
     }
 }

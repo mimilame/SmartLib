@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Borrow extends Model
 {
-    protected $table = 'borrow';
+    protected $table = 'borrows';
     protected $primaryKey = 'borrow_id';
     public $timestamps = true;
     

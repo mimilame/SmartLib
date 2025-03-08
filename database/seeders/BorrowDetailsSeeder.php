@@ -10,7 +10,7 @@ class BorrowDetailsSeeder extends Seeder
 {
     public function run()
     {
-        BorrowDetails::create([
+        $borrowDetails = [
             [
                 'borrow_details_id' => 164,
                 'book_id' => 16,
@@ -32,7 +32,7 @@ class BorrowDetailsSeeder extends Seeder
                 'borrow_status' => 'returned',
                 'date_return' => '2014-03-21 00:30:51'
             ]
-        ]);
-        
+        ];
+        BorrowDetails::insert($borrowDetails);
     }
 }

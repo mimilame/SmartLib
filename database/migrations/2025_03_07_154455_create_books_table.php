@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('books', function (Blueprint $table) {
-            $table->engine = 'InnoDB';
             $table->id('book_id');
             $table->string('book_title', 100);
+            $table->unsignedBigInteger('category_id');
             $table->string('author', 50);
             $table->integer('book_copies');
             $table->string('book_pub', 100);
@@ -25,11 +25,10 @@ return new class extends Migration
             $table->dateTime('date_added');
             $table->string('status', 30);
             $table->timestamps();
-
-            // Foreign key constraint
-            $table->unsignedBigInteger('category_id');
+        
             $table->foreign('category_id')->references('category_id')->on('categories')->onDelete('cascade');
         });
+        
     }
 
     /**
