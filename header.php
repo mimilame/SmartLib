@@ -86,7 +86,7 @@
                             <a class="nav-link" href="book.php">Book</a>
                             <a class="nav-link" href="user.php">User</a>
                             <a class="nav-link" href="issue_book.php">Issue Book</a>
-                            <a class="nav-link" href="logout.php">Logout</a>
+                            
 
                         </div>
                     </div>
