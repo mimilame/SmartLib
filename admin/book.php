@@ -238,12 +238,6 @@ include '../header.php';
 		{
 	?>
 
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="book.php">Book Management</a></li>
-        <li class="breadcrumb-item active">Add Book</li>
-    </ol>
-
     <?php 
 
     if($error != '')
@@ -332,11 +326,6 @@ include '../header.php';
 				foreach($book_result as $book_row)
 				{
 	?>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="book.php">Book Management</a></li>
-        <li class="breadcrumb-item active">Edit Book</li>
-    </ol>
     <div class="card mb-4">
     	<div class="card-header">
     		<i class="fas fa-user-plus"></i> Edit Book Details
@@ -411,10 +400,6 @@ include '../header.php';
 	else
 	{	
 	?>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item active">Book Management</li>
-	</ol>
 	<?php 
 
 	if(isset($_GET["msg"]))
@@ -444,15 +429,16 @@ include '../header.php';
 				<div class="col col-md-6">
 					<i class="fas fa-table me-1"></i> Book Management
                 </div>
-                <div class="col col-md-6" align="right">
-                	<a href="book.php?action=add" class="btn btn-success btn-sm">Add</a>
+                <div class="col col-md-6">
+                	<a href="book.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
                 </div>
             </div>
         </div>
         <div class="card-body">
-        	<table id="datatablesSimple">
+        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
         		<thead> 
         			<tr> 
+						<th></th>
         				<th>Book Name</th>
         				<th>ISBN No.</th>
         				<th>Category</th>
@@ -465,20 +451,6 @@ include '../header.php';
         				<th>Action</th>
         			</tr>
         		</thead>
-        		<tfoot>
-        			<tr>
-        				<th>Book Name</th>
-        				<th>ISBN No.</th>
-        				<th>Category</th>
-        				<th>Author</th>
-        				<th>Location Rack</th>
-        				<th>No. of Copy</th>
-        				<th>Status</th>
-        				<th>Created On</th>
-        				<th>Updated On</th>
-        				<th>Action</th>
-        			</tr>
-        		</tfoot>
         		<tbody>
         		<?php 
 
@@ -497,6 +469,7 @@ include '../header.php';
         				}
         				echo '
         				<tr>
+							<td></td>
         					<td>'.$row["book_name"].'</td>
         					<td>'.$row["book_isbn_number"].'</td>
         					<td>'.$row["book_category"].'</td>
@@ -549,7 +522,36 @@ include '../header.php';
 	}
     ?>
 </div>
-
+<script>
+	$(document).ready(function() {	
+        $('#dataTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [
+                // Add a column for the expand/collapse button
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                },
+                // Adjust your priorities based on the new column ordering
+                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
+                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
+                { responsivePriority: 3, targets: [7] },           // Verification 
+                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
+            ],
+            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
+            autoWidth: false,
+            language: {
+                emptyTable: "No data available"
+            }
+        });
+    });
+</script>
 
 <?php
 

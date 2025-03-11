@@ -204,11 +204,6 @@ include '../header.php';
         if($_GET["action"] == 'add')
         {
     ?>
-    <ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-        <li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="issue_book.php">Issue Book Management</a></li>
-        <li class="breadcrumb-item active">Issue New Book</li>
-    </ol>
     <div class="row">
         <div class="col-md-6">
             <?php 
@@ -372,13 +367,6 @@ include '../header.php';
 
                     $user_result = $connect->query($query);
 
-                    echo '
-                    <ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-                        <li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="issue_book.php">Issue Book Management</a></li>
-                        <li class="breadcrumb-item active">View Issue Book Details</li>
-                    </ol>
-                    ';
 
                     if($error != '')
                     {
@@ -389,7 +377,7 @@ include '../header.php';
                     {
                         echo '
                         <h2>Book Details</h2>
-                        <table class="table table-bordered">
+                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
                             <tr>
                                 <th width="30%">Book ISBN Number</th>
                                 <td width="70%">'.$book_data["book_isbn_number"].'</td>
@@ -411,7 +399,7 @@ include '../header.php';
                     {
                         echo '
                         <h2>User Details</h2>
-                        <table class="table table-bordered">
+                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
                             <tr>
                                 <th width="30%">User Unique ID</th>
                                 <td width="70%">'.$user_data["user_unique_id"].'</td>
@@ -477,7 +465,7 @@ include '../header.php';
 
                     echo '
                     <h2>Issue Book Details</h2>
-                    <table class="table table-bordered">
+                    <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
                         <tr>
                             <th width="30%">Book Issue Date</th>
                             <td width="70%">'.$row["issue_date_time"].'</td>
@@ -510,10 +498,6 @@ include '../header.php';
     else
     {
     ?>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item active">Issue Book Management</li>
-    </ol>
 
     <?php 
     if(isset($_GET['msg']))
@@ -538,15 +522,16 @@ include '../header.php';
     			<div class="col col-md-6">
     				<i class="fas fa-table me-1"></i> Issue Book Management
                 </div>
-                <div class="col col-md-6" align="right">
-                    <a href="issue_book.php?action=add" class="btn btn-success btn-sm">Add</a>
+                <div class="col col-md-6">
+                    <a href="issue_book.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
                 </div>
             </div>
         </div>
         <div class="card-body">
-        	<table id="datatablesSimple">
+        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
         		<thead>
         			<tr>
+                        <th></th>
         				<th>Book ISBN Number</th>
                         <th>User Unique ID</th>
                         <th>Issue Date</th>
@@ -556,17 +541,6 @@ include '../header.php';
                         <th>Action</th>
         			</tr>
         		</thead>
-        		<tfoot>
-        			<tr>
-        				<th>Book ISBN Number</th>
-                        <th>User Unique ID</th>
-                        <th>Issue Date</th>
-                        <th>Return Date</th>
-                        <th>Late Return Fines</th>
-                        <th>Status</th>
-                        <th>Action</th>
-        			</tr>
-        		</tfoot>
         		<tbody>
         		<?php
         		if($statement->rowCount() > 0)
@@ -626,6 +600,7 @@ include '../header.php';
 
         				echo '
         				<tr>
+                            <td></td>
         					<td>'.$row["book_id"].'</td>
         					<td>'.$row["user_id"].'</td>
         					<td>'.$row["issue_date_time"].'</td>
@@ -656,7 +631,70 @@ include '../header.php';
     }
     ?>
 </div>
+<script>
+	$(document).ready(function() {  
+        $('#dataTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [
+                // Add a column for the expand/collapse button
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                },
+                // Adjust your priorities based on the new column ordering
+                { responsivePriority: 1, targets: 1 }, // Book ISBN Number column
+                { responsivePriority: 2, targets: 2 }, // User Unique ID column
+                { responsivePriority: 3, targets: 3 }, // Issue Date column
+                { responsivePriority: 4, targets: 4 }, // Return Date column
+                { responsivePriority: 5, targets: 5 }, // Late Return Fines column
+                { responsivePriority: 6, targets: 6 }, // Status column
+                { responsivePriority: 7, targets: 7 }  // Action column
+            ],
+            order: [[1, 'asc']], // Sort by the second column (Book ISBN Number)
+            autoWidth: false,
+            language: {
+                emptyTable: "No data available"
+            }
+        });
+    });
 
+</script>
+<script>
+	$(document).ready(function() {	
+        $('#dataTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [
+                // Add a column for the expand/collapse button
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                },
+                // Adjust your priorities based on the new column ordering
+                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
+                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
+                { responsivePriority: 3, targets: [7] },           // Verification 
+                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
+            ],
+            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
+            autoWidth: false,
+            language: {
+                emptyTable: "No data available"
+            }
+        });
+    });
+</script>
 <?php 
 
 include '../footer.php';

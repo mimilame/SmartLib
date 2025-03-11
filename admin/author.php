@@ -171,11 +171,7 @@ include '../header.php';
 		{
 	?>
 
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="author.php">Author Management</a></li>
-        <li class="breadcrumb-item active">Add Author</li>
-    </ol>
+
 
     <div class="row">
     	<div class="col-md-6">
@@ -225,11 +221,7 @@ include '../header.php';
 				{
 	?>
 
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="author.php">Author Management</a></li>
-        <li class="breadcrumb-item active">Edit Author</li>
-    </ol>
+
 
     <div class="row">
     	<div class="col-md-6">
@@ -262,10 +254,7 @@ include '../header.php';
 	{
 
 	?>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item active">Author Management</li>
-	</ol>
+
 	<?php 
 
 	if(isset($_GET["msg"]))
@@ -296,15 +285,16 @@ include '../header.php';
 				<div class="col col-md-6">
 					<i class="fas fa-table me-1"></i> Author Management
 				</div>
-				<div class="col col-md-6" align="right">
-					<a href="author.php?action=add" class="btn btn-success btn-sm">Add</a>
+				<div class="col col-md-6">
+					<a href="author.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
 				</div>
 			</div>
 		</div>
 		<div class="card-body">
-			<table id="datatablesSimple">
+			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
 				<thead>
 					<tr>
+						<th></th>
 						<th>Author Name</th>
 						<th>Status</th>
 						<th>Created On</th>
@@ -312,15 +302,6 @@ include '../header.php';
 						<th>Action</th>
 					</tr>
 				</thead>
-				<tfoot>
-					<tr>
-						<th>Author Name</th>
-						<th>Status</th>
-						<th>Created On</th>
-						<th>Updated On</th>
-						<th>Action</th>
-					</tr>
-				</tfoot>
 				<tbody>
 				<?php
 				if($statement->rowCount() > 0)
@@ -339,6 +320,7 @@ include '../header.php';
 						
 						echo '
 						<tr>
+							<td></td>
 							<td>'.$row["author_name"].'</td>
 							<td>'.$author_status.'</td>
 							<td>'.$row["author_created_on"].'</td>
@@ -390,7 +372,37 @@ include '../header.php';
 
 	?>
 </div>
-
+<script>
+	$(document).ready(function() {	
+        $('#dataTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [
+                // Add a column for the expand/collapse button
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                },
+               // Adjust your priorities based on the new column ordering
+				{ responsivePriority: 1, targets: 0 }, // Author Name column
+				{ responsivePriority: 2, targets: 1 }, // Status column
+				{ responsivePriority: 3, targets: 2 }, // Created On column
+				{ responsivePriority: 4, targets: 3 }, // Updated On column
+				{ responsivePriority: 5, targets: 4 }  
+            ],
+            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
+            autoWidth: false,
+            language: {
+                emptyTable: "No data available"
+            }
+        });
+    });
+</script>
 <?php 
 
 include '../footer.php';

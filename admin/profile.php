@@ -84,10 +84,6 @@ include '../header.php';
 
 <div class="container-fluid px-4">
 	<h1 class="mt-4">Profile</h1>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item active">Profile</a></li>
-	</ol>
 	<div class="row">
 		<div class="col-md-6">
 			<?php 

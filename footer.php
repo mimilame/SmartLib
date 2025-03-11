@@ -6,13 +6,7 @@
                 <footer class="py-4 bg-light mt-auto">
                     <div class="container-fluid px-4">
                         <div class="d-flex align-items-center justify-content-between small">
-                            <div class="text-muted">Copyright &copy; Library Management System <?php echo date('Y'); ?></div>
-                            <div>
-                                <a href="#">Privacy Policy</a>
-                                &middot;
-                                <a href="#">Terms &amp; Conditions</a>
-                            </div>
-                        </div>
+                            
                     </div>
                 </footer>
             </div>
@@ -38,11 +32,14 @@
 
         <!-- Simple DataTables -->
         <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" crossorigin="anonymous"></script>
+        <!-- DataTables Responsive Extension -->
+        <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+        <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
-        <!-- Custom Scripts - these would need to be hosted elsewhere or included in your project -->
-        <!-- For scripts.js - you'll need to host this yourself -->
-        <!-- For datatables-simple-demo.js - you'll need to host this yourself -->
-
+        <!-- Bootstrap Bundle (includes Popper) -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="./asset/js/custom-datatables.js"></script>
     </body>
 
 </html>

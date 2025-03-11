@@ -23,7 +23,7 @@ include '../header.php';
 			<div class="card bg-primary text-white mb-4">
 				<div class="card-body">
 					<h1 class="text-center"><?php echo Count_total_issue_book_number($connect); ?></h1>
-					<h5 class="text-center">Total Book Issue</h5>
+					<h5 class="text-center">Total Book Issued</h5>
 				</div>
 			</div>
 		</div>

@@ -171,11 +171,6 @@ include '../header.php';
 		{
 		?>
 	
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item"><a href="category.php">Location Rack Management</a></li>
-		<li class="breadcrumb-item active">Add Location Rack</li>
-	</ol>
 
 	<div class="row">
 		<div class="col-md-6">
@@ -227,11 +222,6 @@ include '../header.php';
 				{
 	?>
 
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="location_rack.php">Location Rack Management</a></li>
-        <li class="breadcrumb-item active">Edit Location Rack</li>
-    </ol>
     <div class="row">
     	<div class="col-md-6">
     		<div class="card mb-4">
@@ -264,10 +254,6 @@ include '../header.php';
 	{
 
 	?>
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item active">Location Rack Management</li>
-	</ol>
 		<?php 
 
 		if(isset($_GET["msg"]))
@@ -300,15 +286,16 @@ include '../header.php';
 				<div class="col col-md-6">
 					<i class="fas fa-table me-1"></i> Location Rack Management
 				</div>
-				<div class="col col-md-6" align="right">
-					<a href="location_rack.php?action=add" class="btn btn-success btn-sm">Add</a>
+				<div class="col col-md-6">
+					<a href="location_rack.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
 				</div>
 			</div>
 		</div>
 		<div class="card-body">
-			<table id="datatablesSimple">
+		<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
 				<thead>
 					<tr>
+						<th></th>
 						<th>Location Rack Name</th>
                         <th>Status</th>
                         <th>Created On</th>
@@ -316,15 +303,6 @@ include '../header.php';
                         <th>Action</th>
 					</tr>
 				</thead>
-				<tfoot>
-					<tr>
-						<th>Location Rack Name</th>
-                        <th>Status</th>
-                        <th>Created On</th>
-                        <th>Updated On</th>
-                        <th>Action</th>
-					</tr>
-				</tfoot>
 				<tbody>
 				<?php 
 				if($statement->rowCount() > 0)
@@ -343,6 +321,7 @@ include '../header.php';
 
 						echo '
 						<tr>
+							<td></td>
 							<td>'.$row["location_rack_name"].'</td>
 							<td>'.$location_rack_status.'</td>
 							<td>'.$row["location_rack_created_on"].'</td>
@@ -387,6 +366,39 @@ include '../header.php';
 		}
 
 	</script>
+	<script>
+		$(document).ready(function() {  
+			$('#dataTable').DataTable({
+				responsive: {
+					details: {
+						type: 'column',
+						target: 'tr'
+					}
+				},
+				columnDefs: [
+					// Add a column for the expand/collapse button
+					{
+						className: 'dtr-control',
+						orderable: false,
+						targets: 0
+					},
+					// Adjust your priorities based on the new column ordering
+					{ responsivePriority: 1, targets: 0 }, // Control column
+					{ responsivePriority: 2, targets: 1 }, // Location Rack Name
+					{ responsivePriority: 3, targets: 2 }, // Status
+					{ responsivePriority: 4, targets: 3 }, // Created On
+					{ responsivePriority: 5, targets: 4 }, // Updated On
+					{ responsivePriority: 6, targets: 5 }  // Action
+				],
+				order: [[1, 'asc']], // Sort by the second column (Location Rack Name)
+				autoWidth: false,
+				language: {
+					emptyTable: "No data available"
+				}
+			});
+		});
+
+</script>
 
 	<?php 
 

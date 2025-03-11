@@ -36,15 +36,16 @@ include 'header.php';
 				<div class="col col-md-6">
 					<i class="fas fa-table me-1"></i> Book List
 				</div>
-				<div class="col col-md-6" align="right">
+				<div class="col col-md-6">
 
 				</div>
 			</div>
 		</div>
 		<div class="card-body">
-			<table id="datatablesSimple">
+			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
 				<thead>
 					<tr>
+						<th></th>
 						<th>Book Name</th>
 						<th>ISBN No.</th>
 						<th>Category</th>
@@ -55,18 +56,6 @@ include 'header.php';
 						<th>Added On</th>
 					</tr>
 				</thead>
-				<tfoot>
-					<tr>
-						<th>Book Name</th>
-						<th>ISBN No.</th>
-						<th>Category</th>
-						<th>Author</th>
-						<th>Location Rack</th>
-						<th>No. of Available Copy</th>
-						<th>Status</th>
-						<th>Added On</th>
-					</tr>
-				</tfoot>
 				<tbody>
 				<?php 
 
@@ -85,6 +74,7 @@ include 'header.php';
 						}
 						echo '
 							<tr>
+								<td></td>
 								<td>'.$row["book_name"].'</td>
 								<td>'.$row["book_isbn_number"].'</td>
 								<td>'.$row["book_category"].'</td>
@@ -112,7 +102,36 @@ include 'header.php';
 		</div>
 	</div>
 </div>
-
+<script>
+	$(document).ready(function() {	
+        $('#dataTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [
+                // Add a column for the expand/collapse button
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    targets: 0
+                },
+                // Adjust your priorities based on the new column ordering
+                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
+                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
+                { responsivePriority: 3, targets: [7] },           // Verification 
+                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
+            ],
+            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
+            autoWidth: false,
+            language: {
+                emptyTable: "No data available"
+            }
+        });
+    });
+</script>
 <?php 
 
 include 'footer.php';

@@ -14,14 +14,25 @@
         <meta name="generator" content="">
         <title>Online Library Management System in PHP</title>
         <link rel="canonical" href="">
+        <link href="./asset/css/styles.css" rel="stylesheet" />
+        <link href="./asset/css/custom-datatables.css" rel="stylesheet" />
         <!-- Bootstrap core CSS -->
         <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" />
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+         <!-- DataTables CSS -->
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
 
-        <link href="./asset/css/styles.css" rel="stylesheet" />
+        <!-- jQuery (needed for DataTables) -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        
+        <!-- DataTables JS -->
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+        
         <!-- Font Awesome -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js" crossorigin="anonymous"></script>
-
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+        
+        
+        <script src="./asset/js/custom-datatables.js"></script>
         <!-- Favicons -->
         <link rel="apple-touch-icon" href="" sizes="180x180">
         <link rel="icon" href="" sizes="32x32" type="image/png">
@@ -54,9 +65,9 @@
     ?>
     <body class="sb-nav-fixed">
 
-        <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <nav class="sb-topnav navbar navbar-expand navbar-dark bg-danger">
             <!-- Navbar Brand-->
-            <a class="navbar-brand ps-3" href="index.php">Library System</a>
+            <a class="navbar-brand ps-3" href="index.php">SmartLib</a>
             <!-- Sidebar Toggle-->
             <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
             <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">

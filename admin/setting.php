@@ -62,11 +62,6 @@ include '../header.php';
 
 <div class="container-fluid px-4">
 	<h1 class="mt-4">Setting</h1>
-
-	<ol class="breadcrumb mt-4 mb-4 bg-light p-2 border">
-		<li class="breadcrumb-item"><a href="index.php">Dashboard</a></li>
-		<li class="breadcrumb-item active">Setting</a></li>
-	</ol>
 	<?php 
 
 	if($message != '')	
