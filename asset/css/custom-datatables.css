@@ -1,0 +1,75 @@
+/**
+ * DataTable Responsive Styles
+ * Custom styling for responsive DataTables with expand/collapse controls
+ */
+
+/* Style for the control column */
+td.dtr-control {
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+  }
+  
+  /* Fix for the plus/minus signs not showing */
+  td.dtr-control:before {
+    height: 1em;
+    width: 1em;
+    margin-top: -9px;
+    display: inline-block;
+    color: white !important;
+    border: 0.15em solid white;
+    border-radius: 1em;
+    box-shadow: 0 0 0.2em #444;
+    box-sizing: content-box;
+    text-align: center;
+    text-indent: 0 !important;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1em;
+    content: '\002B' !important; /* Unicode for plus sign */
+    background-color: #31b131;
+    position: relative;
+    z-index: 1;
+  }
+  
+  tr.dt-hasChild td.dtr-control:before {
+    content: '\2212' !important; /* Unicode for minus sign */
+    background-color: #d33333;
+  }
+  
+  /* Style for the child row */
+  .child {
+    background-color: #f8f9fa;
+    padding: 0.5em 1em;
+  }
+  
+  .child ul {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  
+  .child ul li {
+    display: table-row;
+    margin: 0;
+  }
+  
+  .child ul li .dtr-title,
+  .child ul li .dtr-data {
+    display: table-cell;
+    padding: 0.5em 1em;
+  }
+  
+  .child ul li .dtr-title {
+    min-width: 75px;
+    font-weight: bold;
+    border-right: 1px solid #dee2e6;
+  }
+  
+  /* Ensure DataTables responsive control is visible */
+  table.dataTable.dtr-column > tbody > tr > td.dtr-control:before,
+  table.dataTable.dtr-column > tbody > tr > th.dtr-control:before {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
