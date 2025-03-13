@@ -161,7 +161,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid py-4" style="min-height: 700px;">
+<main class="container py-4" style="min-height: 700px;">
 	<h1>Location Rack Management</h1>
 	<?php 
 
@@ -398,7 +398,7 @@ include '../header.php';
 			});
 		});
 
-</script>
+	</script>
 
 	<?php 
 
@@ -406,7 +406,7 @@ include '../header.php';
 
 	?>
 
-</div>
+</main>
 
 
 

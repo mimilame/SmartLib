@@ -161,7 +161,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid py-4" style="min-height: 700px;">
+<main class="container py-4" style="min-height: 700px;">
 	<h1>Author Management</h1>
 	<?php 
 
@@ -371,7 +371,7 @@ include '../header.php';
 	}
 
 	?>
-</div>
+</main>
 <script>
 	$(document).ready(function() {	
         $('#dataTable').DataTable({

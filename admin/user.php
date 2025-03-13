@@ -44,7 +44,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid py-4" style="min-height: 700px;">
+<main class="container py-4" style="min-height: 700px;">
 	<h1 class="my-3">User Management</h1>
 
     <?php 
@@ -116,7 +116,7 @@ include '../header.php';
 			</div>
 		</div>
 	</div>
-</div>
+</main>
 
 <script>
 	function delete_data(code) {

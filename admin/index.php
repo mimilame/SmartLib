@@ -16,7 +16,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid py-4">
+<main class="container py-4">
 	<h1 class="mb-5">Dashboard</h1>
 	<div class="row">
 		<div class="col-xl-3 col-md-6">
@@ -84,7 +84,7 @@ include '../header.php';
 			</div>
 		</div>
 	</div>
-</div>
+</main>
 
 <?php
 

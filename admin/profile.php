@@ -82,7 +82,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid px-4">
+<main class="container px-4">
 	<h1 class="mt-4">Profile</h1>
 	<div class="row">
 		<div class="col-md-6">
@@ -135,7 +135,7 @@ include '../header.php';
 
 		</div>
 	</div>
-</div>
+</main>
 
 <?php 
 

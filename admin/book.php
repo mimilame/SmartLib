@@ -229,7 +229,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid py-4" style="min-height: 700px;">
+<main class="container py-4" style="min-height: 700px;">
 	<h1>Book Management</h1>
 	<?php 
 	if(isset($_GET["action"]))
@@ -521,7 +521,7 @@ include '../header.php';
     <?php 
 	}
     ?>
-</div>
+</main>
 <script>
 	$(document).ready(function() {	
         $('#dataTable').DataTable({

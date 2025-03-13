@@ -210,7 +210,7 @@ CREATE TABLE `lms_setting` (
 --
 
 INSERT INTO `lms_setting` (`setting_id`, `library_name`, `library_address`, `library_contact_number`, `library_email_address`, `library_total_book_issue_day`, `library_one_day_fine`, `library_issue_total_book_per_user`, `library_currency`, `library_timezone`) VALUES
-(1, 'ABC Library', 'Business Street 105, NY 0256', '7539518521', 'abc_library@gmail.com', 10, '1.00', 3, 'INR', 'Asia/Calcutta');
+(1, 'SmartLib', 'Poblacion, Curuan', '09657893421', 'wmsu_curuan_lib@gmail.com', 10, '1.00', 3, 'PHP', 'Asia/Calcutta');
 
 -- --------------------------------------------------------
 

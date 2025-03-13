@@ -26,7 +26,7 @@ $statement->execute();
 include 'header.php';
 
 ?>
-<div class="container-fluid py-4" style="min-height: 700px;">
+<main class="container py-4" style="min-height: 700px;">
 	<h1>Issue Book Detail</h1>
 	<div class="card mb-4">
 		<div class="card-header">
@@ -92,37 +92,36 @@ include 'header.php';
 			</table>
 		</div>
 	</div>
-
-</div>
+	</main>
 <script>
-	$(document).ready(function() {	
-        $('#dataTable').DataTable({
-            responsive: {
-                details: {
-                    type: 'column',
-                    target: 'tr'
-                }
-            },
-            columnDefs: [
-                // Add a column for the expand/collapse button
-                {
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                },
-                // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
-                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
-                { responsivePriority: 3, targets: [7] },           // Verification 
-                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
-            ],
-            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
-            autoWidth: false,
-            language: {
-                emptyTable: "No data available"
-            }
-        });
-    });
+	$(document).ready(function() {  
+		$('#dataTable').DataTable({
+			responsive: {
+				details: {
+					type: 'column',
+					target: 'tr'
+				}
+			},
+			columnDefs: [
+				// Add a column for the expand/collapse button
+				{
+					className: 'dtr-control',
+					orderable: false,
+					targets: 0
+				},
+				// Adjust priorities based on your actual column count (7 columns total)
+				{ responsivePriority: 1, targets: [0, 1, 2] },    // Control column, ISBN, Book Name
+				{ responsivePriority: 2, targets: [3, 6] },       // Issue Date, Status
+				{ responsivePriority: 3, targets: [5] },          // Fines
+				{ responsivePriority: 4, targets: [4] }           // Return Date
+			],
+			order: [[1, 'asc']], // Sort by the second column (ISBN) by default
+			autoWidth: false,
+			language: {
+				emptyTable: "No data available"
+			}
+		});
+	});
 </script>
 <?php 
 

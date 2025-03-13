@@ -60,7 +60,7 @@ include '../header.php';
 
 ?>
 
-<div class="container-fluid px-4">
+<main class="container px-4">
 	<h1 class="mt-4">Setting</h1>
 	<?php 
 
@@ -166,7 +166,7 @@ include '../header.php';
 
 		</div>
 	</div>
-</div>
+</main>
 
 <?php 
 
