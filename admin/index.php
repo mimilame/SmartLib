@@ -5,6 +5,7 @@
 include '../database_connection.php';
 
 include '../function.php';
+include '../header.php';
 
 if(!is_admin_login())
 {
@@ -12,7 +13,7 @@ if(!is_admin_login())
 }
 
 
-include '../header.php';
+
 
 ?>
 

@@ -6,6 +6,8 @@ include '../database_connection.php';
 
 include '../function.php';
 
+include '../header.php';
+
 if(!is_admin_login())
 {
 	header('location:../admin_login.php');
@@ -192,7 +194,6 @@ $statement = $connect->prepare($query);
 
 $statement->execute();
 
-include '../header.php';
 
 ?>
 <main class="container py-4" style="min-height: 700px;">
@@ -377,7 +378,7 @@ include '../header.php';
                     {
                         echo '
                         <h2>Book Details</h2>
-                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
                             <tr>
                                 <th width="30%">Book ISBN Number</th>
                                 <td width="70%">'.$book_data["book_isbn_number"].'</td>
@@ -399,7 +400,7 @@ include '../header.php';
                     {
                         echo '
                         <h2>User Details</h2>
-                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
                             <tr>
                                 <th width="30%">User Unique ID</th>
                                 <td width="70%">'.$user_data["user_unique_id"].'</td>
@@ -465,7 +466,7 @@ include '../header.php';
 
                     echo '
                     <h2>Issue Book Details</h2>
-                    <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+                    <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
                         <tr>
                             <th width="30%">Book Issue Date</th>
                             <td width="70%">'.$row["issue_date_time"].'</td>
@@ -528,7 +529,7 @@ include '../header.php';
             </div>
         </div>
         <div class="card-body">
-        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
         		<thead>
         			<tr>
                         <th></th>

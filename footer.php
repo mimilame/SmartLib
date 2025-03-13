@@ -57,8 +57,9 @@
                 }
                 ?>
         </main>
+        
         <script src="./asset/js/scripts.js"></script>
-        <script src="./asset/js/datatables-simple-demo.js"></script>
+        <script src="./asset/js/dataTables-simple-demo.js"></script>
         <!-- Bootstrap Bundle JS -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 
@@ -71,7 +72,9 @@
         <!-- Bootstrap Bundle (includes Popper) -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         
-       <!--  <script src="./asset/js/custom-datatables.js"></script> -->
+        <script src="./asset/js/custom-dataTables.js"></script>
+
+
     </body>
 
 </html>

@@ -5,6 +5,7 @@
 include 'database_connection.php';
 
 include 'function.php';
+include 'header.php';
 
 if(!is_user_login())
 {
@@ -22,7 +23,7 @@ $statement = $connect->prepare($query);
 $statement->execute();
 
 
-include 'header.php';
+
 
 ?>
 
@@ -42,16 +43,16 @@ include 'header.php';
 			</div>
 		</div>
 		<div class="card-body">
-			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
 				<thead>
 					<tr>
-						<th></th>
+						<th></th> 
 						<th>Book Name</th>
-						<th>ISBN No.</th>
+						<th>ISBN Number</th>
 						<th>Category</th>
 						<th>Author</th>
 						<th>Location Rack</th>
-						<th>No. of Available Copy</th>
+						<th>No. of Copies</th>
 						<th>Status</th>
 						<th>Added On</th>
 					</tr>
@@ -103,7 +104,9 @@ include 'header.php';
 	</div>
 </main>
 <script>
+	
 	$(document).ready(function() {	
+		$('#dataTable').DataTable().destroy();
         $('#dataTable').DataTable({
             responsive: {
                 details: {
@@ -119,10 +122,10 @@ include 'header.php';
                     targets: 0
                 },
                 // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
+                { responsivePriority: 1, targets: [0, 1, 2, 9] }, // Control column, ID, Name, Action
                 { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
                 { responsivePriority: 3, targets: [7] },           // Verification 
-                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
+                { responsivePriority: 10000, targets: [4, 6, 8] } // Less important columns
             ],
             order: [[1, 'asc']], // Sort by the second column (ID) instead of first
             autoWidth: false,

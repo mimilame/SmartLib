@@ -25,14 +25,14 @@ td.dtr-control {
     text-indent: 0 !important;
     font-family: 'Courier New', Courier, monospace;
     line-height: 1em;
-    content: '\002B' !important; /* Unicode for plus sign */
+    content: ""; /* Unicode for plus sign */
     background-color: #31b131;
     position: relative;
     z-index: 1;
   }
   
   tr.dt-hasChild td.dtr-control:before {
-    content: '\2212' !important; /* Unicode for minus sign */
+    content: ""; /* Unicode for minus sign */
     background-color: #d33333;
   }
   

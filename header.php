@@ -9,7 +9,7 @@ $row = $statement->fetch(PDO::FETCH_ASSOC);
     {
 
     ?>
-    <body class="sb-nav-fixed">
+    <body class="sb-nav-fixed overflow-hidden">
 
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-danger">
             <!-- Navbar Brand-->
@@ -19,10 +19,12 @@ $row = $statement->fetch(PDO::FETCH_ASSOC);
             <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
                 
             </form>
-            <!-- Navbar-->
+            <!-- Navbar -->
             <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                    <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user fa-fw"></i>
+                    </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                         <li><a class="dropdown-item" href="profile.php">Profile</a></li>
                         <li><a class="dropdown-item" href="setting.php">Setting</a></li>
@@ -95,3 +97,13 @@ $row = $statement->fetch(PDO::FETCH_ASSOC);
         <?php 
         }
         ?>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var dropdownElementList = [].slice.call(document.querySelectorAll('.dropdown-toggle'))
+    var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+      return new bootstrap.Dropdown(dropdownToggleEl)
+    })
+  });
+</script>
+

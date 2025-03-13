@@ -5,6 +5,7 @@
 include 'database_connection.php';
 
 include 'function.php';
+include 'header.php';
 
 if(!is_user_login())
 {
@@ -155,7 +156,7 @@ $query = "
 
 $result = $connect->query($query);
 
-include 'header.php';
+
 
 ?>
 

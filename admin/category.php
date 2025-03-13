@@ -5,6 +5,7 @@
 include '../database_connection.php';
 
 include '../function.php';
+include '../header.php';
 
 if(!is_admin_login())
 {
@@ -154,7 +155,7 @@ $statement = $connect->prepare($query);
 
 $statement->execute();
 
-include '../header.php';
+
 
 ?>
 
@@ -302,7 +303,7 @@ include '../header.php';
 		</div>
 		<div class="card-body">
 
-			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
 				<thead>
 					<tr>
 						<th></th>
