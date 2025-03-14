@@ -665,36 +665,7 @@ include '../header.php';
     });
 
 </script>
-<script>
-	$(document).ready(function() {	
-        $('#dataTable').DataTable({
-            responsive: {
-                details: {
-                    type: 'column',
-                    target: 'tr'
-                }
-            },
-            columnDefs: [
-                // Add a column for the expand/collapse button
-                {
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                },
-                // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
-                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
-                { responsivePriority: 3, targets: [7] },           // Verification 
-                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
-            ],
-            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
-            autoWidth: false,
-            language: {
-                emptyTable: "No data available"
-            }
-        });
-    });
-</script>
+
 <?php 
 
 include '../footer.php';
