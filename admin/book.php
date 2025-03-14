@@ -1,560 +1,272 @@
 <?php
-
-//book.php
+// book.php
 
 include '../database_connection.php';
-
 include '../function.php';
 
-
-if(!is_admin_login())
-{
-	header('location:../admin_login.php');
+if (!is_admin_login()) {
+    header('location:../admin_login.php');
+    exit();
 }
 
 $message = '';
-
 $error = '';
 
-if(isset($_POST["add_book"]))
-{
-	$formdata = array();
+// ADD BOOK
+if (isset($_POST["add_book"])) {
+    $formdata = array();
 
-	if(empty($_POST["book_name"]))
-	{
-		$error .= '<li>Book Name is required</li>';
-	}
-	else
-	{
-		$formdata['book_name'] = trim($_POST["book_name"]);
-	}
+    // Book Name
+    if (empty($_POST["book_name"])) {
+        $error .= '<li>Book Name is required</li>';
+    } else {
+        $formdata['book_name'] = trim($_POST["book_name"]);
+    }
 
-	if(empty($_POST["book_category"]))
-	{
-		$error .= '<li>Book Category is required</li>';
-	}
-	else
-	{
-		$formdata['book_category'] = trim($_POST["book_category"]);
-	}
+    // Book Category
+    if (empty($_POST["book_category"])) {
+        $error .= '<li>Book Category is required</li>';
+    } else {
+        $formdata['book_category'] = trim($_POST["book_category"]);
+    }
 
-	if(empty($_POST["book_author"]))
-	{
-		$error .= '<li>Book Author is required</li>';
-	}
-	else
-	{
-		$formdata['book_author'] = trim($_POST["book_author"]);
-	}
+    // Book Author
+    if (empty($_POST["book_author"])) {
+        $error .= '<li>Book Author is required</li>';
+    } else {
+        $formdata['book_author'] = trim($_POST["book_author"]);
+    }
 
-	if(empty($_POST["book_location_rack"]))
-	{
-		$error .= '<li>Book Location Rack is required</li>';
-	}
-	else
-	{
-		$formdata['book_location_rack'] = trim($_POST["book_location_rack"]);
-	}
+    // Book Location Rack
+    if (empty($_POST["book_location_rack"])) {
+        $error .= '<li>Book Location Rack is required</li>';
+    } else {
+        $formdata['book_location_rack'] = trim($_POST["book_location_rack"]);
+    }
 
-	if(empty($_POST["book_isbn_number"]))
-	{
-		$error .= '<li>Book ISBN Number is required</li>';
-	}
-	else
-	{
-		$formdata['book_isbn_number'] = trim($_POST["book_isbn_number"]);
-	}
-	if(empty($_POST["book_no_of_copy"]))
-	{
-		$error .= '<li>Book No. of Copy is required</li>';
-	}
-	else
-	{
-		$formdata['book_no_of_copy'] = trim($_POST["book_no_of_copy"]);
-	}
+    // Book ISBN Number
+    if (empty($_POST["book_isbn_number"])) {
+        $error .= '<li>Book ISBN Number is required</li>';
+    } else {
+        $formdata['book_isbn_number'] = trim($_POST["book_isbn_number"]);
+    }
 
-	if($error == '')
-	{
-		$data = array(
-			':book_category'		=>	$formdata['book_category'],
-			':book_author'			=>	$formdata['book_author'],
-			':book_location_rack'	=>	$formdata['book_location_rack'],
-			':book_name'			=>	$formdata['book_name'],
-			':book_isbn_number'		=>	$formdata['book_isbn_number'],
-			':book_no_of_copy'		=>	$formdata['book_no_of_copy'],
-			':book_status'			=>	'Enable',
-			':book_added_on'		=>	get_date_time($connect)
-		);
+    // Book No. of Copy
+    if (empty($_POST["book_no_of_copy"])) {
+        $error .= '<li>Book No. of Copy is required</li>';
+    } else {
+        $formdata['book_no_of_copy'] = trim($_POST["book_no_of_copy"]);
+    }
 
-		$query = "
-		INSERT INTO lms_book 
-        (book_category, book_author, book_location_rack, book_name, book_isbn_number, book_no_of_copy, book_status, book_added_on) 
-        VALUES (:book_category, :book_author, :book_location_rack, :book_name, :book_isbn_number, :book_no_of_copy, :book_status, :book_added_on)
-		";
+    if ($error == '') {
+        // Insert book data
+        $data = array(
+            ':book_category'        => $formdata['book_category'],
+            ':book_title'           => $formdata['book_name'],
+            ':book_author'          => $formdata['book_author'],
+            ':book_rack'            => $formdata['book_location_rack'],
+            ':book_isbn_number'     => $formdata['book_isbn_number'],
+            ':book_no_of_copy'      => $formdata['book_no_of_copy'],
+            ':book_status'          => 'Available',
+            ':book_added_on'        => get_date_time($connect),
+            ':book_updated_on'      => get_date_time($connect)
+        );
 
-		$statement = $connect->prepare($query);
+        $query = "
+            INSERT INTO lms_book 
+            (book_category, book_title, book_author, book_rack, book_isbn_number, book_no_of_copy, book_status, book_added_on, book_updated_on) 
+            VALUES 
+            (:book_category, :book_title, :book_author, :book_rack, :book_isbn_number, :book_no_of_copy, :book_status, :book_added_on, :book_updated_on)
+        ";
 
-		$statement->execute($data);
+        $statement = $connect->prepare($query);
+        $statement->execute($data);
 
-		header('location:book.php?msg=add');
-	}
+        header('location:book.php?msg=add');
+        exit();
+    }
 }
 
-if(isset($_POST["edit_book"]))
-{
-	$formdata = array();
+// DELETE/STATUS UPDATE
+if (isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] == 'delete') {
+    $book_id = convert_data($_GET["code"], 'decrypt');
+    $status = $_GET["status"];
 
-	if(empty($_POST["book_name"]))
-	{
-		$error .= '<li>Book Name is required</li>';
-	}
-	else
-	{
-		$formdata['book_name'] = trim($_POST["book_name"]);
-	}
+    $data = array(
+        ':book_status'      => $status,
+        ':book_updated_on'  => get_date_time($connect),
+        ':book_id'          => $book_id
+    );
 
-	if(empty($_POST["book_category"]))
-	{
-		$error .= '<li>Book Category is required</li>';
-	}
-	else
-	{
-		$formdata['book_category'] = trim($_POST["book_category"]);
-	}
-
-	if(empty($_POST["book_author"]))
-	{
-		$error .= '<li>Book Author is required</li>';
-	}
-	else
-	{
-		$formdata['book_author'] = trim($_POST["book_author"]);
-	}
-
-	if(empty($_POST["book_location_rack"]))
-	{
-		$error .= '<li>Book Location Rack is required</li>';
-	}
-	else
-	{
-		$formdata['book_location_rack'] = trim($_POST["book_location_rack"]);
-	}
-
-	if(empty($_POST["book_isbn_number"]))
-	{
-		$error .= '<li>Book ISBN Number is required</li>';
-	}
-	else
-	{
-		$formdata['book_isbn_number'] = trim($_POST["book_isbn_number"]);
-	}
-	if(empty($_POST["book_no_of_copy"]))
-	{
-		$error .= '<li>Book No. of Copy is required</li>';
-	}
-	else
-	{
-		$formdata['book_no_of_copy'] = trim($_POST["book_no_of_copy"]);
-	}
-
-	if($error == '')
-	{
-		$data = array(
-			':book_category'		=>	$formdata['book_category'],
-			':book_author'			=>	$formdata['book_author'],
-			':book_location_rack'	=>	$formdata['book_location_rack'],
-			':book_name'			=>	$formdata['book_name'],
-			':book_isbn_number'		=>	$formdata['book_isbn_number'],
-			':book_no_of_copy'		=>	$formdata['book_no_of_copy'],
-			':book_updated_on'		=>	get_date_time($connect),
-			':book_id'				=>	$_POST["book_id"]
-		);
-		$query = "
-		UPDATE lms_book 
-        SET book_category = :book_category, 
-        book_author = :book_author, 
-        book_location_rack = :book_location_rack, 
-        book_name = :book_name, 
-        book_isbn_number = :book_isbn_number, 
-        book_no_of_copy = :book_no_of_copy, 
-        book_updated_on = :book_updated_on 
+    $query = "
+        UPDATE lms_book 
+        SET book_status = :book_status, 
+            book_updated_on = :book_updated_on 
         WHERE book_id = :book_id
-		";
+    ";
 
-		$statement = $connect->prepare($query);
+    $statement = $connect->prepare($query);
+    $statement->execute($data);
 
-		$statement->execute($data);
-
-		header('location:book.php?msg=edit');
-	}
+    header('location:book.php?msg=' . strtolower($status));
+    exit();
 }
 
-if(isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] == 'delete')
-{
-	$book_id = $_GET["code"];
-	$status = $_GET["status"];
-
-	$data = array(
-		':book_status'		=>	$status,
-		':book_updated_on'	=>	get_date_time($connect),
-		':book_id'			=>	$book_id
-	);
-
-	$query = "
-	UPDATE lms_book 
-    SET book_status = :book_status, 
-    book_updated_on = :book_updated_on 
-    WHERE book_id = :book_id
-	";
-
-	$statement = $connect->prepare($query);
-
-	$statement->execute($data);
-
-	header('location:book.php?msg='.strtolower($status).'');
-}
-
-
-$query = "
-	SELECT * FROM lms_book 
-    ORDER BY book_id DESC
-";
-
+// FETCH BOOKS LIST
+$query = "SELECT * FROM lms_book ORDER BY book_id DESC";
 $statement = $connect->prepare($query);
-
 $statement->execute();
-
+$books = $statement->fetchAll();
 
 include '../header.php';
-
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
-	<h1>Book Management</h1>
-	<?php 
-	if(isset($_GET["action"]))
-	{
-		if($_GET["action"] == 'add')
-		{
-	?>
+    <h1>Book Management</h1>
 
-    <?php 
-
-    if($error != '')
-    {
-    	echo '<div class="alert alert-danger alert-dismissible fade show" role="alert"><ul class="list-unstyled">'.$error.'</ul> <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-    }
-
-    ?>
-
-    <div class="card mb-4">
-    	<div class="card-header">
-    		<i class="fas fa-user-plus"></i> Add New Book
+    <?php if (isset($_GET["msg"])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?php
+            if ($_GET["msg"] == "add") echo "Book added successfully!";
+            if ($_GET["msg"] == "edit") echo "Book updated successfully!";
+            if ($_GET["msg"] == "enable") echo "Book enabled successfully!";
+            if ($_GET["msg"] == "disable") echo "Book disabled successfully!";
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        <div class="card-body">
-        	<form method="post">
-        		<div class="row">
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">Book Name</label>
-        					<input type="text" name="book_name" id="book_name" class="form-control" />
-        				</div>
-        			</div>
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">Select Author</label>
-        					<select name="book_author" id="book_author" class="form-control">
-        						<?php echo fill_author($connect); ?>
-        					</select>
-        				</div>
-        			</div>
-        		</div>
-        		<div class="row">
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">Select Category</label>
-        					<select name="book_category" id="book_category" class="form-control">
-        						<?php echo fill_category($connect); ?>
-        					</select>
-        				</div>
-        			</div>
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">Select Location Rack</label>
-        					<select name="book_location_rack" id="book_location_rack" class="form-control">
-        						<?php echo fill_location_rack($connect); ?>
-        					</select>
-        				</div>
-        			</div>
-        		</div>
-        		<div class="row">
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">Book ISBN Number</label>
-        					<input type="text" name="book_isbn_number" id="book_isbn_number" class="form-control" />
-        				</div>
-        			</div>
-        			<div class="col-md-6">
-        				<div class="mb-3">
-        					<label class="form-label">No. of Copy</label>
-        					<input type="number" name="book_no_of_copy" id="book_no_of_copy" step="1" class="form-control" />
-        				</div>
-        			</div>
-        		</div>
-        		<div class="mt-4 mb-3 text-center">
-        			<input type="submit" name="add_book" class="btn btn-success" value="Add" />
-        		</div>
-        	</form>
-        </div>
-    </div>
+    <?php endif; ?>
 
-	<?php 
-		}
-		else if($_GET["action"] == 'edit')
-		{
-			$book_id = convert_data($_GET["code"], 'decrypt');
+    <?php if (isset($_GET["action"]) && $_GET["action"] == 'add'): ?>
 
-			if($book_id > 0)
-			{
-				$query = "
-				SELECT * FROM lms_book 
-                WHERE book_id = '$book_id'
-				";
+        <?php if ($error != ''): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="list-unstyled"><?= $error ?></ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
-				$book_result = $connect->query($query);
-
-				foreach($book_result as $book_row)
-				{
-	?>
-    <div class="card mb-4">
-    	<div class="card-header">
-    		<i class="fas fa-user-plus"></i> Edit Book Details
-       	</div>
-       	<div class="card-body">
-       		<form method="post">
-       			<div class="row">
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">Book Name</label>
-       						<input type="text" name="book_name" id="book_name" class="form-control" value="<?php echo $book_row['book_name']; ?>" />
-       					</div>
-       				</div>
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">Select Author</label>
-       						<select name="book_author" id="book_author" class="form-control">
-       							<?php echo fill_author($connect); ?>
-       						</select>
-       					</div>
-       				</div>
-       			</div>
-       			<div class="row">
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">Select Category</label>
-       						<select name="book_category" id="book_category" class="form-control">
-       							<?php echo fill_category($connect); ?>
-       						</select>
-       					</div>
-       				</div>
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">Select Location Rack</label>
-       						<select name="book_location_rack" id="book_location_rack" class="form-control">
-       							<?php echo fill_location_rack($connect); ?>
-       						</select>
-       					</div>
-       				</div>
-       			</div>
-       			<div class="row">
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">Book ISBN Number</label>
-       						<input type="text" name="book_isbn_number" id="book_isbn_number" class="form-control" value="<?php echo $book_row['book_isbn_number']; ?>" />
-       					</div>
-       				</div>
-       				<div class="col-md-6">
-       					<div class="mb-3">
-       						<label class="form-label">No. of Copy</label>
-       						<input type="number" name="book_no_of_copy" id="book_no_of_copy" class="form-control" step="1" value="<?php echo $book_row['book_no_of_copy']; ?>" />
-       					</div>
-       				</div>
-       			</div>
-       			<div class="mt-4 mb-3 text-center">
-       				<input type="hidden" name="book_id" value="<?php echo $book_row['book_id']; ?>" />
-       				<input type="submit" name="edit_book" class="btn btn-primary" value="Edit" />
-       			</div>
-       		</form>
-       		<script>
-       			document.getElementById('book_author').value = "<?php echo $book_row['book_author']; ?>";
-       			document.getElementById('book_category').value = "<?php echo $book_row['book_category']; ?>";
-       			document.getElementById('book_location_rack').value = "<?php echo $book_row['book_location_rack']; ?>";
-       		</script>
-       	</div>
-   	</div>
-	<?php
-				}
-			}
-		}
-	}
-	else
-	{	
-	?>
-	<?php 
-
-	if(isset($_GET["msg"]))
-	{
-		if($_GET["msg"] == 'add')
-		{
-			echo '<div class="alert alert-success alert-dismissible fade show" role="alert">New Book Added<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-		}
-		if($_GET['msg'] == 'edit')
-		{
-			echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Book Data Edited <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-		}
-		if($_GET["msg"] == 'disable')
-		{
-			echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Book Status Change to Disable <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-		}
-		if($_GET['msg'] == 'enable')
-		{
-			echo '<div class="alert alert-success alert-dismissible fade show" role="alert">Book Status Change to Enable <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-		}
-	}
-
-	?>
-	<div class="card mb-4">
-		<div class="card-header">
-			<div class="row">
-				<div class="col col-md-6">
-					<i class="fas fa-table me-1"></i> Book Management
-                </div>
-                <div class="col col-md-6">
-                	<a href="book.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
-                </div>
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-book"></i> Add New Book</div>
+            <div class="card-body">
+                <form method="post">
+                    <?php include 'book_form_fields.php'; ?>
+                    <div class="mt-4 mb-3 text-center">
+                        <input type="submit" name="add_book" class="btn btn-success" value="Add" />
+                    </div>
+                </form>
             </div>
         </div>
-        <div class="card-body">
-        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
-        		<thead> 
-        			<tr> 
-						<th></th>
-        				<th>Book Name</th>
-        				<th>ISBN No.</th>
-        				<th>Category</th>
-        				<th>Author</th>
-        				<th>Location Rack</th>
-        				<th>No. of Copy</th>
-        				<th>Status</th>
-        				<th>Created On</th>
-        				<th>Updated On</th>
-        				<th>Action</th>
-        			</tr>
-        		</thead>
-        		<tbody>
-        		<?php 
 
-        		if($statement->rowCount() > 0)
-        		{
-        			foreach($statement->fetchAll() as $row)
-        			{
-        				$book_status = '';
-        				if($row['book_status'] == 'Enable')
-        				{
-        					$book_status = '<div class="badge bg-success">Enable</div>';
-        				}
-        				else
-        				{
-        					$book_status = '<div class="badge bg-danger">Disable</div>';
-        				}
-        				echo '
-        				<tr>
-							<td></td>
-        					<td>'.$row["book_name"].'</td>
-        					<td>'.$row["book_isbn_number"].'</td>
-        					<td>'.$row["book_category"].'</td>
-        					<td>'.$row["book_author"].'</td>
-        					<td>'.$row["book_location_rack"].'</td>
-        					<td>'.$row["book_no_of_copy"].'</td>
-        					<td>'.$book_status.'</td>
-        					<td>'.$row["book_added_on"].'</td>
-        					<td>'.$row["book_updated_on"].'</td>
-        					<td>
-        						<a href="book.php?action=edit&code='.convert_data($row["book_id"]).'" class="btn btn-sm btn-primary">Edit</a>
-        						<button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`'.$row["book_id"].'`, `'.$row["book_status"].'`)">Delete</button>
-        					</td>
-        				</tr>
-        				';
-        			}
-        		}
-        		else
-        		{
-        			echo '
-        			<tr>
-        				<td colspan="10" class="text-center">No Data Found</td>
-        			</tr>
-        			';
-        		}
+    <?php elseif (isset($_GET["action"]) && $_GET["action"] == 'edit'): ?>
 
-        		?>
-        		</tbody>
-        	</table>
+        <?php
+        $book_id = convert_data($_GET["code"], 'decrypt');
+        $query = "SELECT * FROM lms_book WHERE book_id = :book_id";
+        $statement = $connect->prepare($query);
+        $statement->execute([':book_id' => $book_id]);
+        $book_result = $statement->fetch(PDO::FETCH_ASSOC);
+        ?>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-book"></i> Edit Book Details</div>
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="book_id" value="<?= $book_result['book_id']; ?>">
+                    <?php include 'book_form_fields.php'; ?>
+                    <div class="mt-4 mb-3 text-center">
+                        <input type="submit" name="edit_book" class="btn btn-primary" value="Edit" />
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
-    <script>
 
-    	function delete_data(code, status)
-    	{
-    		var new_status = 'Enable';
-    		if(status == 'Enable')
-    		{
-    			new_status = 'Disable';
-    		}
+    <?php else: ?>
 
-    		if(confirm("Are you sure you want to "+new_status+" this Category?"))
-    		{
-    			window.location.href = "book.php?action=delete&code="+code+"&status="+new_status+"";
-    		}
-    	}
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col-md-6">
+                        <i class="fas fa-table me-1"></i> Book Management
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="book.php?action=add" class="btn btn-success btn-sm">Add</a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Book Name</th>
+                            <th>Author</th>
+                            <th>Category</th>
+                            <th>Rack</th>
+                            <th>ISBN</th>
+                            <th>No. of Copy</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($books) > 0): ?>
+                            <?php foreach ($books as $row): ?>
+                                <tr>
+                                    <td><?= $row["book_id"]; ?></td>
+                                    <td><?= htmlspecialchars($row["book_title"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_author"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_category"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_rack"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_isbn_number"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_no_of_copy"]); ?></td>
+                                    <td>
+                                        <?= $row["book_status"] === "Available"
+                                            ? '<span class="badge bg-success">Available</span>'
+                                            : '<span class="badge bg-danger">Not Available</span>'; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="book.php?action=view&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-info btn-sm mb-1">View</a>
+                                        <a href="book.php?action=edit&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-primary btn-sm mb-1">Edit</a>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_data('<?= convert_data($row["book_id"]); ?>')">Delete</button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="9" class="text-center">No Data Found</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    </script>
-    <?php 
-	}
-    ?>
+    <?php endif; ?>
 </main>
+
 <script>
-	$(document).ready(function() {	
-        $('#dataTable').DataTable({
-            responsive: {
-                details: {
-                    type: 'column',
-                    target: 'tr'
-                }
-            },
-            columnDefs: [
-                // Add a column for the expand/collapse button
-                {
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                },
-                // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: [0, 1, 2, 10] }, // Control column, ID, Name, Action
-                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
-                { responsivePriority: 3, targets: [7] },           // Verification 
-                { responsivePriority: 10000, targets: [4, 6, 8, 9] } // Less important columns
-            ],
-            order: [[1, 'asc']], // Sort by the second column (ID) instead of first
-            autoWidth: false,
-            language: {
-                emptyTable: "No data available"
-            }
-        });
+function delete_data(code) {
+    if (confirm("Are you sure you want to delete this book?")) {
+        window.location.href = "book.php?action=delete&code=" + code + "&status=Delete";
+    }
+}
+
+$(document).ready(function () {
+    $('#dataTable').DataTable({
+        responsive: true,
+        columnDefs: [
+            { responsivePriority: 1, targets: [0, 1, 8] },
+            { responsivePriority: 2, targets: [2, 4] },
+            { responsivePriority: 3, targets: [7] },
+            { responsivePriority: 10000, targets: [3, 5, 6] }
+        ],
+        order: [[0, 'asc']],
+        autoWidth: false,
+        language: {
+            emptyTable: "No books available"
+        }
     });
+});
 </script>
 
-<?php
-
-include '../footer.php';
-
-?>
+<?php include '../footer.php'; ?>

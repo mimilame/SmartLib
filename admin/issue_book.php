@@ -500,20 +500,33 @@ include '../header.php';
     ?>
 
     <?php 
-    if(isset($_GET['msg']))
-    {
-        if($_GET['msg'] == 'add')
-        {
-            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">New Book Issue Successfully<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-        }
+  if(isset($_GET['msg']))
+  {
+      if($_GET['msg'] == 'add')
+      {
+          echo '<div id="autoCloseAlert" class="alert alert-success alert-dismissible fade show" role="alert">
+              New Book Issue Successfully
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>';
+      }
+  
+      if($_GET["msg"] == 'return')
+      {
+          echo '<div id="autoCloseAlert" class="alert alert-success alert-dismissible fade show" role="alert">
+              Issued Book Successfully Return into Library
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>';
+      }
+  }
 
-        if($_GET["msg"] == 'return')
-        {
-            echo '
-            <div class="alert alert-success alert-dismissible fade show" role="alert">Issued Book Successfully Return into Library <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
-            ';
-        }
-    }
+    $query = "
+SELECT * FROM lms_issue_book
+ORDER BY issue_book_id DESC
+";
+
+$statement = $connect->prepare($query);
+$statement->execute();
+
     ?>
 
     <div class="card mb-4">
@@ -632,38 +645,45 @@ include '../header.php';
     ?>
 </main>
 <script>
-	$(document).ready(function() {  
-        $('#dataTable').DataTable({
-            responsive: {
-                details: {
-                    type: 'column',
-                    target: 'tr'
-                }
-            },
-            columnDefs: [
-                // Add a column for the expand/collapse button
-                {
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                },
-                // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: 1 }, // Book ISBN Number column
-                { responsivePriority: 2, targets: 2 }, // User Unique ID column
-                { responsivePriority: 3, targets: 3 }, // Issue Date column
-                { responsivePriority: 4, targets: 4 }, // Return Date column
-                { responsivePriority: 5, targets: 5 }, // Late Return Fines column
-                { responsivePriority: 6, targets: 6 }, // Status column
-                { responsivePriority: 7, targets: 7 }  // Action column
-            ],
-            order: [[1, 'asc']], // Sort by the second column (Book ISBN Number)
-            autoWidth: false,
-            language: {
-                emptyTable: "No data available"
+$(document).ready(function() {  
+    $('#dataTable').DataTable({
+        responsive: {
+            details: {
+                type: 'column',
+                target: 'tr' // Clicking the row triggers detail view
             }
-        });
+        },
+        columnDefs: [
+            {
+                className: 'dtr-control',
+                orderable: false,
+                targets: 0 // Control column for row details
+            },
+            { responsivePriority: 1, targets: [0, 1, 2] },      // Highest priority: Control, ISBN, User ID
+            { responsivePriority: 2, targets: [3, 5] },        // Issue Date, Late Return Fines
+            { responsivePriority: 3, targets: [6] },           // Status
+            { responsivePriority: 4, targets: [4, 7] }         // Return Date, Action
+        ],
+        order: [[1, 'asc']], // Sort by ISBN Number (2nd column)
+        autoWidth: false,
+        language: {
+            emptyTable: "No data available"
+        }
     });
+});
+</script>
+<script>
+// Wait until the DOM is ready
+document.addEventListener('DOMContentLoaded', function () {
+    var alert = document.getElementById('autoCloseAlert');
 
+    if (alert) {
+        setTimeout(function () {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 3000); // Auto close after 3 seconds
+    }
+});
 </script>
 
 <?php 
