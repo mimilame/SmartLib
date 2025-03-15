@@ -80,7 +80,7 @@ include '../header.php';
                 <th>Password</th>
                 <th>Contact</th>
                 <th>Address</th>
-                <th>Verified</th>
+                <th>Status</th>
                 <th>Created</th>
                 <th>Updated</th>
                 <th>Action</th>
@@ -92,8 +92,8 @@ include '../header.php';
                 foreach($users as $row) {
                     // Add a badge to verification status
                     $verified = $row["user_verification_status"] == "Yes" ? 
-                        '<span class="badge bg-success">Verified</span>' : 
-                        '<span class="badge bg-danger">Not Verified</span>';
+                        '<span class="badge bg-success">Active</span>' : 
+                        '<span class="badge bg-danger">Not Active</span>';
                     
                     echo '
                     <tr>
