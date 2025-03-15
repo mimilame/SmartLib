@@ -240,8 +240,8 @@ include '../header.php';
 						if ($statement->rowCount() > 0) {
 							foreach ($statement->fetchAll() as $row) {
 								$category_status = ($row['category_status'] == 'Enable')
-									? '<div class="badge bg-success">Enable</div>'
-									: '<div class="badge bg-danger">Disable</div>';
+									? '<div class="badge bg-success">Active</div>'
+									: '<div class="badge bg-danger">Inactive</div>';
 
 								echo '
 								<tr>

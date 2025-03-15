@@ -1,298 +1,235 @@
 <?php
-// author.php
-
 include '../database_connection.php';
 include '../function.php';
 
-// Check admin login
+// Check if admin is logged in
 if (!is_admin_login()) {
     header('location:../admin_login.php');
-    exit;
+    exit();
 }
 
-$message = '';
-$error = '';
+// ADD AUTHOR LOGIC
+if (isset($_GET["action"]) && $_GET["action"] == "add") {
 
-// Add Author
-if (isset($_POST["add_author"])) {
-    $formdata = [];
+    $error = '';
 
-    // Validate author_name
-    if (empty($_POST["author_name"])) {
-        $error .= '<li>Author Name is required</li>';
-    } else {
-        $formdata['author_name'] = trim($_POST["author_name"]);
-    }
+    // If form submitted
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    if ($error == '') {
-        // Check for duplicate author
-        $query = "SELECT * FROM lms_author WHERE author_name = :author_name";
-        $statement = $connect->prepare($query);
-        $statement->execute([':author_name' => $formdata['author_name']]);
+        $author_name = trim($_POST['author_name']);
 
-        if ($statement->rowCount() > 0) {
-            $error = '<li>Author Name Already Exists</li>';
-        } else {
-            // Insert new author
-            $data = [
-                ':author_name'       => $formdata['author_name'],
+        if ($author_name == '') {
+            $error = 'Author name is required!';
+        }
+
+        if ($error == '') {
+
+            $data = array(
+                ':author_name'       => $author_name,
                 ':author_status'     => 'Enable',
-                ':author_created_on' => get_date_time($connect)
-            ];
+                ':author_created_on' => get_date_time($connect),
+                ':author_updated_on' => get_date_time($connect)
+            );
 
-            $query = "INSERT INTO lms_author (author_name, author_status, author_created_on) 
-                      VALUES (:author_name, :author_status, :author_created_on)";
+            $query = "
+                INSERT INTO lms_author 
+                (author_name, author_status, author_created_on, author_updated_on)
+                VALUES (:author_name, :author_status, :author_created_on, :author_updated_on)
+            ";
+
             $statement = $connect->prepare($query);
-            $statement->execute($data);
 
-            header('location:author.php?msg=add');
-            exit;
+            if ($statement->execute($data)) {
+                header('location:author.php?msg=add');
+                exit();
+            } else {
+                $error = 'Something went wrong. Please try again.';
+            }
         }
     }
-}
 
-// Edit Author
-if (isset($_POST["edit_author"])) {
-    $formdata = [];
+    include '../header.php';
+    ?>
 
-    if (empty($_POST["author_name"])) {
-        $error .= '<li>Author Name is required</li>';
-    } else {
-        $formdata['author_name'] = trim($_POST['author_name']);
-    }
+    <main class="container py-4" style="min-height: 700px;">
+        <h1 class="my-3">Add New Author</h1>
 
-    if ($error == '') {
-        $author_id = convert_data($_POST['author_id'], 'decrypt');
-
-        // Check if another author with the same name exists
-        $query = "SELECT * FROM lms_author WHERE author_name = :author_name AND author_id != :author_id";
-        $statement = $connect->prepare($query);
-        $statement->execute([
-            ':author_name' => $formdata['author_name'],
-            ':author_id'   => $author_id
-        ]);
-
-        if ($statement->rowCount() > 0) {
-            $error = '<li>Author Name Already Exists</li>';
-        } else {
-            // Update author details
-            $data = [
-                ':author_name'       => $formdata['author_name'],
-                ':author_updated_on' => get_date_time($connect),
-                ':author_id'         => $author_id
-            ];
-
-            $query = "UPDATE lms_author 
-                      SET author_name = :author_name, author_updated_on = :author_updated_on  
-                      WHERE author_id = :author_id";
-            $statement = $connect->prepare($query);
-            $statement->execute($data);
-
-            header('location:author.php?msg=edit');
-            exit;
+        <?php 
+        if (!empty($error)) {
+            echo '<div class="alert alert-danger">' . $error . '</div>';
         }
-    }
+        ?>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Author Form</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="author_name" class="form-label">Author Name</label>
+                        <input type="text" name="author_name" id="author_name" class="form-control" required />
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-success">Save</button>
+                        <a href="author.php" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <?php
+    include '../footer.php';
+    exit();
 }
 
-// Toggle Author Status (Enable/Disable)
-if (isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] == 'delete') {
-    $author_id = $_GET["code"];
-    $status    = $_GET["status"];
+// Delete / Disable / Enable logic
+if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
 
-    $data = [
+    $author_id = convert_data($_GET["code"], 'decrypt');
+    $status = $_GET["status"];
+
+    $data = array(
         ':author_status'     => $status,
         ':author_updated_on' => get_date_time($connect),
         ':author_id'         => $author_id
-    ];
+    );
 
-    $query = "UPDATE lms_author 
-              SET author_status = :author_status, author_updated_on = :author_updated_on 
-              WHERE author_id = :author_id";
+    $query = "
+        UPDATE lms_author 
+        SET author_status = :author_status, 
+            author_updated_on = :author_updated_on 
+        WHERE author_id = :author_id
+    ";
+
     $statement = $connect->prepare($query);
     $statement->execute($data);
 
-    header('location:author.php?msg=' . strtolower($status));
-    exit;
+    header('location:author.php?msg=' . strtolower($status) . '');
+    exit();
 }
 
-// Fetch Authors
-$query = "SELECT * FROM lms_author ORDER BY author_name ASC";
+// SELECT Query for all authors
+$query = "
+    SELECT * FROM lms_author 
+    ORDER BY author_id DESC
+";
+
 $statement = $connect->prepare($query);
 $statement->execute();
+
+$authors = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 include '../header.php';
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
-    <h1 class="mb-4">Author Management</h1>
+    <h1 class="my-3">Author Management</h1>
 
-    <?php if (isset($_GET["msg"])): ?>
-        <?php if ($_GET["msg"] == 'add'): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                New Author Added Successfully!
+    <?php 
+    if (isset($_GET["msg"])) {
+        if ($_GET["msg"] == 'disable') {
+            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                Author Status Changed to Disable 
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php elseif ($_GET["msg"] == 'edit'): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                Author Data Updated Successfully!
+            </div>';
+        }
+
+        if ($_GET["msg"] == 'enable') {
+            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                Author Status Changed to Enable 
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php elseif ($_GET["msg"] == 'enable'): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                Author Status Changed to Enable!
+            </div>';
+        }
+
+        if ($_GET["msg"] == 'add') {
+            echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
+                New Author Added Successfully
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php elseif ($_GET["msg"] == 'disable'): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                Author Status Changed to Disable!
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        <?php endif; ?>
-    <?php endif; ?>
+            </div>';
+        }
+    }
+    ?>
 
-    <?php if (isset($_GET["action"]) && $_GET["action"] == "add"): ?>
-
-        <!-- Add Author Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-user-plus me-1"></i> Add New Author
-                <a href="author.php" class="btn btn-secondary btn-sm float-end">Back</a>
-            </div>
-            <div class="card-body">
-                <?php if ($error != ''): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <ul class="list-unstyled"><?php echo $error; ?></ul>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="author_name" class="form-label">Author Name</label>
-                        <input type="text" name="author_name" id="author_name" class="form-control" />
-                    </div>
-                    <div class="text-end">
-                        <button type="submit" name="add_author" class="btn btn-success">Add Author</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <?php elseif (isset($_GET["action"]) && $_GET["action"] == "edit"): ?>
-
-        <?php
-        $author_id = convert_data($_GET["code"], 'decrypt');
-        $author_query = "SELECT author_id, author_name FROM lms_author WHERE author_id = :author_id";
-        $author_stmt = $connect->prepare($author_query);
-        $author_stmt->execute([':author_id' => $author_id]);
-        $author_row = $author_stmt->fetch();
-        ?>
-
-        <!-- Edit Author Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-user-edit me-1"></i> Edit Author
-                <a href="author.php" class="btn btn-secondary btn-sm float-end">Back</a>
-            </div>
-            <div class="card-body">
-                <?php if ($error != ''): ?>
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <ul class="list-unstyled"><?php echo $error; ?></ul>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="author_name" class="form-label">Author Name</label>
-                        <input type="text" name="author_name" id="author_name" class="form-control" value="<?php echo $author_row['author_name']; ?>" />
-                    </div>
-                    <input type="hidden" name="author_id" value="<?php echo $_GET['code']; ?>" />
-                    <div class="text-end">
-                        <button type="submit" name="edit_author" class="btn btn-primary">Update Author</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <?php else: ?>
-
-        <!-- Author List -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row align-items-center">
-                    <div class="col"><i class="fas fa-table me-1"></i> Author List</div>
-                    <div class="col-auto">
-                        <a href="author.php?action=add" class="btn btn-success btn-sm">Add Author</a>
-                    </div>
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="row">
+                <div class="col col-md-6">
+                    <i class="fas fa-table me-1"></i> Author Management
+                </div>
+                <div class="col col-md-6">
+                    <a href="author.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
                 </div>
             </div>
-            <div class="card-body">
-                <table id="dataTable" class="table table-bordered table-striped nowrap display responsive w-100">
-                    <thead>
-                        <tr>
-                            <th>Author ID</th>
-                            <th>Author Name</th>
-                            <th>Status</th>
-                            <th>Created On</th>
-                            <th>Updated On</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($statement->rowCount() > 0): ?>
-                            <?php foreach ($statement->fetchAll() as $row): ?>
-                                <tr>
-                                    <td></td>
-                                    <td><?php echo htmlspecialchars($row['author_name']); ?></td>
-                                    <td>
-                                        <?php echo $row['author_status'] === 'Enable' ? '<span class="badge bg-success">Enable</span>' : '<span class="badge bg-danger">Disable</span>'; ?>
-                                    </td>
-                                    <td><?php echo $row['author_created_on']; ?></td>
-                                    <td><?php echo $row['author_updated_on']; ?></td>
-                                    <td>
-                                        <a href="author.php?action=edit&code=<?php echo convert_data($row['author_id']); ?>" class="btn btn-sm btn-primary">Edit</a>
-                                        <button type="button" class="btn btn-sm btn-danger" onclick="delete_data('<?php echo $row['author_id']; ?>', '<?php echo $row['author_status']; ?>')">
-                                            <?php echo $row['author_status'] === 'Enable' ? 'Disable' : 'Enable'; ?>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="6" class="text-center">No Author Found</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
+        <div class="card-body">
+            <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer collapsed table-active" style="width:100%">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">Author ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php 
+                if (count($authors) > 0) {
+                    foreach ($authors as $row) {
+                        $status_badge = $row["author_status"] == "Enable" ? 
+                            '<span class="badge bg-success">Active</span>' : 
+                            '<span class="badge bg-danger">Inactive</span>';
 
-    <?php endif; ?>
+                        echo '
+                        <tr>
+                            <td>' . htmlspecialchars($row["author_id"]) . '</td>
+                            <td>' . htmlspecialchars($row["author_name"]) . '</td>
+                            <td>' . $status_badge . '</td>
+                            <td>' . $row["author_created_on"] . '</td>
+                            <td>' . $row["author_updated_on"] . '</td>
+                            <td class="text-center">
+                                <a href="author.php?action=view&code=' . convert_data($row["author_id"]) . '" class="btn btn-info btn-sm mb-1">View</a>
+                                <a href="author.php?action=edit&code=' . convert_data($row["author_id"]) . '" class="btn btn-primary btn-sm mb-1">Edit</a>
+                                <button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`' . convert_data($row["author_id"]) . '`)">Delete</button>
+                            </td>
+                        </tr>';
+                    }
+                } else {
+                    echo '
+                    <tr>
+                        <td colspan="6" class="text-center">No Data Found</td>
+                    </tr>';
+                }
+                ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </main>
 
 <script>
-function delete_data(code, status) {
-    const new_status = status === 'Enable' ? 'Disable' : 'Enable';
-    if (confirm(`Are you sure you want to ${new_status} this Author?`)) {
-        window.location.href = `author.php?action=delete&code=${code}&status=${new_status}`;
+function delete_data(code) {
+    if (confirm("Are you sure you want to disable this Author?")) {
+        window.location.href = "author.php?action=delete&code=" + code + "&status=Disable";
     }
 }
 
 $(document).ready(function() {
     $('#dataTable').DataTable({
-        responsive: {
-            details: { type: 'column', target: 'tr' }
-        },
+        responsive: true,
         columnDefs: [
-            { className: 'dtr-control', orderable: false, targets: 0 },
-            { responsivePriority: 1, targets: 1 },
-            { responsivePriority: 2, targets: 2 },
-            { responsivePriority: 3, targets: 3 },
-            { responsivePriority: 4, targets: 4 },
-            { responsivePriority: 5, targets: 5 }
+            { responsivePriority: 1, targets: [0, 1, 5] },
+            { responsivePriority: 2, targets: [2] },
+            { responsivePriority: 10000, targets: [3, 4] }
         ],
-        order: [[1, 'asc']],
+        order: [[0, 'asc']],
         autoWidth: false,
-        language: { emptyTable: "No data available" }
+        language: {
+            emptyTable: "No data available"
+        }
     });
 });
 </script>
