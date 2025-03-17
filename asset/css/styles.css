@@ -12135,6 +12135,15 @@ table td img {
   }
 }
 
+
+
+footer {
+  position: fixed;
+  bottom: 0;
+  width: -webkit-fill-available;
+  font-size: small;
+}
+
 .z-index-n2 {
   z-index: -2 !important;
 }
@@ -12161,13 +12170,6 @@ table td img {
 
 .z-index-99 {
   z-index: 9999 !important;
-}
-
-footer {
-  position: fixed;
-  bottom: 0;
-  width: -webkit-fill-available;
-  font-size: small;
 }
 
 a {

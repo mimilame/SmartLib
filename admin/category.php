@@ -251,8 +251,8 @@ include '../header.php';
 									<td>' . htmlspecialchars($row["category_created_on"]) . '</td>
 									<td>' . htmlspecialchars($row["category_updated_on"] ?? 'N/A') . '</td>
 									<td>
-										<a href="category.php?action=edit&code=' . convert_data($row["category_id"]) . '" class="btn btn-sm btn-primary">Edit</a>
-										<button name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`' . $row["category_id"] . '`, `' . $row["category_status"] . '`)">Delete</button>
+										<a href="category.php?action=edit&code=' . convert_data($row["category_id"]) . '" class="btn btn-sm btn-primary"><i class="fa fa-edit"></i></a>
+										<button name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`' . $row["category_id"] . '`, `' . $row["category_status"] . '`)"><i class="fa fa-trash"></i></button>
 									</td>
 								</tr>
 								';

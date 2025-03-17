@@ -3,6 +3,7 @@
 
 include '../database_connection.php';
 include '../function.php';
+include '../header.php';
 
 // Check admin login
 if (!is_admin_login()) {
@@ -120,7 +121,6 @@ $query = "SELECT * FROM lms_author ORDER BY author_name ASC";
 $statement = $connect->prepare($query);
 $statement->execute();
 
-include '../header.php';
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
@@ -185,7 +185,7 @@ include '../header.php';
         $author_query = "SELECT author_id, author_name FROM lms_author WHERE author_id = :author_id";
         $author_stmt = $connect->prepare($author_query);
         $author_stmt->execute([':author_id' => $author_id]);
-        $author_row = $author_stmt->fetch();
+        $author_row = $author_stmt->fetchAll();
         ?>
 
         <!-- Edit Author Form -->
@@ -231,7 +231,7 @@ include '../header.php';
                 <table id="dataTable" class="table table-bordered table-striped nowrap display responsive w-100">
                     <thead>
                         <tr>
-                            <th>Author ID</th>
+                            <th>ID</th>
                             <th>Author Name</th>
                             <th>Status</th>
                             <th>Created On</th>
@@ -243,7 +243,8 @@ include '../header.php';
                         <?php if ($statement->rowCount() > 0): ?>
                             <?php foreach ($statement->fetchAll() as $row): ?>
                                 <tr>
-                                    <td></td>
+                                    <td><?php echo htmlspecialchars($row['author_id']); ?>
+                                    </td>
                                     <td><?php echo htmlspecialchars($row['author_name']); ?></td>
                                     <td>
                                         <?php echo $row['author_status'] === 'Enable' ? '<span class="badge bg-success">Enable</span>' : '<span class="badge bg-danger">Disable</span>'; ?>
@@ -251,7 +252,7 @@ include '../header.php';
                                     <td><?php echo $row['author_created_on']; ?></td>
                                     <td><?php echo $row['author_updated_on']; ?></td>
                                     <td>
-                                        <a href="author.php?action=edit&code=<?php echo convert_data($row['author_id']); ?>" class="btn btn-sm btn-primary">Edit</a>
+                                        <a href="author.php?action=edit&code=<?php echo convert_data($row['author_id']); ?>" class="btn btn-sm btn-primary"><i class="fa fa-edit"></i></a>
                                         <button type="button" class="btn btn-sm btn-danger" onclick="delete_data('<?php echo $row['author_id']; ?>', '<?php echo $row['author_status']; ?>')">
                                             <?php echo $row['author_status'] === 'Enable' ? 'Disable' : 'Enable'; ?>
                                         </button>
@@ -266,7 +267,8 @@ include '../header.php';
             </div>
         </div>
 
-    <?php endif; ?>
+    <?php endif;?>
+    
 </main>
 
 <script>

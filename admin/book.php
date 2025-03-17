@@ -62,7 +62,7 @@ if (isset($_POST["add_book"])) {
         // Insert book data
         $data = array(
             ':book_category'        => $formdata['book_category'],
-            ':book_title'           => $formdata['book_name'],
+            ':book_name'           => $formdata['book_name'],
             ':book_author'          => $formdata['book_author'],
             ':book_rack'            => $formdata['book_location_rack'],
             ':book_isbn_number'     => $formdata['book_isbn_number'],
@@ -74,9 +74,9 @@ if (isset($_POST["add_book"])) {
 
         $query = "
             INSERT INTO lms_book 
-            (book_category, book_title, book_author, book_rack, book_isbn_number, book_no_of_copy, book_status, book_added_on, book_updated_on) 
+            (book_category, book_name, book_author, book_rack, book_isbn_number, book_no_of_copy, book_status, book_added_on, book_updated_on) 
             VALUES 
-            (:book_category, :book_title, :book_author, :book_rack, :book_isbn_number, :book_no_of_copy, :book_status, :book_added_on, :book_updated_on)
+            (:book_category, :book_name, :book_author, :book_rack, :book_isbn_number, :book_no_of_copy, :book_status, :book_added_on, :book_updated_on)
         ";
 
         $statement = $connect->prepare($query);
@@ -213,7 +213,7 @@ include '../header.php';
                             <?php foreach ($books as $row): ?>
                                 <tr>
                                     <td><?= $row["book_id"]; ?></td>
-                                    <td><?= htmlspecialchars($row["book_title"]); ?></td>
+                                    <td><?= htmlspecialchars($row["book_name"]); ?></td>
                                     <td><?= htmlspecialchars($row["book_author"]); ?></td>
                                     <td><?= htmlspecialchars($row["book_category"]); ?></td>
                                     <td><?= htmlspecialchars($row["book_rack"]); ?></td>
@@ -226,8 +226,8 @@ include '../header.php';
                                     </td>
                                     <td class="text-center">
                                         <a href="book.php?action=view&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-info btn-sm mb-1">View</a>
-                                        <a href="book.php?action=edit&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-primary btn-sm mb-1">Edit</a>
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_data('<?= convert_data($row["book_id"]); ?>')">Delete</button>
+                                        <a href="book.php?action=edit&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-primary btn-sm mb-1"><i class="fa fa-edit"></i></a>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_data('<?= convert_data($row["book_id"]); ?>')"><i class="fa fa-trash"></i></button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
