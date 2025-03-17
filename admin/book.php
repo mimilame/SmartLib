@@ -13,115 +13,104 @@ $message = '';
 $error = '';
 
 // ADD BOOK
-// ADD BOOK
-if (isset($_POST['add_book'])) {
+if (isset($_POST["add_book"])) {
     $formdata = array();
-    $error = '';
 
-    // Validate Title
-    if (empty($_POST['book_title'])) {
-        $error .= '<li>Book Title is required</li>';
+    // Book Name
+    if (empty($_POST["book_name"])) {
+        $error .= '<li>Book Name is required</li>';
     } else {
-        $formdata['book_title'] = trim($_POST['book_title']);
+        $formdata['book_name'] = trim($_POST["book_name"]);
     }
 
-    // Validate ISBN
-    if (empty($_POST['isbn'])) {
-        $error .= '<li>ISBN is required</li>';
+    // Book Category
+    if (empty($_POST["book_category"])) {
+        $error .= '<li>Book Category is required</li>';
     } else {
-        $formdata['isbn'] = trim($_POST['isbn']);
+        $formdata['book_category'] = trim($_POST["book_category"]);
     }
 
-    // Validate Edition
-    if (empty($_POST['edition'])) {
-        $error .= '<li>Edition is required</li>';
+    // Book Author
+    if (empty($_POST["book_author"])) {
+        $error .= '<li>Book Author is required</li>';
     } else {
-        $formdata['edition'] = trim($_POST['edition']);
+        $formdata['book_author'] = trim($_POST["book_author"]);
     }
 
-    // Validate Quantity
-    if (empty($_POST['quantity'])) {
-        $error .= '<li>Quantity is required</li>';
+    // Book Location Rack
+    if (empty($_POST["book_location_rack"])) {
+        $error .= '<li>Book Location Rack is required</li>';
     } else {
-        $formdata['quantity'] = trim($_POST['quantity']);
+        $formdata['book_location_rack'] = trim($_POST["book_location_rack"]);
     }
 
-    // Validate Category ID
-    if (empty($_POST['category_id'])) {
-        $error .= '<li>Category is required</li>';
+    // Book ISBN Number
+    if (empty($_POST["book_isbn_number"])) {
+        $error .= '<li>Book ISBN Number is required</li>';
     } else {
-        $formdata['category_id'] = trim($_POST['category_id']);
+        $formdata['book_isbn_number'] = trim($_POST["book_isbn_number"]);
     }
 
-    // Validate Rack ID
-    if (empty($_POST['rack_id'])) {
-        $error .= '<li>Rack is required</li>';
+    // Book No. of Copy
+    if (empty($_POST["book_no_of_copy"])) {
+        $error .= '<li>Book No. of Copy is required</li>';
     } else {
-        $formdata['rack_id'] = trim($_POST['rack_id']);
+        $formdata['book_no_of_copy'] = trim($_POST["book_no_of_copy"]);
     }
 
-    // Validate Author ID
-    if (empty($_POST['author_id'])) {
-        $error .= '<li>Author is required</li>';
-    } else {
-        $formdata['author_id'] = trim($_POST['author_id']);
-    }
-
-    // If no validation error, proceed
     if ($error == '') {
+        // Insert book data
+        $data = array(
+            ':book_category'        => $formdata['book_category'],
+            ':book_name'           => $formdata['book_name'],
+            ':book_author'          => $formdata['book_author'],
+            ':book_rack'            => $formdata['book_location_rack'],
+            ':book_isbn_number'     => $formdata['book_isbn_number'],
+            ':book_no_of_copy'      => $formdata['book_no_of_copy'],
+            ':book_status'          => 'Available',
+            ':book_added_on'        => get_date_time($connect),
+            ':book_updated_on'      => get_date_time($connect)
+        );
 
-        // Check if ISBN already exists
-        $query = "SELECT * FROM lms_book WHERE isbn = :isbn";
+        $query = "
+            INSERT INTO lms_book 
+            (book_category, book_name, book_author, book_rack, book_isbn_number, book_no_of_copy, book_status, book_added_on, book_updated_on) 
+            VALUES 
+            (:book_category, :book_name, :book_author, :book_rack, :book_isbn_number, :book_no_of_copy, :book_status, :book_added_on, :book_updated_on)
+        ";
+
         $statement = $connect->prepare($query);
-        $statement->execute([':isbn' => $formdata['isbn']]);
+        $statement->execute($data);
 
-        if ($statement->rowCount() > 0) {
-            $error = '<li>ISBN Already Exists</li>';
-        } else {
-            // Handle cover image upload (optional)
-            $cover_image = '';
-            if (!empty($_FILES['cover_image']['name'])) {
-                $file_name = time() . '_' . $_FILES['cover_image']['name'];
-                $file_tmp = $_FILES['cover_image']['tmp_name'];
-                $file_path = '../uploads/' . $file_name; // Make sure this folder exists!
-                
-                if (move_uploaded_file($file_tmp, $file_path)) {
-                    $cover_image = $file_name;
-                } else {
-                    $error .= '<li>Failed to upload cover image</li>';
-                }
-            }
-
-            // If no upload error, insert into DB
-            if ($error == '') {
-                $data = array(
-                    ':book_title'     => $formdata['book_title'],
-                    ':isbn'           => $formdata['isbn'],
-                    ':edition'        => $formdata['edition'],
-                    ':quantity'       => $formdata['quantity'],
-                    ':category_id'    => $formdata['category_id'],
-                    ':rack_id'        => $formdata['rack_id'],
-                    ':author_id'      => $formdata['author_id'],
-                    ':cover_image'    => $cover_image,
-                    ':status'         => 'Enable',
-                    ':created_on'     => get_date_time($connect)
-                );
-
-                $query = "INSERT INTO lms_book 
-                (book_title, isbn, edition, quantity, category_id, rack_id, author_id, cover_image, status, created_on)
-                VALUES 
-                (:book_title, :isbn, :edition, :quantity, :category_id, :rack_id, :author_id, :cover_image, :status, :created_on)";
-
-                $statement = $connect->prepare($query);
-                $statement->execute($data);
-
-                header('location:book.php?msg=add');
-                exit();
-            }
-        }
+        header('location:book.php?msg=add');
+        exit();
     }
 }
 
+// DELETE/STATUS UPDATE
+if (isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] == 'delete') {
+    $book_id = convert_data($_GET["code"], 'decrypt');
+    $status = $_GET["status"];
+
+    $data = array(
+        ':book_status'      => $status,
+        ':book_updated_on'  => get_date_time($connect),
+        ':book_id'          => $book_id
+    );
+
+    $query = "
+        UPDATE lms_book 
+        SET book_status = :book_status, 
+            book_updated_on = :book_updated_on 
+        WHERE book_id = :book_id
+    ";
+
+    $statement = $connect->prepare($query);
+    $statement->execute($data);
+
+    header('location:book.php?msg=' . strtolower($status));
+    exit();
+}
 
 // FETCH BOOKS LIST
 $query = "SELECT * FROM lms_book ORDER BY book_id DESC";
@@ -157,41 +146,10 @@ include '../header.php';
         <?php endif; ?>
 
         <div class="card mb-4">
-            <div class="card-header">
-            <div class="row">
-            <div class="col col-md-6"><i class="fas fa-book"></i> Add New Book</div>
+            <div class="card-header"><i class="fas fa-book"></i> Add New Book</div>
             <div class="card-body">
                 <form method="post">
-                <div class="mb-3">
-    <label class="form-label">Book Name</label>
-    <input type="text" name="book_name" class="form-control" value="<?= isset($formdata['book_name']) ? htmlspecialchars($formdata['book_name']) : ''; ?>" />
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Book Category</label>
-    <input type="text" name="book_category" class="form-control" value="<?= isset($formdata['book_category']) ? htmlspecialchars($formdata['book_category']) : ''; ?>" />
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Book Author</label>
-    <input type="text" name="book_author" class="form-control" value="<?= isset($formdata['book_author']) ? htmlspecialchars($formdata['book_author']) : ''; ?>" />
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Book Location Rack</label>
-    <input type="text" name="book_location_rack" class="form-control" value="<?= isset($formdata['book_location_rack']) ? htmlspecialchars($formdata['book_location_rack']) : ''; ?>" />
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Book ISBN Number</label>
-    <input type="text" name="book_isbn_number" class="form-control" value="<?= isset($formdata['book_isbn_number']) ? htmlspecialchars($formdata['book_isbn_number']) : ''; ?>" />
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Book No. of Copy</label>
-    <input type="number" name="book_no_of_copy" class="form-control" value="<?= isset($formdata['book_no_of_copy']) ? htmlspecialchars($formdata['book_no_of_copy']) : ''; ?>" />
-</div>
-
+                    <?php include 'book_form_fields.php'; ?>
                     <div class="mt-4 mb-3 text-center">
                         <input type="submit" name="add_book" class="btn btn-success" value="Add" />
                     </div>
@@ -230,13 +188,13 @@ include '../header.php';
                     <div class="col-md-6">
                         <i class="fas fa-table me-1"></i> Book Management
                     </div>
-                    <div class="col col-md-6">
-                        <a href="book.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
+                    <div class="col-md-6 text-end">
+                        <a href="book.php?action=add" class="btn btn-success btn-sm">Add</a>
                     </div>
                 </div>
             </div>
             <div class="card-body">
-                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed table-active" style="width:100%">
+                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap" style="width:100%">
                     <thead>
                         <tr>
                             <th>ID</th>
@@ -268,8 +226,8 @@ include '../header.php';
                                     </td>
                                     <td class="text-center">
                                         <a href="book.php?action=view&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-info btn-sm mb-1">View</a>
-                                        <a href="book.php?action=edit&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-primary btn-sm mb-1">Edit</a>
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_data('<?= convert_data($row["book_id"]); ?>')">Delete</button>
+                                        <a href="book.php?action=edit&code=<?= convert_data($row["book_id"]); ?>" class="btn btn-primary btn-sm mb-1"><i class="fa fa-edit"></i></a>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_data('<?= convert_data($row["book_id"]); ?>')"><i class="fa fa-trash"></i></button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

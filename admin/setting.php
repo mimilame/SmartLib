@@ -5,6 +5,7 @@
 include '../database_connection.php';
 
 include '../function.php';
+include '../header.php';
 
 if(!is_admin_login())
 {
@@ -56,7 +57,7 @@ LIMIT 1
 
 $result = $connect->query($query);
 
-include '../header.php';
+
 
 ?>
 

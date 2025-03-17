@@ -122,99 +122,118 @@
 	include 'head.php';
 
 ?>
-
+<div class="bg"></div>
+<div class="bg bg2"></div>
+<div class="bg bg3"></div>
+<div class="bg1"></div>
+<div class="bg1 bg2"></div>
+<div class="bg1 bg3"></div>
 
 <main class="landing-page">
+	<?php
+	// Display SweetAlert messages if they exist
+	if(!empty($error_message)) {
+		echo sweet_alert('error', $error_message);
+	}
+
+	if(!empty($success_message)) {
+		echo sweet_alert('success', $success_message);
+	}
+	?>
+
     <section class="index">
         <div class="toggle-box">
-            <article class="toggle-panel toggle-left h-100">
-                <div class="p-5">
-                    <h2 class="h3">Explore Our Collection</h2>
-                    <p class="mb-5">Browse through hundreds of books, journals, and digital resources in our extensive catalog. From classic literature to the latest research papers, we have resources for every reader.</p>
-                    <ul class="row gap-4 justify-content-between mb-5 list-unstyled">
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-							<div class="d-inline-flex flex-column align-items-center">
-								<i class="fas fa-book-open text-warning fa-3x"></i>
-								<span class="mt-2">Over 500 books</span>
-							</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-							<div class="d-inline-flex flex-column align-items-center">
-								<i class="fas fa-laptop-code text-warning fa-3x"></i>
-								<span class="mt-2">Digital resources</span>
-							</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-							<div class="d-inline-flex flex-column align-items-center">
-								<i class="fas fa-newspaper text-warning fa-3x"></i>
-								<span class="mt-2">Academic journals</span>
-							</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-							<div class="d-inline-flex flex-column align-items-center">
-								<i class="fas fa-flask text-warning fa-3x"></i>
-								<span class="mt-2">Research materials</span>
-							</div>
-							</div>
-						</li>
-					</ul>
-					<div class="h5">
-						<p>Don't have an account?
-							<span class="register-btn text-light h6 text-decoration-underline">Register</span>
-						</p>
+            <article class="toggle-panel toggle-left">
+                <div class="p-3">
+					<div class="mx-5">
+						<h2 class="h3">Explore Our Collection</h2>
+						<p class="mb-5">Browse through hundreds of books, journals, and digital resources in our extensive catalog. From classic literature to the latest research papers, we have resources for every reader.</p>
+						<ul class="row gap-4 justify-content-between mb-5 list-unstyled">
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+								<div class="d-inline-flex flex-column align-items-center">
+									<i class="fas fa-book-open text-warning fa-3x"></i>
+									<span class="mt-2">Over 500 books</span>
+								</div>
+								</div>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+								<div class="d-inline-flex flex-column align-items-center">
+									<i class="fas fa-laptop-code text-warning fa-3x"></i>
+									<span class="mt-2">Digital resources</span>
+								</div>
+								</div>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+								<div class="d-inline-flex flex-column align-items-center">
+									<i class="fas fa-newspaper text-warning fa-3x"></i>
+									<span class="mt-2">Academic journals</span>
+								</div>
+								</div>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+								<div class="d-inline-flex flex-column align-items-center">
+									<i class="fas fa-flask text-warning fa-3x"></i>
+									<span class="mt-2">Research materials</span>
+								</div>
+								</div>
+							</li>
+						</ul>
+						<div class="h5">
+							<p>Don't have an account?
+								<span class="register-btn text-light h6 text-decoration-underline">Register</span>
+							</p>
+						</div>
 					</div>
                 </div>
             </article>
 			<div class="toggle-panel toggle-right">
-				<div class="p-5">
-					<h1 class="h2 mb-5">Register with us to start your library experience!</h1>
-					<ul class="row gap-4 justify-content-between mb-5 list-unstyled">
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-								<div class="d-inline-flex flex-column align-items-center">
-									<i class="fas fa-search text-warning fa-3x"></i>
-									<span class="mt-2">Search Availability</span>
+				<div class="p-3">
+					<div class="mx-5">
+						<h1 class="h2 mb-5">Register with us to start your library experience!</h1>
+						<ul class="row gap-4 justify-content-between mb-5 list-unstyled">
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+									<div class="d-inline-flex flex-column align-items-center">
+										<i class="fas fa-search text-warning fa-3x"></i>
+										<span class="mt-2">Search Availability</span>
+									</div>
 								</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-								<div class="d-inline-flex flex-column align-items-center">
-									<i class="fas fa-tasks text-warning fa-3x"></i>
-									<span class="mt-2">Manage Issued Books</span>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+									<div class="d-inline-flex flex-column align-items-center">
+										<i class="fas fa-tasks text-warning fa-3x"></i>
+										<span class="mt-2">Manage Issued Books</span>
+									</div>
 								</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-								<div class="d-inline-flex flex-column align-items-center">
-									<i class="fas fa-bell text-warning fa-3x"></i>
-									<span class="mt-2">Return Due Reminders</span>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+									<div class="d-inline-flex flex-column align-items-center">
+										<i class="fas fa-bell text-warning fa-3x"></i>
+										<span class="mt-2">Return Due Reminders</span>
+									</div>
 								</div>
-							</div>
-						</li>
-						<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
-							<div class="card-body">
-								<div class="d-inline-flex flex-column align-items-center">
-									<i class="fas fa-receipt text-warning fa-3x"></i>
-									<span class="mt-2">Library Transactions</span>
+							</li>
+							<li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
+								<div class="card-body">
+									<div class="d-inline-flex flex-column align-items-center">
+										<i class="fas fa-receipt text-warning fa-3x"></i>
+										<span class="mt-2">Library Transactions</span>
+									</div>
 								</div>
-							</div>
-						</li>
-					</ul>
+							</li>
+						</ul>
 
-					<div class="h5">
-						<p>Already have an account? 
-							<span class="login-btn text-light h6 text-decoration-underline">Login</span>
-							to access all your features
-						</p>
+						<div class="h5">
+							<p>Already have an account? 
+								<span class="login-btn text-light h6 text-decoration-underline">Login</span>
+							</p>
+						</div>
 					</div>
 				</div>
             </div>
@@ -222,21 +241,21 @@
 
 		
 		<div class="form-box login" id="loginForm">
-			<header class="w-100 position-absolute bg-light z-index-99 top-0">
-				<div class="mx-3">
+			<header class="w-50 d-inline bg-light z-index-99">
+				<div class="mx-5">
 					<nav class="navbar navbar-expand-lg navbar-light">
 						<div class="container-fluid">
 							<a class="navbar-brand" href="index.php">
-								<img src="asset/img/logo-removebg.png" height="60" class="me-2">
+								<img src="asset/img/logo-removebg.png" height="40" class="me-2">
 								<span class="fw-bold">SmartLib</span>
 							</a>
 						</div>
 					</nav>
 				</div>
 			</header>
-            <form action="#" method="POST" class="mt-5 p-5">
+            <form action="#" method="POST" class="my-auto p-3">
                 <h1>Login</h1>
-				<div class="my-5">
+				<div class="w-75 mx-5 mx-auto">
 					<div class="input-box mb-3">
 						<input type="text" name="email" placeholder="Email" required>
 						<i class='bx bxs-user'></i>
@@ -249,26 +268,26 @@
                 <div class="forgot-link">
                     <a href="#">Forgot Password?</a>
                 </div>
-                <button type="submit" name="login_button" class="btn btn-primary">Login</button>
+                <button type="submit" name="login_button" class="btn btn-primary">Sign in</button>
             </form>
 		</div>
 
 		<div class="form-box register" id="signupForm">	
-			<header class="w-100 position-absolute bg-light z-index-99 top-0">
-				<div class="mx-3">
+			<header class="w-50 d-inline bg-light z-index-99">
+				<div class="mx-5">
 					<nav class="navbar navbar-expand-lg navbar-light">
 						<div class="container-fluid">
 							<a class="navbar-brand" href="index.php">
-								<img src="asset/img/logo-removebg.png" height="60" class="me-2">
+								<img src="asset/img/logo-removebg.png" height="40" class="me-2">
 								<span class="fw-bold">SmartLib</span>
 							</a>
 						</div>
 					</nav>
 				</div>
 			</header>
-			<form action="" method="POST" enctype="multipart/form-data" class="mt-5 p-5">
+			<form action="" method="POST" enctype="multipart/form-data" class="my-auto p-3">
 				<h1>Register</h1>
-				<div class="my-5">
+				<div class="w-75 mx-5 mx-auto">
 					<div class="input-box mb-3">
 						<input type="text" class="form-control" name="user_name" id="user_name" placeholder="Full name" required>
 					</div>
@@ -286,7 +305,7 @@
 					</div>
 					<div class="input-box mb-3">
 						<input type="file" class="form-control" name="user_profile" id="user_profile" placeholder="Profile Image" required>
-						<small class="text-muted">Only .jpg & .png (225x225px, max 2MB)</small>
+						<small class="text-muted">Only .jpg & .png (height greater than width, max 2MB)</small>
 					</div>
 				</div>
 				<button type="submit" name="register_button" class="btn btn-primary">Sign Up</button>
@@ -328,7 +347,10 @@ loginBtn.addEventListener('click', () => {
 });
 
 </script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.3/TimelineLite.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/87/three.min.js"></script>
+<script src="./asset/js/background.js"></script>
+<script src="./asset/js/background.min.js"></script>
 
 <?php
 

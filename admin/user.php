@@ -108,8 +108,8 @@ include '../header.php';
                         <td>'.$row["user_updated_on"].'</td>
                         <td class="text-center">
                             <a href="user.php?action=view&code='.convert_data($row["user_id"]).'" class="btn btn-info btn-sm mb-1">View</a>
-                            <a href="user.php?action=edit&code='.convert_data($row["user_id"]).'" class="btn btn-primary btn-sm mb-1">Edit</a>
-                            <button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`'.convert_data($row["user_id"]).'`)">Delete</button>
+                            <a href="user.php?action=edit&code='.convert_data($row["user_id"]).'" class="btn btn-primary btn-sm mb-1"><i class="fa fa-edit"></i></a>
+                            <button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data(`'.convert_data($row["user_id"]).'`)"><i class="fa fa-trash"></i></button>
                         </td>
                     </tr>';
                 }
