@@ -214,10 +214,10 @@ if($error != '') {
                 <a href="location_rack.php?action=add" class="btn btn-success btn-sm">Add</a>
             </div>
             <div class="card-body">
-                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap" style="width:100%">
-                    <thead>
+                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
+                    <thead class="thead-light">
                         <tr>
-                            <th></th>
+                            <th>ID</th>
                             <th>Location Rack Name</th>
                             <th>Status</th>
                             <th>Created On</th>
@@ -229,7 +229,7 @@ if($error != '') {
                         <?php if (!empty($location_racks)): ?>
                             <?php foreach ($location_racks as $row): ?>
                                 <tr>
-                                    <td></td>
+                                    <td><?php echo htmlspecialchars($row['location_rack_id']); ?></td>
                                     <td><?= htmlspecialchars($row["location_rack_name"]); ?></td>
                                     <td>
                                         <div class="badge bg-<?= ($row['location_rack_status'] === 'Enable') ? 'success' : 'danger'; ?>">
