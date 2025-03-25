@@ -12515,3 +12515,15 @@ background-image: linear-gradient(120deg, #ad151557 50%, #efefef 50%, #78060600 
     background-position: 0 100%;
   }
 }
+
+.dataTable_wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+div.dataTable {
+  padding-bottom: 50px; /* or adjust the value as needed */
+}
+
+

@@ -1,697 +1,174 @@
 <?php
 
-//issue_book.php
+// issue_book.php
 
 include '../database_connection.php';
-
 include '../function.php';
-
 include '../header.php';
 
-if(!is_admin_login())
-{
-	header('location:../admin_login.php');
+// Check if admin is logged in
+if (!is_admin_login()) {
+    header('location:../admin_login.php');
+    exit;
 }
 
-$error = '';
+$connect = new PDO("mysql:host=localhost;dbname=lms", "root", "");
+$connect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-if(isset($_POST["issue_book_button"]))
-{
-    $formdata = array();
+// Fetch issued books data
+$query = "SELECT lms_issue_book.issue_book_id, lms_book.book_name, lms_user.user_name, 
+                 lms_issue_book.issue_date_time, lms_issue_book.return_date_time, lms_issue_book.issue_book_status 
+          FROM lms_issue_book 
+          INNER JOIN lms_book ON lms_issue_book.book_id = lms_book.book_id 
+          INNER JOIN lms_user ON lms_issue_book.user_id = lms_user.user_id
+          ORDER BY lms_issue_book.issue_book_id DESC";
 
-    if(empty($_POST["book_id"]))
-    {
-        $error .= '<li>Book ISBN Number is required</li>';
-    }
-    else
-    {
-        $formdata['book_id'] = trim($_POST['book_id']);
-    }
-
-    if(empty($_POST["user_id"]))
-    {
-        $error .= '<li>User Unique Number is required</li>';
-    }
-    else
-    {
-        $formdata['user_id'] = trim($_POST['user_id']);
-    }
-
-    if($error == '')
-    {
-        //Check Book Available or Not
-
-        $query = "
-        SELECT * FROM lms_book 
-        WHERE book_isbn_number = '".$formdata['book_id']."'
-        ";
-
-        $statement = $connect->prepare($query);
-
-        $statement->execute();
-
-        if($statement->rowCount() > 0)
-        {
-            foreach($statement->fetchAll() as $book_row)
-            {
-                //check book is available or not
-                if($book_row['book_status'] == 'Enable' && $book_row['book_no_of_copy'] > 0)
-                {
-                    //Check User is exist
-
-                    $query = "
-                    SELECT user_id, user_status FROM lms_user 
-                    WHERE user_unique_id = '".$formdata['user_id']."'
-                    ";
-
-                    $statement = $connect->prepare($query);
-
-                    $statement->execute();
-
-                    if($statement->rowCount() > 0)
-                    {
-                        foreach($statement->fetchAll() as $user_row)
-                        {
-                            if($user_row['user_status'] == 'Enable')
-                            {
-                                //Check User Total issue of Book
-
-                                $book_issue_limit = get_book_issue_limit_per_user($connect);
-
-                                $total_book_issue = get_total_book_issue_per_user($connect, $formdata['user_id']);
-
-                                if($total_book_issue < $book_issue_limit)
-                                {
-                                    $total_book_issue_day = get_total_book_issue_day($connect);
-
-                                    $today_date = get_date_time($connect);
-
-                                    $expected_return_date = date('Y-m-d H:i:s', strtotime($today_date. ' + '.$total_book_issue_day.' days'));
-
-                                    $data = array(
-                                        ':book_id'      =>  $formdata['book_id'],
-                                        ':user_id'      =>  $formdata['user_id'],
-                                        ':issue_date_time'  =>  $today_date,
-                                        ':expected_return_date' => $expected_return_date,
-                                        ':return_date_time' =>  '',
-                                        ':book_fines'       =>  0,
-                                        ':book_issue_status'    =>  'Issue'
-                                    );
-
-                                    $query = "
-                                    INSERT INTO lms_issue_book 
-                                    (book_id, user_id, issue_date_time, expected_return_date, return_date_time, book_fines, book_issue_status) 
-                                    VALUES (:book_id, :user_id, :issue_date_time, :expected_return_date, :return_date_time, :book_fines, :book_issue_status)
-                                    ";
-
-                                    $statement = $connect->prepare($query);
-
-                                    $statement->execute($data);
-
-                                    $query = "
-                                    UPDATE lms_book 
-                                    SET book_no_of_copy = book_no_of_copy - 1, 
-                                    book_updated_on = '".$today_date."' 
-                                    WHERE book_isbn_number = '".$formdata['book_id']."' 
-                                    ";
-
-                                    $connect->query($query);
-
-                                    header('location:issue_book.php?msg=add');
-                                }
-                                else
-                                {
-                                    $error .= 'User has already reached Book Issue Limit, First return pending book';
-                                }
-                            }
-                            else
-                            {
-                                $error .= '<li>User Account is Disable, Contact Admin</li>';
-                            }
-                        }
-                    }
-                    else
-                    {
-                        $error .= '<li>User not Found</li>';
-                    }
-                }
-                else
-                {
-                    $error .= '<li>Book not Available</li>';
-                }
-            }
-        }
-        else
-        {
-            $error .= '<li>Book not Found</li>';
-        }
-    }
-}
-
-if(isset($_POST["book_return_button"]))
-{
-    if(isset($_POST["book_return_confirmation"]))
-    {
-        $data = array(
-            ':return_date_time'     =>  get_date_time($connect),
-            ':book_issue_status'    =>  'Return',
-            ':issue_book_id'        =>  $_POST['issue_book_id']
-        );  
-
-        $query = "
-        UPDATE lms_issue_book 
-        SET return_date_time = :return_date_time, 
-        book_issue_status = :book_issue_status 
-        WHERE issue_book_id = :issue_book_id
-        ";
-
-        $statement = $connect->prepare($query);
-
-        $statement->execute($data);
-
-        $query = "
-        UPDATE lms_book 
-        SET book_no_of_copy = book_no_of_copy + 1 
-        WHERE book_isbn_number = '".$_POST["book_isbn_number"]."'
-        ";
-
-        $connect->query($query);
-
-        header("location:issue_book.php?msg=return");
-    }
-    else
-    {
-        $error = 'Please first confirm return book received by click on checkbox';
-    }
-}   
-
-$query = "
-	SELECT * FROM lms_issue_book 
-    ORDER BY issue_book_id DESC
-";
 
 $statement = $connect->prepare($query);
-
 $statement->execute();
-
-
+$issued_books = $statement->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
 <main class="container py-4" style="min-height: 700px;">
-	<h1>Issue Book Management</h1>
-    <?php 
+    <h1 class="my-3">Issue Book Management</h1>
 
-    if(isset($_GET["action"]))
-    {
-        if($_GET["action"] == 'add')
-        {
-    ?>
-    <div class="row">
-        <div class="col-md-6">
-            <?php 
-            if($error != '')
-            {
-                echo '<div class="alert alert-danger alert-dismissible fade show" role="alert"><ul class="list-unstyled">'.$error.'</ul> <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
-            }
-            ?>
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fas fa-user-plus"></i> Issue New Book
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        <div class="mb-3">
-                            <label class="form-label">Book ISBN Number</label>
-                            <input type="text" name="book_id" id="book_id" class="form-control" />
-                            <span id="book_isbn_result"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">User Unique ID</label>
-                            <input type="text" name="user_id" id="user_id" class="form-control" />
-                            <span id="user_unique_id_result"></span>
-                        </div>
-                        <div class="mt-4 mb-0">
-                            <input type="submit" name="issue_book_button" class="btn btn-success" value="Issue" />
-                        </div>  
-                    </form>
-                    <script>
-                    var book_id = document.getElementById('book_id');
+    <?php if (isset($_GET["msg"])): ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                <?php if ($_GET["msg"] == 'disable'): ?>
+                    Swal.fire('Book Disabled', 'The book has been successfully disabled.', 'success');
+                <?php elseif ($_GET["msg"] == 'enable'): ?>
+                    Swal.fire('Book Enabled', 'The book has been successfully enabled.', 'success');
+                <?php elseif ($_GET["msg"] == 'add'): ?>
+                    Swal.fire('Book Added', 'The book was added successfully!', 'success');
+                <?php elseif ($_GET["msg"] == 'edit'): ?>
+                    Swal.fire('Book Updated', 'The book was updated successfully!', 'success');
+                <?php endif; ?>
 
-                    book_id.onkeyup = function()
-                    {
-                        if(this.value.length > 2)
-                        {
-                            var form_data = new FormData();
-
-                            form_data.append('action', 'search_book_isbn');
-
-                            form_data.append('request', this.value);
-
-                            fetch('action.php', {
-                                method:"POST",
-                                body:form_data
-                            }).then(function(response){
-                                return response.json();
-                            }).then(function(responseData){
-                                var html = '<div class="list-group" style="position:absolute; width:93%">';
-
-                                if(responseData.length > 0)
-                                {
-                                    for(var count = 0; count < responseData.length; count++)
-                                    {
-                                        html += '<a href="#" class="list-group-item list-group-item-action"><span onclick="get_text(this)">'+responseData[count].isbn_no+'</span> - <span class="text-muted">'+responseData[count].book_name+'</span></a>';
-                                    }
-                                }
-                                else
-                                {
-                                    html += '<a href="#" class="list-group-item list-group-item-action">No Book Found</a>';
-                                }
-
-                                html += '</div>';
-
-                                document.getElementById('book_isbn_result').innerHTML = html;
-                            });
-                        }
-                        else
-                        {
-                            document.getElementById('book_isbn_result').innerHTML = '';
-                        }
-                    }
-
-                    function get_text(event)
-                    {
-                        document.getElementById('book_isbn_result').innerHTML = '';
-
-                        document.getElementById('book_id').value = event.textContent;
-                    }
-
-                    var user_id = document.getElementById('user_id');
-
-                    user_id.onkeyup = function(){
-                        if(this.value.length > 2)
-                        {   
-                            var form_data = new FormData();
-
-                            form_data.append('action', 'search_user_id');
-
-                            form_data.append('request', this.value);
-
-                            fetch('action.php', {
-                                method:"POST",
-                                body:form_data
-                            }).then(function(response){
-                                return response.json();
-                            }).then(function(responseData){
-                                var html = '<div class="list-group" style="position:absolute;width:93%">';
-
-                                if(responseData.length > 0)
-                                {
-                                    for(var count = 0; count < responseData.length; count++)
-                                    {
-                                        html += '<a href="#" class="list-group-item list-group-item-action"><span onclick="get_text1(this)">'+responseData[count].user_unique_id+'</span> - <span class="text-muted">'+responseData[count].user_name+'</span></a>';
-                                    }
-                                }
-                                else
-                                {
-                                    html += '<a href="#" class="list-group-item list-group-item-action">No User Found</a>';
-                                }
-                                html += '</div>';
-
-                                document.getElementById('user_unique_id_result').innerHTML = html;
-                            });
-                        }
-                        else
-                        {
-                            document.getElementById('user_unique_id_result').innerHTML = '';
-                        }
-                    }
-
-                    function get_text1(event)
-                    {
-                        document.getElementById('user_unique_id_result').innerHTML = '';
-
-                        document.getElementById('user_id').value = event.textContent;
-                    }
-
-                    </script>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php 
-        }
-        else if($_GET["action"] == 'view')
-        {
-            $issue_book_id = convert_data($_GET["code"], 'decrypt');
-
-            if($issue_book_id > 0)
-            {
-                $query = "
-                SELECT * FROM lms_issue_book 
-                WHERE issue_book_id = '$issue_book_id'
-                ";
-
-                $result = $connect->query($query);
-
-                foreach($result as $row)
-                {
-                    $query = "
-                    SELECT * FROM lms_book 
-                    WHERE book_isbn_number = '".$row["book_id"]."'
-                    ";
-
-                    $book_result = $connect->query($query);
-
-                    $query = "
-                    SELECT * FROM lms_user 
-                    WHERE user_unique_id = '".$row["user_id"]."'
-                    ";
-
-                    $user_result = $connect->query($query);
-
-
-                    if($error != '')
-                    {
-                        echo '<div class="alert alert-danger">'.$error.'</div>';
-                    }
-
-                    foreach($book_result as $book_data)
-                    {
-                        echo '
-                        <h2>Book Details</h2>
-                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
-                            <tr>
-                                <th width="30%">Book ISBN Number</th>
-                                <td width="70%">'.$book_data["book_isbn_number"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">Book Title</th>
-                                <td width="70%">'.$book_data["book_name"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">Author</th>
-                                <td width="70%">'.$book_data["book_author"].'</td>
-                            </tr>
-                        </table>
-                        <br />
-                        ';
-                    }
-
-                    foreach($user_result as $user_data)
-                    {
-                        echo '
-                        <h2>User Details</h2>
-                        <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
-                            <tr>
-                                <th width="30%">User Unique ID</th>
-                                <td width="70%">'.$user_data["user_unique_id"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">User Name</th>
-                                <td width="70%">'.$user_data["user_name"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">User Address</th>
-                                <td width="70%">'.$user_data["user_address"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">User Contact No.</th>
-                                <td width="70%">'.$user_data["user_contact_no"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">User Email Address</th>
-                                <td width="70%">'.$user_data["user_email_address"].'</td>
-                            </tr>
-                            <tr>
-                                <th width="30%">User Image</th>
-                                <td width="70%"><img src="'.base_url().'upload/' . $user_data["user_profile"].'" class="img-thumbnail" width="100" /></td>
-                            </tr>
-                        </table>
-                        <br />
-                        ';
-                    }
-
-                    $status = $row["book_issue_status"];
-
-                    $form_item = '';
-
-                    if($status == "Issue")
-                    {
-                        $status = '<span class="badge bg-warning">Issue</span>';
-
-                        $form_item = '
-                        <label><input type="checkbox" name="book_return_confirmation" value="Yes" /> I aknowledge that I have received Issued Book</label>
-                        <br />
-                        <div class="mt-4 mb-4">
-                            <input type="submit" name="book_return_button" value="Book Return" class="btn btn-primary" />
-                        </div>
-                        ';
-                    }
-
-                    if($status == 'Not Return')
-                    {
-                        $status = '<span class="badge bg-danger">Not Return</span>';
-
-                        $form_item = '
-                        <label><input type="checkbox" name="book_return_confirmation" value="Yes" /> I aknowledge that I have received Issued Book</label><br />
-                        <div class="mt-4 mb-4">
-                            <input type="submit" name="book_return_button" value="Book Return" class="btn btn-primary" />
-                        </div>
-                        ';
-                    }
-
-                    if($status == 'Return')
-                    {
-                        $status = '<span class="badge bg-primary">Return</span>';
-                    }
-
-                    echo '
-                    <h2>Issue Book Details</h2>
-                    <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
-                        <tr>
-                            <th width="30%">Book Issue Date</th>
-                            <td width="70%">'.$row["issue_date_time"].'</td>
-                        </tr>
-                        <tr>
-                            <th width="30%">Book Return Date</th>
-                            <td width="70%">'.$row["return_date_time"].'</td>
-                        </tr>
-                        <tr>
-                            <th width="30%">Book Issue Status</th>
-                            <td width="70%">'.$status.'</td>
-                        </tr>
-                        <tr>
-                            <th width="30%">Total Fines</th>
-                            <td width="70%">'.get_currency_symbol($connect).' '.$row["book_fines"].'</td>
-                        </tr>
-                    </table>
-                    <form method="POST">
-                        <input type="hidden" name="issue_book_id" value="'.$issue_book_id.'" />
-                        <input type="hidden" name="book_isbn_number" value="'.$row["book_id"].'" />
-                        '.$form_item.'
-                    </form>
-                    <br />
-                    ';
-
+                if (window.history.replaceState) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('msg');
+                    window.history.replaceState({}, document.title, url.pathname + url.search);
                 }
-            }
-        }
-    }
-    else
-    {
-    ?>
+            });
+        </script>
+    <?php endif; ?>
 
-    <?php 
-  if(isset($_GET['msg']))
-  {
-      if($_GET['msg'] == 'add')
-      {
-          echo '<div id="autoCloseAlert" class="alert alert-success alert-dismissible fade show" role="alert">
-              New Book Issue Successfully
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>';
-      }
-  
-      if($_GET["msg"] == 'return')
-      {
-          echo '<div id="autoCloseAlert" class="alert alert-success alert-dismissible fade show" role="alert">
-              Issued Book Successfully Return into Library
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>';
-      }
-  }
-
-    $query = "
-SELECT * FROM lms_issue_book
-ORDER BY issue_book_id DESC
-";
-
-$statement = $connect->prepare($query);
-$statement->execute();
-
-    ?>
-
-
-
-
-    <div class="card mb-4">
-    	<div class="card-header">
-    		<div class="row">
-    			<div class="col col-md-6">
-    				<i class="fas fa-table me-1"></i> Issue Book Management
-                </div>
-                <div class="col col-md-6">
-                    <a href="issue_book.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
-                </div>
+<!-- Issue Book List -->
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="row">
+            <div class="col-md-6">
+                <i class="fas fa-table me-1"></i> Issue Book Management
+            </div>
+            <div class="col-md-6">
+                <a href="issue_book.php?action=add" class="btn btn-success btn-sm float-end">Issue New Book</a>
             </div>
         </div>
-        <div class="card-body">
-        	<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
-        		<thead>
-        			<tr>
-                        <th></th>
-        				<th>Book ISBN Number</th>
-                        <th>User Unique ID</th>
-                        <th>Issue Date</th>
-                        <th>Return Date</th>
-                        <th>Late Return Fines</th>
-                        <th>Status</th>
-                        <th>Action</th>
-        			</tr>
-        		</thead>
-        		<tbody>
-        		<?php
-        		if($statement->rowCount() > 0)
-        		{
-        			$one_day_fine = get_one_day_fines($connect);
-
-        			$currency_symbol = get_currency_symbol($connect);
-
-        			set_timezone($connect);
-
-        			foreach($statement->fetchAll() as $row)
-        			{
-        				$status = $row["book_issue_status"];
-
-        				$book_fines = $row["book_fines"];
-
-        				if($row["book_issue_status"] == "Issue")
-        				{
-        					$current_date_time = new DateTime(get_date_time($connect));
-        					$expected_return_date = new DateTime($row["expected_return_date"]);
-
-        					if($current_date_time > $expected_return_date)
-        					{
-        						$interval = $current_date_time->diff($expected_return_date);
-
-        						$total_day = $interval->d;
-
-        						$book_fines = $total_day * $one_day_fine;
-
-        						$status = 'Not Return';
-
-        						$query = "
-        						UPDATE lms_issue_book 
-													SET book_fines = '".$book_fines."', 
-													book_issue_status = '".$status."' 
-													WHERE issue_book_id = '".$row["issue_book_id"]."'
-        						";
-
-        						$connect->query($query);
-        					}
-        				}
-
-        				if($status == 'Issue')
-        				{
-        					$status = '<span class="badge bg-warning">Issue</span>';
-        				}
-
-        				if($status == 'Not Return')
-        				{
-        					$status = '<span class="badge bg-danger">Not Return</span>';
-        				}
-
-        				if($status == 'Return')
-        				{
-        					$status = '<span class="badge bg-primary">Return</span>';
-        				}
-
-        				echo '
-        				<tr>
-                            <td></td>
-        					<td>'.$row["book_id"].'</td>
-        					<td>'.$row["user_id"].'</td>
-        					<td>'.$row["issue_date_time"].'</td>
-        					<td>'.$row["return_date_time"].'</td>
-        					<td>'.$currency_symbol.$book_fines.'</td>
-        					<td>'.$status.'</td>
-        					<td>
-                                <a href="issue_book.php?action=view&code='.convert_data($row["issue_book_id"]).'" class="btn btn-info btn-sm">View</a>
-                            </td>
-        				</tr>
-        				';
-        			}
-        		}
-        		else
-        		{
-        			echo '
-        			<tr>
-        				<td colspan="7" class="text-center">No Data Found</td>
-        			</tr>
-        			';
-        		}
-        		?>
-        		</tbody>
-        	</table>
-        </div>
     </div>
-    <?php 
-    }
-    ?>
+    <div class="card-body" style="overflow-x: auto;">
+        <table id="dataTable" class="display nowrap" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Issue ID</th>
+                    <th>Book Name</th>
+                    <th>Student Name</th>
+                    <th>Issue Date</th>
+                    <th>Return Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($issued_books)): ?>
+                    <?php foreach ($issued_books as $row): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($row['issue_book_id']) ?></td>
+                            <td><?= htmlspecialchars($row['book_name']) ?></td>
+                            <td><?= htmlspecialchars($row['user_name']) ?></td>
+                            <td><?= htmlspecialchars($row['issue_date_time']) ?></td>
+                            <td><?= htmlspecialchars($row['return_date_time']) ?></td>
+                            <td>
+                                <?= ($row['issue_book_status'] === 'Returned') 
+                                    ? '<span class="badge bg-success">Returned</span>' 
+                                     : '<span class="badge bg-warning">Issued</span>' ?>
+                            </td>
+                            <td class="text-center">
+                                <a href="issue_book.php?action=view&code=<?= $row['issue_book_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                                <a href="issue_book.php?action=edit&code=<?= $row['issue_book_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                    <i class="fa fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-danger btn-sm delete-btn"
+                                        data-id="<?= $row['issue_id'] ?>">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr><td colspan="7" class="text-center">No issued books found!</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
 </main>
+
+<!-- JavaScript -->
 <script>
-$(document).ready(function() {  
-    $('#dataTable').DataTable({
-        responsive: {
-            details: {
-                type: 'column',
-                target: 'tr' // Clicking the row triggers detail view
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete button event listener
+    $(document).on('click', '.delete-btn', function(e) {
+        e.preventDefault();
+        const issueId = $(this).attr('data-id');
+
+        Swal.fire({
+            title: `Are you sure you want to delete this record?`,
+            text: "This action cannot be undone.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: `Yes, delete it!`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `issue_book.php?action=delete&code=${issueId}`;
             }
-        },
-        columnDefs: [
-            {
-                className: 'dtr-control',
-                orderable: false,
-                targets: 0 // Control column for row details
-            },
-            { responsivePriority: 1, targets: [0, 1, 2] },      // Highest priority: Control, ISBN, User ID
-            { responsivePriority: 2, targets: [3, 5] },        // Issue Date, Late Return Fines
-            { responsivePriority: 3, targets: [6] },           // Status
-            { responsivePriority: 4, targets: [4, 7] }         // Return Date, Action
-        ],
-        order: [[1, 'asc']], // Sort by ISBN Number (2nd column)
-        autoWidth: false,
-        language: {
-            emptyTable: "No data available"
-        }
+        });
     });
-});
+
+    // Initialize DataTable
+    $('#dataTable').DataTable({
+        responsive: true,
+        scrollX: true,
+        scrollY: '400px',
+        scrollCollapse: true,
+        autoWidth: false,
+        paging: true,
+        order: [[0, 'asc']],
+        columnDefs: [
+            { responsivePriority: 1, targets: 0 },
+            { responsivePriority: 2, targets: 1 },
+            { responsivePriority: 3, targets: 2 },
+            { responsivePriority: 4, targets: 3 }
+        ],
+        language: { emptyTable: "No issued books found." }
+    });
+
+        // Initialize Select2 for better dropdown selection
+        $(document).ready(function() {
+        $('.select2-user').select2({
+            placeholder: "Select a User",
+            allowClear: true
+        });
+
+        $('.select2-book').select2({
+            placeholder: "Select a Book",
+            allowClear: true
+        });
+    });
 </script>
-<script>
-// Wait until the DOM is ready
-document.addEventListener('DOMContentLoaded', function () {
-    var alert = document.getElementById('autoCloseAlert');
 
-    if (alert) {
-        setTimeout(function () {
-            var bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 3000); // Auto close after 3 seconds
-    }
-});
-</script>
 
-<?php 
-
-include '../footer.php';
-
-?>

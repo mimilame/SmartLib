@@ -1,4 +1,6 @@
 <?php
+//librarian.php
+
 include '../database_connection.php';
 include '../function.php';
 
@@ -290,13 +292,13 @@ include '../header.php';
 						<i class="fas fa-table me-1"></i> Librarian Management
 					</div>
 					<div class="col col-md-6">
-						<a href="librarian.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
+						<a href="librarian.php?action=add" class="btn btn-success btn-sm float-end">Add Librarian</a>
 					</div>
 				</div>
 			</div>
 
 			<div class="card-body">
-				<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer collapsed table-active" style="width:100%">
+				<table id="dataTable" class="display nowrap" style="width:100%">
 					<thead>
 						<tr>
 							<th>ID</th>
@@ -322,8 +324,9 @@ include '../header.php';
                     ? '<span class="badge bg-success">Active</span>' 
                     : '<span class="badge bg-danger">Disabled</span>' ?>
             </td>
-            <td><?= date('M d, Y h:i A', strtotime($row['lib_created_on'])) ?></td> 
-            <td><?= date('M d, Y h:i A', strtotime($row['lib_updated_on'])) ?></td> 
+            <td><?= date('Y-m-d H:i:s', strtotime($row['lib_created_on'])) ?></td>
+			<td><?= date('Y-m-d H:i:s', strtotime($row['lib_updated_on'])) ?></td>
+ 
             <td class="text-center">
                 <a href="librarian.php?action=view&code=<?= $row['librarian_id'] ?>" class="btn btn-info btn-sm mb-1">
                 <i class="fa fa-eye"></i>
@@ -359,19 +362,26 @@ function delete_data(code) {
 }
 
 $(document).ready(function() {    
-	$('#dataTable').DataTable({
-		responsive: true,
-		columnDefs: [
-			{ responsivePriority: 1, targets: [0, 1, 5] },
-			{ responsivePriority: 2, targets: [2, 3] }
-		],
-		order: [[0, 'asc']],
-		autoWidth: false,
-		language: {
-			emptyTable: "No data available"
-		}
-	});
+  $('#dataTable').DataTable({
+    responsive: true,
+    columnDefs: [
+      { responsivePriority: 1, targets: [0, 1, 5] },
+      { responsivePriority: 2, targets: [2, 3] }
+    ],
+    order: [[0, 'asc']],
+    autoWidth: false,
+    language: {
+      emptyTable: "No data available"
+    },
+    
+    // Scroll settings combined here
+    scrollY: '400px',     // Vertical scrollbar height
+    scrollX: true,        // Enable horizontal scrolling
+    scrollCollapse: true, // Collapse the table height when fewer records
+    paging: true          // Enable pagination
+  });
 });
+
 
 //For deleting alert
 document.addEventListener('DOMContentLoaded', function() {
@@ -404,15 +414,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
-<script>
-$(document).ready(function() {
-    $('#example').DataTable({
-        scrollY: '400px',
-        scrollX: true,
-        scrollCollapse: true,
-        paging: false
-    });
-});
-</script>
 
-<?php include '../footer.php'; ?>
+

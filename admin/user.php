@@ -1,4 +1,6 @@
 <?php
+//user.php
+
 include '../database_connection.php';
 include '../function.php';
 
@@ -19,7 +21,7 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 	);
 
 	$query = "
-	UPDATE lms_user 
+	UPDATE lms_user
 	SET user_status = :user_status 
 	WHERE user_id = :user_id";
 
@@ -31,18 +33,22 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 	exit;
 }
 
-// ADD User (Form Submit)
+// ADD user (Form Submit)
 if (isset($_POST['add_user'])) {
 	$name = $_POST['user_name'];
 	$email = $_POST['user_email'];
 	$password = $_POST['user_password'];
+	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
 	$status = $_POST['user_status'];
 
+
+	$date_now = get_date_time($connect);
+
 	$query = "
 		INSERT INTO lms_user 
-		(user_name, user_email, user_password, user_contact_no, user_status, user_created_on) 
-		VALUES (:name, :email, :password, :contact, :status, :created_on)
+		(user_name, user_email, user_password, user_unique_id, user_contact_no, user_status, user_created_on, user_updated_on) 
+		VALUES (:name, :email, :password, :unique_id :contact, :status, :created_on, :updated_on)
 	";
 
 	$statement = $connect->prepare($query);
@@ -50,21 +56,24 @@ if (isset($_POST['add_user'])) {
 		':name' => $name,
 		':email' => $email,
 		':password' => password_hash($password, PASSWORD_DEFAULT),
+		':unique_id' => $unique_id,
 		':contact' => $contact,
 		':status' => $status,
-		':created_on' => get_date_time($connect)
+		':created_on' => $date_now,
+        ':updated_on' => $date_now
 	]);
 
 	header('location:user.php?msg=add');
 	exit;
 }
 
-// EDIT User (Form Submit)
+// EDIT user (Form Submit)
 if (isset($_POST['edit_user'])) {
 	$id = $_POST['user_id'];
 	$name = $_POST['user_name'];
 	$email = $_POST['user_email'];
 	$password = $_POST['user_password'];
+	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
 	$status = $_POST['user_status'];
 
@@ -73,6 +82,7 @@ if (isset($_POST['edit_user'])) {
 		UPDATE lms_user 
 		SET user_name = :name, 
 		    user_email = :email, 
+			user_unique_id = :unique_id,
 		    user_contact_no = :contact, 
 		    user_status = :status";
 
@@ -85,6 +95,7 @@ if (isset($_POST['edit_user'])) {
 	$params = [
 		':name' => $name,
 		':email' => $email,
+		':unique_id' => $unique_id,
 		':contact' => $contact,
 		':status' => $status,
 		':id' => $id
@@ -122,7 +133,7 @@ include '../header.php';
             Swal.fire({
                 icon: 'success',
                 title: 'User Disabled',
-                text: 'The User has been successfully disabled.',
+                text: 'The user has been successfully disabled.',
                 confirmButtonColor: '#3085d6',
                 confirmButtonText: 'Done'
             });
@@ -130,7 +141,7 @@ include '../header.php';
             Swal.fire({
                 icon: 'success',
                 title: 'User Enabled',
-                text: 'The User has been successfully enabled.',
+                text: 'The user has been successfully enabled.',
                 confirmButtonColor: '#3085d6',
                 confirmButtonText: 'Done'
             });
@@ -138,7 +149,7 @@ include '../header.php';
             Swal.fire({
                 icon: 'success',
                 title: 'User Added',
-                text: 'The User was added successfully!',
+                text: 'The user was added successfully!',
                 confirmButtonColor: '#3085d6',
                 confirmButtonText: 'Done'
             });
@@ -146,7 +157,7 @@ include '../header.php';
             Swal.fire({
                 icon: 'success',
                 title: 'User Updated',
-                text: 'The User was updated successfully!',
+                text: 'The user was updated successfully!',
                 confirmButtonColor: '#3085d6',
                 confirmButtonText: 'Done'
             });
@@ -183,6 +194,10 @@ include '../header.php';
 						<input type="password" name="user_password" class="form-control" required>
 					</div>
 					<div class="mb-3">
+						<label>User Unique ID</label>
+						<input type="text" name="user_unique_id" class="form-control" required>
+					</div>
+					<div class="mb-3">
 						<label>Contact</label>
 						<input type="text" name="user_contact_no" class="form-control" required>
 					</div>
@@ -190,7 +205,7 @@ include '../header.php';
 						<label>Status</label>
 						<select name="user_status" class="form-select">
 							<option value="Enable">Active</option>
-							<option value="Disable">Not Active</option>
+							<option value="Disable">Inactive</option>
 						</select>
 					</div>
 					<input type="submit" name="add_user" class="btn btn-success" value="Add User">
@@ -221,11 +236,15 @@ include '../header.php';
 					</div>
 					<div class="mb-3">
 						<label>Email</label>
-						<input type="email" name="user_email" class="form-control" value="<?= $user['user_email'] ?>" required>
+						<input type="email" name="luser_email" class="form-control" value="<?= $user['user_email'] ?>" required>
 					</div>
 					<div class="mb-3">
 						<label>New Password (Leave blank to keep current)</label>
 						<input type="password" name="user_password" class="form-control">
+					</div>
+					<div class="mb-3">
+						<label> User Unique ID</label>
+						<input type="text" name="user_unique_id" class="form-control" required>
 					</div>
 					<div class="mb-3">
 						<label>Contact</label>
@@ -234,8 +253,8 @@ include '../header.php';
 					<div class="mb-3">
 						<label>Status</label>
 						<select name="user_status" class="form-select">
-							<option value="Enable" <?= $user['user_status'] == 'Enable' ? 'selected' : '' ?>>Enable</option>
-							<option value="Disable" <?= $user['user_status'] == 'Disable' ? 'selected' : '' ?>>Disable</option>
+							<option value="Enable" <?= $user['user_status'] == 'Enable' ? 'selected' : '' ?>>Active</option>
+							<option value="Disable" <?= $user['user_status'] == 'Disable' ? 'selected' : '' ?>>Inactive</option>
 						</select>
 					</div>
 					<input type="submit" name="edit_user" class="btn btn-primary" value="Update User">
@@ -263,6 +282,7 @@ include '../header.php';
 				<p><strong>ID:</strong> <?= htmlspecialchars($user['user_id']) ?></p>
 				<p><strong>Name:</strong> <?= htmlspecialchars($user['user_name']) ?></p>
 				<p><strong>Email:</strong> <?= htmlspecialchars($user['user_email']) ?></p>
+				<p><strong>User Unique ID:</strong> <?= htmlspecialchars($user['user_unique_id']) ?></p>
 				<p><strong>Contact:</strong> <?= htmlspecialchars($user['user_contact_no']) ?></p>
 				<p><strong>Status:</strong> <?= htmlspecialchars($user['user_status']) ?></p>
 				<p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_created_on'])) ?></p>
@@ -278,31 +298,31 @@ include '../header.php';
 		<a href="user.php" class="btn btn-secondary">Back</a>
 	<?php 
 		endif;
-	// END VIEW USER
+	// END VIEW User
 
 	else: ?>
 
-
-<!-- User List -->
-<div class="card mb-4">
+		<!-- User List -->
+		<div class="card mb-4">
 			<div class="card-header">
 				<div class="row">
 					<div class="col col-md-6">
 						<i class="fas fa-table me-1"></i> User Management
 					</div>
 					<div class="col col-md-6">
-						<a href="user.php?action=add" class="btn btn-success btn-sm float-end">Add</a>
+						<a href="user.php?action=add" class="btn btn-success btn-sm float-end">Add User</a>
 					</div>
 				</div>
 			</div>
 
 			<div class="card-body">
-				<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer collapsed table-active" style="width:100%">
+				<table id="dataTable" class="display nowrap" style="width:100%">
 					<thead>
 						<tr>
 							<th>ID</th>
 							<th>Name</th>
 							<th>Email</th>
+							<th>User Unique ID</th>
 							<th>Contact No.</th>
 							<th>Status</th>
                             <th>Created On</th>
@@ -317,14 +337,16 @@ include '../header.php';
             <td><?= $row['user_id'] ?></td>
             <td><?= $row['user_name'] ?></td>
             <td><?= $row['user_email'] ?></td>
+			<td><?= $row['user_unique_id'] ?></td>
             <td><?= $row['user_contact_no'] ?></td>
             <td>
                 <?= ($row['user_status'] === 'Enable') 
                     ? '<span class="badge bg-success">Active</span>' 
                     : '<span class="badge bg-danger">Disabled</span>' ?>
             </td>
-            <td><?= date('M d, Y h:i A', strtotime($row['user_created_on'])) ?></td> 
-            <td><?= date('M d, Y h:i A', strtotime($row['user_updated_on'])) ?></td> 
+            <td><?= date('Y-m-d H:i:s', strtotime($row['user_created_on'])) ?></td>
+			<td><?= date('Y-m-d H:i:s', strtotime($row['user_updated_on'])) ?></td>
+ 
             <td class="text-center">
                 <a href="user.php?action=view&code=<?= $row['user_id'] ?>" class="btn btn-info btn-sm mb-1">
                 <i class="fa fa-eye"></i>
@@ -360,19 +382,26 @@ function delete_data(code) {
 }
 
 $(document).ready(function() {    
-	$('#dataTable').DataTable({
-		responsive: true,
-		columnDefs: [
-			{ responsivePriority: 1, targets: [0, 1, 5] },
-			{ responsivePriority: 2, targets: [2, 3] }
-		],
-		order: [[0, 'asc']],
-		autoWidth: false,
-		language: {
-			emptyTable: "No data available"
-		}
-	});
+  $('#dataTable').DataTable({
+    responsive: true,
+    columnDefs: [
+      { responsivePriority: 1, targets: [0, 1, 5] },
+      { responsivePriority: 2, targets: [2, 3] }
+    ],
+    order: [[0, 'asc']],
+    autoWidth: false,
+    language: {
+      emptyTable: "No data available"
+    },
+    
+    // Scroll settings combined here
+    scrollY: '400px',     // Vertical scrollbar height
+    scrollX: true,        // Enable horizontal scrolling
+    scrollCollapse: true, // Collapse the table height when fewer records
+    paging: true          // Enable pagination
+  });
 });
+
 
 //For deleting alert
 document.addEventListener('DOMContentLoaded', function() {
@@ -405,15 +434,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
-<script>
-$(document).ready(function() {
-    $('#example').DataTable({
-        scrollY: '400px',
-        scrollX: true,
-        scrollCollapse: true,
-        paging: false
-    });
-});
-</script>
 
-<?php include '../footer.php'; ?>
+

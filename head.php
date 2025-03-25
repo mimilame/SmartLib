@@ -18,6 +18,12 @@
 
         <!-- jQuery (needed for DataTables) -->
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+        <!-- Include Select2 CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+        <!-- Include Select2 JS -->
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         
         <!-- DataTables JS -->
         <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
@@ -27,6 +33,8 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
         
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+        
         <!-- Favicons -->
         <link rel="apple-touch-icon" href="" sizes="180x180">
         <link rel="icon" href="asset/img/logo-removebg.png" sizes="32x32" type="image/png">
