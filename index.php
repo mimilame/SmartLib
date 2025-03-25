@@ -45,11 +45,11 @@
 		$message = '';
 		
 		// Validate email
-		$email_validation = validate_email($_POST["user_email_address"] ?? '');
+		$email_validation = validate_email($_POST["user_email"] ?? '');
 		if(!$email_validation['valid']) {
 			$message = $email_validation['message'];
 		} else {
-			$formdata['user_email_address'] = trim($_POST['user_email_address']);
+			$formdata['user_email'] = trim($_POST['user_email']);
 		}
 		
 		// Validate other required fields
@@ -92,7 +92,7 @@
 			if($registration_result['success']) {
 				// Send verification email
 				$email_result = send_verification_email(
-					$formdata['user_email_address'],
+					$formdata['user_email'],
 					$formdata['user_name'],
 					$registration_result['user_unique_id'],
 					$registration_result['verification_code']
@@ -292,7 +292,7 @@
 						<input type="text" class="form-control" name="user_name" id="user_name" placeholder="Full name" required>
 					</div>
 					<div class="input-box mb-3">
-						<input type="email" class="form-control" name="user_email_address" id="user_email_address" placeholder="Email" required>
+						<input type="email" class="form-control" name="user_email" id="user_email" placeholder="Email" required>
 					</div>
 					<div class="input-box mb-3">
 						<input type="password" class="form-control" name="user_password" id="signup_password" placeholder="Password" required>

@@ -89,12 +89,12 @@ function process_login($connect, $email, $password)
     } else {
         // If not in admin table, check user table
         $user_data = array(
-            ':user_email_address' => $email
+            ':user_email' => $email
         );
 
         $user_query = "
         SELECT * FROM lms_user
-        WHERE user_email_address = :user_email_address
+        WHERE user_email = :user_email
         ";
 
         $user_statement = $connect->prepare($user_query);
@@ -138,12 +138,12 @@ function process_registration($connect, $formdata)
 {
     // Check if email already exists
     $data = array(
-        ':user_email_address' => $formdata['user_email_address']
+        ':user_email' => $formdata['user_email']
     );
 
     $query = "
     SELECT * FROM lms_user 
-    WHERE user_email_address = :user_email_address
+    WHERE user_email = :user_email
     ";
 
     $statement = $connect->prepare($query);
@@ -163,7 +163,7 @@ function process_registration($connect, $formdata)
         ':user_address'         => $formdata['user_address'],
         ':user_contact_no'      => $formdata['user_contact_no'],
         ':user_profile'         => $formdata['user_profile'],
-        ':user_email_address'   => $formdata['user_email_address'],
+        ':user_email'   => $formdata['user_email'],
         ':user_password'        => $formdata['user_password'],
         ':user_verificaton_code'=> $user_verificaton_code,
         ':user_verification_status' => 'No',
@@ -174,8 +174,8 @@ function process_registration($connect, $formdata)
 
     $query = "
     INSERT INTO lms_user 
-    (user_name, user_address, user_contact_no, user_profile, user_email_address, user_password, user_verificaton_code, user_verification_status, user_unique_id, user_status, user_created_on) 
-    VALUES (:user_name, :user_address, :user_contact_no, :user_profile, :user_email_address, :user_password, :user_verificaton_code, :user_verification_status, :user_unique_id, :user_status, :user_created_on)
+    (user_name, user_address, user_contact_no, user_profile, user_email, user_password, user_verificaton_code, user_verification_status, user_unique_id, user_status, user_created_on) 
+    VALUES (:user_name, :user_address, :user_contact_no, :user_profile, :user_email, :user_password, :user_verificaton_code, :user_verification_status, :user_unique_id, :user_status, :user_created_on)
     ";
 
     $statement = $connect->prepare($query);

@@ -20,19 +20,19 @@ if(isset($_POST['save_button']))
 {
 	$formdata = array();
 
-	if(empty($_POST['user_email_address']))
+	if(empty($_POST['user_email']))
 	{
 		$message .= '<li>Email Address is required</li>';
 	}
 	else
 	{
-		if(!filter_var($_POST["user_email_address"], FILTER_VALIDATE_EMAIL))
+		if(!filter_var($_POST["user_email"], FILTER_VALIDATE_EMAIL))
 		{
 			$message .= '<li>Invalid Email Address</li>';
 		}
 		else
 		{
-			$formdata['user_email_address'] = trim($_POST['user_email_address']);
+			$formdata['user_email'] = trim($_POST['user_email']);
 		}
 	}
 
@@ -122,7 +122,7 @@ if(isset($_POST['save_button']))
 			':user_address'			=>	$formdata['user_address'],
 			':user_contact_no'		=>	$formdata['user_contact_no'],
 			':user_profile'			=>	$formdata['user_profile'],
-			':user_email_address'	=>	$formdata['user_email_address'],
+			':user_email'	=>	$formdata['user_email'],
 			':user_password'		=>	$formdata['user_password'],
 			':user_updated_on'		=>	get_date_time($connect),
 			':user_unique_id'		=>	$_SESSION['user_id']
@@ -134,7 +134,7 @@ if(isset($_POST['save_button']))
             user_address = :user_address, 
             user_contact_no = :user_contact_no, 
             user_profile = :user_profile, 
-            user_email_address = :user_email_address, 
+            user_email = :user_email, 
             user_password = :user_password, 
             user_updated_on = :user_updated_on 
             WHERE user_unique_id = :user_unique_id
@@ -183,7 +183,7 @@ $result = $connect->query($query);
 				<form method="POST" enctype="multipart/form-data">
 					<div class="mb-3">
 						<label class="form-label">Email address</label>
-						<input type="text" name="user_email_address" id="user_email_address" class="form-control" value="<?php echo $row['user_email_address']; ?>" />
+						<input type="text" name="user_email" id="user_email" class="form-control" value="<?php echo $row['user_email']; ?>" />
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Password</label>
