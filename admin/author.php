@@ -1,364 +1,447 @@
 <?php
-// author.php
+//author.php
 
 include '../database_connection.php';
 include '../function.php';
 
-// Check admin login
 if (!is_admin_login()) {
-    header('location:../admin_login.php');
-    exit;
+	header('location:../admin_login.php');
 }
 
-$message = '';
-$error = '';
-$alert = '';
+$message = ''; // Feedback message
 
-// Add Author
-if (isset($_POST["add_author"])) {
-    $formdata = [];
+// DELETE (Disable/Enable)
+if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
+	$author_id = $_GET["code"];
+	$status = $_GET["status"];
 
-    // Validate author_name
-    if (empty($_POST["author_name"])) {
-        $error .= '<li>Author Name is required</li>';
-    } else {
-        $formdata['author_name'] = trim($_POST["author_name"]);
-    }
+	$data = array(
+		':author_status' => $status,
+		':author_id'     => $author_id
+	);
 
-    if ($error == '') {
-        // Check for duplicate author
-        $query = "SELECT * FROM lms_author WHERE author_name = :author_name";
-        $statement = $connect->prepare($query);
-        $statement->execute([':author_name' => $formdata['author_name']]);
+	$query = "
+	UPDATE lms_author 
+	SET author_status = :author_status 
+	WHERE author_id = :author_id";
 
-        if ($statement->rowCount() > 0) {
-            $error = '<li>Author Name Already Exists</li>';
-        } else {
-            // Insert new author
-            $data = [
-                ':author_name'       => $formdata['author_name'],
-                ':author_status'     => 'Enable',
-                ':author_created_on' => get_date_time($connect)
-            ];
 
-            $query = "INSERT INTO lms_author (author_name, author_status, author_created_on) 
-                      VALUES (:author_name, :author_status, :author_created_on)";
-            $statement = $connect->prepare($query);
-            $statement->execute($data);
-            set_flash_message('success', 'New Author Added Successfully');
-            header('location:author.php?msg=add');
-            exit;
-        }
-    }
+	$statement = $connect->prepare($query);
+	$statement->execute($data);
+
+	header('location:author.php?msg=' . strtolower($status) . '');
+	exit;
 }
 
-// Edit Author
-if (isset($_POST["edit_author"])) {
-    $formdata = [];
+// ADD author (Form Submit)
+if (isset($_POST['add_author'])) {
+    $name = trim($_POST['author_name']); // Clean the input
+    $status = $_POST['author_status'];
 
-    if (empty($_POST["author_name"])) {
-        $error .= '<li>Author Name is required</li>';
-    } else {
-        $formdata['author_name'] = trim($_POST['author_name']);
+    // Check for duplicate (case-insensitive comparison)
+    $check_query = "
+        SELECT COUNT(*) 
+        FROM lms_author 
+        WHERE LOWER(author_name) = LOWER(:name)
+    ";
+
+    $statement = $connect->prepare($check_query);
+    $statement->execute([':name' => $name]);
+    $count = $statement->fetchColumn();
+
+    if ($count > 0) {
+        // author already exists
+        header('location:author.php?action=add&error=exists');
+        exit;
     }
 
-    if ($error == '') {
-        $author_id = convert_data($_POST['author_id'], 'decrypt');
+    // If not existing, insert new author
+    $date_now = get_date_time($connect); // Get the current date once
 
-        // Check if another author with the same name exists
-        $query = "SELECT * FROM lms_author WHERE author_name = :author_name AND author_id != :author_id";
-        $statement = $connect->prepare($query);
-        $statement->execute([
-            ':author_name' => $formdata['author_name'],
-            ':author_id'   => $author_id
-        ]);
-
-        if ($statement->rowCount() > 0) {
-            $error = '<li>Author Name Already Exists</li>';
-        } else {
-            // Update author details
-            $data = [
-                ':author_name'       => $formdata['author_name'],
-                ':author_updated_on' => get_date_time($connect),
-                ':author_id'         => $author_id
-            ];
-
-            $query = "UPDATE lms_author 
-                      SET author_name = :author_name, author_updated_on = :author_updated_on  
-                      WHERE author_id = :author_id";
-            $statement = $connect->prepare($query);
-            $statement->execute($data);
-            set_flash_message('success', 'Author Updated Successfully');
-            header('location:author.php?msg=edit');
-            exit;
-        }
-    }
-}
-
-// Toggle Author Status (Enable/Disable)
-if (isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] == 'delete') {
-    $author_id = $_GET["code"];
-    $status    = $_GET["status"];
-
-    $data = [
-        ':author_status'     => $status,
-        ':author_updated_on' => get_date_time($connect),
-        ':author_id'         => $author_id
-    ];
-
-    $query = "UPDATE lms_author 
-              SET author_status = :author_status, author_updated_on = :author_updated_on 
-              WHERE author_id = :author_id";
+    $query = "
+        INSERT INTO lms_author 
+        (author_name, author_status, author_created_on, author_updated_on) 
+        VALUES (:name, :status, :created_on, :updated_on)
+    ";
+    
     $statement = $connect->prepare($query);
-    $statement->execute($data);
-    $message = ($status == 'Active') ? 'Author Marked as Active' : 'Author Marked as Inactive';
-    set_flash_message('success', $message);
-    header('location:author.php?msg=' . strtolower($status));
+    $statement->execute([
+        ':name' => $name,
+        ':status' => $status,
+        ':created_on' => $date_now,   // Same date for both created and updated
+        ':updated_on' => $date_now
+    ]);
+    
+
+    header('location:author.php?msg=add');
     exit;
 }
 
-// Fetch Authors
-$query = "SELECT * FROM lms_author ORDER BY author_name ASC";
+
+// EDIT author (Form Submit)
+if (isset($_POST['edit_author'])) {
+	$id = $_POST['author_id'];
+	$name = $_POST['author_name'];
+	$status = $_POST['author_status'];
+
+
+    $update_query = "
+    UPDATE lms_author 
+    SET author_name = :name, 
+        author_status = :status,
+        author_updated_on = :updated_on
+    WHERE author_id = :id
+";
+
+
+    $params = [
+    ':name' => $name,
+    ':status' => $status,
+    ':updated_on' => get_date_time($connect),
+    ':id' => $id
+	];
+
+	$statement = $connect->prepare($update_query);
+    $statement->execute($params);
+
+	header('location:author.php?msg=edit');
+	exit;
+}
+
+
+
+// SELECT author
+$query = "SELECT * FROM lms_author ORDER BY author_id DESC";
 $statement = $connect->prepare($query);
 $statement->execute();
-$authors = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-// Check for flash messages
-$success_message = get_flash_message('success');
-if($success_message != '') {
-    $alert = sweet_alert('success', $success_message);
-}
-
-// For form validation errors
-if($error != '') {
-    $alert_message = str_replace('<li>', '', $error);
-    $alert_message = str_replace('</li>', '', $alert_message);
-    $alert = sweet_alert('error', $alert_message);
-}
+$author = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 include '../header.php';
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
-    <h1 class="mb-4">Author Management</h1>
-    <?php echo $alert; ?>
+	<h1 class="my-3">Author Management</h1>
 
-    <?php if (isset($_GET["action"]) && $_GET["action"] == "add"): ?>
+	<?php if (isset($_GET["msg"])): ?>
+		<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Author Disabled',
+                text: 'The author has been successfully disabled.',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Done'
+            });
+        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Author Enabled',
+                text: 'The author has been successfully enabled.',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Done'
+            });
+        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Author Added',
+                text: 'The author was added successfully!',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Done'
+            });
+        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Author Updated',
+                text: 'The author was updated successfully!',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Done'
+            });
+        <?php endif; ?>
 
-        <!-- Add Author Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-user-plus me-1"></i> Add New Author
-                <a href="author.php" class="btn btn-secondary btn-sm float-end">Back</a>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="author_name" class="form-label">Author Name</label>
-                        <input type="text" name="author_name" id="author_name" class="form-control" />
-                    </div>
-                    <div class="text-end">
-                        <button type="submit" name="add_author" class="btn btn-success">Add Author</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        // Remove ?msg=... from the URL without reloading the page
+        if (window.history.replaceState) {
+            const url = new URL(window.location);
+            url.searchParams.delete('msg');
+            window.history.replaceState({}, document.title, url.pathname + url.search);
+        }
+    });
+</script>
 
-    <?php elseif (isset($_GET["action"]) && $_GET["action"] == "edit"): ?>
+<?php endif; ?>
 
-        <?php
-        $author_id = convert_data($_GET["code"], 'decrypt');
-        $author_query = "SELECT author_id, author_name FROM lms_author WHERE author_id = :author_id";
-        $author_stmt = $connect->prepare($author_query);
-        $author_stmt->execute([':author_id' => $author_id]);
-        $author_row = $author_stmt->fetch(PDO::FETCH_ASSOC);
-        ?>
 
-        <!-- Edit Author Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-user-edit me-1"></i> Edit Author
-                <a href="author.php" class="btn btn-secondary btn-sm float-end">Back</a>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    <div class="mb-3">
-                        <label for="author_name" class="form-label">Author Name</label>
-                        <input type="text" name="author_name" id="author_name" class="form-control" value="<?php echo $author_row['author_name']; ?>" />
-                    </div>
-                    <input type="hidden" name="author_id" value="<?php echo $_GET['code']; ?>" />
-                    <div class="text-end">
-                        <button type="submit" name="edit_author" class="btn btn-primary">Update Author</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+	<?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
+		<!-- Add author Form -->
+<div class="card">
+	<div class="card-header"><h5>Add Author</h5></div>
+	<div class="card-body">
 
-    <?php else: ?>
+		<?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
+		<div class="alert alert-danger" id="error-alert">
+            Author already exists.
+		</div>
+		<?php endif; ?>
 
-        <!-- Author List -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row align-items-center">
-                    <div class="col"><i class="fas fa-table me-1"></i> Author List</div>
-                    <div class="col-auto">
-                        <a href="javascript:void(0)" onclick="openAddModal()" class="btn btn-success btn-sm">Add Author</a>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
-                    <thead class="thead-light">
-                        <tr>
-                            <th>ID</th>
-                            <th>Author Name</th>
-                            <th>Status</th>
+		<form method="post">
+			<div class="mb-3">
+				<label>Author Name</label>
+				<input type="text" name="author_name" class="form-control" required>
+			</div>
+			<div class="mb-3">
+				<label>Status</label>
+				<select name="author_status" class="form-select">
+					<option value="Enable">Active</option>
+					<option value="Disable">Inactive</option>
+				</select>
+			</div>
+			<input type="submit" name="add_author" class="btn btn-success" value="Add Author">
+			<a href="author.php" class="btn btn-secondary">Cancel</a>
+		</form>
+	</div>
+</div>
+
+<?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>
+
+<?php
+$id = $_GET['code'];
+$query = "SELECT * FROM lms_author WHERE author_id = :id LIMIT 1";
+$statement = $connect->prepare($query);
+$statement->execute([':id' => $id]);
+$author = $statement->fetch(PDO::FETCH_ASSOC);
+?>
+
+<?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
+<div class="alert alert-danger">
+    Author already exists.
+</div>
+<?php endif; ?>
+
+
+
+		<!-- Edit author Form -->
+		<div class="card">
+			<div class="card-header"><h5>Edit Author</h5></div>
+			<div class="card-body">
+				<form method="post">
+					<input type="hidden" name="author_id" value="<?= $author['author_id'] ?>">
+					<div class="mb-3">
+						<label>Author Name</label>
+						<input type="text" name="author_name" class="form-control" value="<?= $author['author_name'] ?>" required>
+					</div>
+					<div class="mb-3">
+						<label>Status</label>
+						<select name="author_status" class="form-select">
+							<option value="Enable" <?= $author['author_status'] == 'Enable' ? 'selected' : '' ?>>Active</option>
+							<option value="Disable" <?= $author['author_status'] == 'Disable' ? 'selected' : '' ?>>Inactive</option>
+						</select>
+					</div>
+					<input type="submit" name="edit_author" class="btn btn-primary" value="Update Author">
+					<a href="author.php" class="btn btn-secondary">Cancel</a>
+				</form>
+			</div>
+		</div>
+        
+
+        <?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
+            <?php
+		$id = $_GET['code'];
+		$query = "SELECT * FROM lms_author WHERE author_id = :id LIMIT 1";
+		$statement = $connect->prepare($query);
+		$statement->execute([':id' => $id]);
+		$author = $statement->fetch(PDO::FETCH_ASSOC);
+
+		if ($author): 
+	?>
+
+		<!-- View author Details -->
+		<div class="card">
+			<div class="card-header"><h5>View Author</h5></div>
+			<div class="card-body">
+				<p><strong>ID:</strong> <?= htmlspecialchars($author['author_id']) ?></p>
+				<p><strong>Author Name:</strong> <?= htmlspecialchars($author['author_name']) ?></p>
+				<p><strong>Status:</strong> <?= htmlspecialchars($author['author_status']) ?></p>
+				<p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($author['author_created_on'])) ?></p>
+				<p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($author['author_updated_on'])) ?></p>
+				<a href="author.php" class="btn btn-secondary">Back</a>
+			</div>
+		</div>
+
+	<?php 
+		else: 
+	?>
+		<p class="alert alert-danger">Author not found.</p>
+		<a href="author.php" class="btn btn-secondary">Back</a>
+	<?php 
+		endif;
+	// END VIEW author
+
+	else: ?>
+
+		<!-- author List -->
+		<div class="card mb-4">
+			<div class="card-header">
+				<div class="row">
+					<div class="col col-md-6">
+						<i class="fas fa-table me-1"></i> Author Management
+					</div>
+					<div class="col col-md-6">
+						<a href="author.php?action=add" class="btn btn-success btn-sm float-end">Add Author</a>
+					</div>
+				</div>
+			</div>
+
+			<div class="card-body">
+				<table id="dataTable" class="display nowrap" style="width:100%">
+					<thead>
+						<tr>
+							<th>ID</th>
+							<th>Author Name</th>
+							<th>Status</th>
                             <th>Created On</th>
-                            <th>Updated On</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($authors)): ?>
-                            <?php foreach ($authors as $row): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($row['author_id']); ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['author_name']); ?></td>
-                                    <td>
-                                        <div class="badge bg-<?= ($row['author_status'] === 'Enable') ? 'success' : 'danger'; ?>">
-											<?= ($row['author_status'] === 'Enable') ? 'Active' : 'Inactive'; ?>
-										</div>
-                                    </td>
-                                    <td><?php echo $row['author_created_on']; ?></td>
-                                    <td><?php echo $row['author_updated_on']; ?></td>
-                                    <td>
-                                        <a href="javascript:void(0);" onclick="openEditModal('<?= convert_data($row["author_id"]); ?>', '<?= htmlspecialchars($row["author_name"]); ?>')" class="btn btn-sm btn-primary">
-											<i class="fa fa-edit"></i>
-										</a>
-                                        <button type="button" class="btn btn-<?= ($row['author_status'] === 'Enable') ? 'danger' : 'success'; ?> btn-sm"
-											onclick="toggle_status('<?= convert_data($row["author_id"]); ?>', '<?= $row["author_status"]; ?>')">
-											<?= ($row['author_status'] === 'Enable') ? 'Deactivate' : 'Activate'; ?>
-										</button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="6" class="text-center">No Author Found</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <!-- Edit Modal -->
-        <div class="modal fade" id="editAuthorModal" tabindex="-1" aria-labelledby="editAuthorModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editAuthorModalLabel">Edit Author</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post">
-                    <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="edit_author_name" class="form-label">Author Name</label>
-                        <input type="text" class="form-control" id="edit_author_name" name="author_name" required>
-                    </div>
-                    <input type="hidden" id="edit_author_id" name="author_id">
-                    </div>
-                    <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" name="edit_author" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
-                </div>
-            </div>
-        </div>
-        <!-- Add Modal -->
-        <div class="modal fade" id="addAuthorModal" tabindex="-1" aria-labelledby="addAuthorModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addAuthorModalLabel">Add New Author</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form method="post">
-                    <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="add_author_name" class="form-label">Author Name</label>
-                        <input type="text" class="form-control" id="add_author_name" name="author_name" required>
-                    </div>
-                    <input type="hidden" id="add_author_id" name="author_id">
-                    </div>
-                    <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" name="add_author" class="btn btn-primary">Save Changes</button>
-                    </div>
-                </form>
-                </div>
-            </div>
-        </div>
+                            <th>Updated On</th> 
+							<th>Action</th>
+						</tr>
+					</thead>
+					<tbody>
+<?php if (count($author) > 0): ?>
+    <?php foreach ($author as $row): ?>
+        <tr>
+            <td><?= $row['author_id'] ?></td>
+            <td><?= $row['author_name'] ?></td>
 
-    <?php endif;?>
-    
+            <td>
+                <?= ($row['author_status'] === 'Enable') 
+                    ? '<span class="badge bg-success">Active</span>' 
+                    : '<span class="badge bg-danger">Inactive</span>' ?>
+            </td>
+            <td><?= date('Y-m-d H:i:s', strtotime($row['author_created_on'])) ?></td>
+			<td><?= date('Y-m-d H:i:s', strtotime($row['author_updated_on'])) ?></td>
+ 
+            <td class="text-center">
+                <a href="author.php?action=view&code=<?= $row['author_id'] ?>" class="btn btn-info btn-sm mb-1">
+                <i class="fa fa-eye"></i>
+                </a>
+                <a href="author.php?action=edit&code=<?= $row['author_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                    <i class="fa fa-edit"></i>
+                </a>
+                <button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data('<?= $row['author_id'] ?>')">
+                    <i class="fa fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    <?php endforeach; ?>
+<?php else: ?>
+    <tr><td colspan="5" class="text-center">No Data Found</td></tr>
+<?php endif; ?>
+
+</tbody>
+
+				</table>
+			</div>
+		</div>
+
+	<?php endif; ?>
+
 </main>
 
 <script>
-        function toggle_status(code, status) {
-			let newStatus = status === 'Enable' ? 'Disable' : 'Enable';
-			let statusText = status === 'Enable' ? 'mark as Inactive' : 'mark as Active';
-			
-			Swal.fire({
-				title: 'Are you sure?',
-				text: "You want to " + statusText + " this Author?",
-				icon: 'warning',
-				showCancelButton: true,
-				confirmButtonColor: '#3085d6',
-				cancelButtonColor: '#d33',
-				confirmButtonText: 'Yes, ' + statusText + '!'
-			}).then((result) => {
-				if (result.isConfirmed) {
-					window.location.href = "author.php?action=delete&code=" + code + "&status=" + newStatus;
-				}
-			});
-		}
-		// Function to open edit modal
-		function openEditModal(id, name) {
-			document.getElementById('edit_author_id').value = id;
-			document.getElementById('edit_author_name').value = name;
-			
-			// Show the modal
-			const editModal = new bootstrap.Modal(document.getElementById('editAuthorModal'));
-			editModal.show();
-		}
-		// Function to open add modal
-		function openAddModal() {
-			document.getElementById('add_author_id').value = '';
-			document.getElementById('add_author_name').value = '';
-			
-			// Show the modal
-			const addModal = new bootstrap.Modal(document.getElementById('addAuthorModal'));
-			addModal.show();
-		}
+// Function to disable a user via confirm dialog (basic)
+function delete_data(userId) {
+	if (confirm("Are you sure you want to disable this Author?")) {
+		window.location.href = "author.php?action=delete&code=" + userId + "&status=Disable";
+	}
+}
 
-$(document).ready(function() {
-    $('#dataTable').DataTable({
-        responsive: {
-            details: { type: 'column', target: 'tr' }
-        },
-        columnDefs: [
-            { className: 'dtr-control', orderable: false, targets: 0 },
-            { responsivePriority: 1, targets: 1 },
-            { responsivePriority: 2, targets: 2 },
-            { responsivePriority: 3, targets: 3 },
-            { responsivePriority: 4, targets: 4 },
-            { responsivePriority: 5, targets: 5 }
-        ],
-        order: [[1, 'asc']],
-        autoWidth: false,
-        language: { emptyTable: "No data available" }
+
+$(document).ready(function() {    
+  $('#dataTable').DataTable({
+    responsive: true,
+    columnDefs: [
+      { responsivePriority: 1, targets: [0, 1, 5] },
+      { responsivePriority: 2, targets: [2, 3] }
+    ],
+    order: [[0, 'asc']],
+    autoWidth: false,
+    language: {
+      emptyTable: "No data available"
+    },
+    
+    // Scroll and pagination settings
+    scrollY: '400px',       // Vertical scroll
+    scrollX: true,          // Horizontal scroll
+    scrollCollapse: true,   // Collapse height when less data
+    paging: true            // Enable pagination
+  });
+});
+
+//For deleting alert
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const authorId = this.getAttribute('data-id');
+            const currentStatus = this.getAttribute('data-status');
+            const action = (currentStatus === 'Enable') ? 'disable' : 'enable';
+
+            Swal.fire({
+                title: `Are you sure you want to ${action} this author?`,
+                text: "This action can be reverted later.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: `Yes, ${action} it!`
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `author.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${authorId}`;
+                }
+            });
+        });
     });
 });
+
 </script>
+
+<script>
+	// Remove query parameters from the URL (optional after showing alert)
+	if (window.history.replaceState) {
+		const url = new URL(window.location);
+		url.searchParams.delete('error');
+		window.history.replaceState({}, document.title, url.pathname + url.search);
+	}
+</script>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		const alertBox = document.getElementById('error-alert');
+
+		if (alertBox) {
+			// Display the alert for 3 seconds (3000ms)
+			setTimeout(function() {
+				// Optional fade-out effect
+				alertBox.style.transition = 'opacity 0.5s ease';
+				alertBox.style.opacity = '0';
+
+				// Remove the alert after fade (0.5s delay)
+				setTimeout(function() {
+					alertBox.remove();
+				}, 500);
+
+				// Remove 'error' param from the URL after the alert disappears
+				if (window.history.replaceState) {
+					const url = new URL(window.location);
+					url.searchParams.delete('error');
+					window.history.replaceState({}, document.title, url.pathname + url.search);
+				}
+			}, 3000); // You can change this to 5000 for 5 seconds, etc.
+		}
+	});
+</script>
+
+
 
 <?php include '../footer.php'; ?>

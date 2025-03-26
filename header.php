@@ -23,8 +23,11 @@ if (is_admin_login()) {
                 <a class="nav-link text-light" href="author.php"><i class="fas fa-user me-2"></i>Author</a>
                 <a class="nav-link text-light" href="location_rack.php"><i class="fas fa-map-marker-alt me-2"></i>Location Rack</a>
                 <a class="nav-link text-light" href="book.php"><i class="fas fa-book me-2"></i>Book</a>
-                <a class="nav-link text-light" href="user.php"><i class="fas fa-users me-2"></i>Users</a>
                 <a class="nav-link text-light" href="issue_book.php"><i class="fas fa-book-open me-2"></i>Issue Book</a>
+                <a class="nav-link text-light" href="librarian.php"><i class="fas fa-solid fa-user-tie me-2"></i>Librarian</a>
+                <a class="nav-link text-light" href="user.php"><i class="fas fa-users me-2"></i>Users</a>
+                <a class="nav-link text-light" href="report.php"><i class="fas fa-chart-line me-2"></i>Reports</a>
+                <a class="nav-link text-light" href="fine.php"><i class="fas fa-money-check me-2"></i>Fines</a>
             </nav>
         </div>
 

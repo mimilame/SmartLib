@@ -211,7 +211,7 @@ if($error != '') {
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-table me-1"></i> Location Rack List</span>
-                <a href="location_rack.php?action=add" class="btn btn-success btn-sm">Add</a>
+                <a href="location_rack.php?action=add" class="btn btn-success btn-sm">Add Rack</a>
             </div>
             <div class="card-body">
                 <table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
@@ -311,27 +311,34 @@ if($error != '') {
             }
 
             $(document).ready(function () {
-                $('#dataTable').DataTable({
-                    responsive: {
-                        details: {
-                            type: 'column',
-                            target: 'tr'
-                        }
-                    },
-                    columnDefs: [
-                        { className: 'dtr-control', orderable: false, targets: 0 },
-                        { responsivePriority: 1, targets: 1 },
-                        { responsivePriority: 2, targets: 2 },
-                        { responsivePriority: 3, targets: 3 },
-                        { responsivePriority: 4, targets: 4 },
-                        { responsivePriority: 5, targets: 5 }
-                    ],
-                    order: [[1, 'asc']]
-                });
+    $('#dataTable').DataTable({
+        responsive: {
+            details: {
+                type: 'column',
+                target: 'tr'
+            }
+        },
+        scrollY:        '400px',
+        scrollX:        true,
+        scrollCollapse: true,
+        paging:         true,
+        columnDefs: [
+            { className: 'dtr-control', orderable: false, targets: 0 },
+            { responsivePriority: 1, targets: 1 },
+            { responsivePriority: 2, targets: 2 },
+            { responsivePriority: 3, targets: 3 },
+            { responsivePriority: 4, targets: 4 },
+            { responsivePriority: 5, targets: 5 }
+        ],
+        order: [[1, 'asc']]
+    });
+
+
             });
         </script>
 
     <?php endif; ?>
 </main>
+
 
 <?php include '../footer.php'; ?>

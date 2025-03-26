@@ -75,35 +75,6 @@
   }
 }
 
-/* Custom Scrollbar for Webkit Browsers (Chrome, Edge, Safari) */
-::-webkit-scrollbar {
-  width: 8px; /* Width of the scrollbar */
-  height: 8px; /* Height for horizontal scrollbars */
-}
-
-/* Track */
-::-webkit-scrollbar-track {
-  background: #f1f1f1; /* Light grey track */
-  border-radius: 10px;
-}
-
-/* Handle */
-::-webkit-scrollbar-thumb {
-  background: #888; /* Darker grey scrollbar */
-  border-radius: 10px;
-}
-
-/* Handle on hover */
-::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Even darker on hover */
-}
-
-/* Scrollbar for Firefox */
-* {
-  scrollbar-width: thin; /* "auto" or "thin" */
-  scrollbar-color: #888 #f1f1f1; /* Thumb color and Track color */
-}
-
 body {
   margin: 0;
   font-family: var(--bs-body-font-family);
@@ -115,7 +86,6 @@ body {
   background-color: var(--bs-body-bg);
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-  -ms-overflow-style: -ms-autohiding-scrollbar;
 }
 
 hr {
@@ -2199,12 +2169,8 @@ progress {
 .table-responsive {
   display: block;
   width: 100%;
-  overflow-y: auto;
+  overflow-x: auto;
   border-collapse: collapse !important;
-}
-.dataTables_scrollBody {
-  max-height: 500px;  /* Adjust the height as needed */
-  overflow-y: auto !important;
 }
 table.dataTable tbody td {
   vertical-align: middle;
@@ -12550,19 +12516,14 @@ background-image: linear-gradient(120deg, #ad151557 50%, #efefef 50%, #78060600 
   }
 }
 
-.table-container::-webkit-scrollbar {
-  width: 6px;
+.dataTable_wrapper {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 20px;
 }
 
-.table-container::-webkit-scrollbar-track {
-  background: #e0e0e0;
+div.dataTable {
+  padding-bottom: 50px; /* or adjust the value as needed */
 }
 
-.table-container::-webkit-scrollbar-thumb {
-  background: #4a90e2;
-  border-radius: 5px;
-}
 
-.table-container::-webkit-scrollbar-thumb:hover {
-  background: #357ABD;
-}
