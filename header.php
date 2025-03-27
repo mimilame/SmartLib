@@ -1,4 +1,5 @@
-<?php 
+<?php
+ob_start(); // Start output buffering
 include 'head.php';
 
 // Start session if not already started
@@ -126,6 +127,8 @@ if ($role_id == 3 || $role_id == 4): ?>
         header('location:index.php');
         exit;
     }
+
+ob_end_flush();
 ?>
 
             <!-- Main Page Content Here -->
