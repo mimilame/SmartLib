@@ -1651,4 +1651,6 @@ function Count_total_location_rack_number($connect)
 
 
 
+
+
 ?>

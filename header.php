@@ -1,4 +1,5 @@
-<?php 
+<?php
+ob_start(); // Start output buffering
 include 'head.php';
 
 // Fetch library settings
@@ -79,4 +80,5 @@ if (is_admin_login()) {
         </header>
 <?php 
 } 
+ob_end_flush();
 ?>

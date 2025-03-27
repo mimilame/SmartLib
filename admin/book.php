@@ -171,6 +171,7 @@ include '../header.php';
             });
         </script>
     <?php endif; ?>
+    
 	<?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
 		<!-- Add Book Form -->
 		<div class="card">
@@ -226,13 +227,14 @@ include '../header.php';
 							<option value="Disable">Not Active</option>
 						</select>
 					</div>
+                    
 					<input type="submit" name="add_book" class="btn btn-success" value="Add Book">
 					<a href="book.php" class="btn btn-secondary">Cancel</a>
 				</form>
 			</div>
 		</div>
 
-
+ <!-- Edit Book Form -->
 	<?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>   
 	
 	<?php
@@ -315,6 +317,9 @@ include '../header.php';
         else:
             echo '<div class="alert alert-danger">Book not found!</div>';
         endif;
+
+
+
 
     elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])):
         $id = $_GET['code'];
