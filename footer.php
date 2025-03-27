@@ -3,10 +3,10 @@
     $statement = $connect->prepare($query);
     $statement->execute();
     $row = $statement->fetch(PDO::FETCH_ASSOC);
-
-    if(is_admin_login())
-    {
 ?>
+        <?php if (is_logged_in('admin') || is_logged_in('librarian')) { ?>
+
+        
         </main>
                 <footer class="py-4 bg-light mt-auto position-fixed bottom-0 z-index-n2 w-100">
                     <div class="container-fluid px-4">
@@ -14,49 +14,63 @@
                             
                     </div>
                 </footer>
-            </div>
-        </div>
-                <?php
-                }
-                else
-                {
-                ?>
-                <footer class="bg-dark text-white pt-4 pb-1 mt-5">
-                    <div class="container">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h5><?php echo isset($row['library_name']) ? $row['library_name'] : 'Library Management System'; ?></h5>
-                                <p>A complete solution for managing WMSU ESU CURUAN library resources efficiently.</p>
-                                <span class="py-3">Open Hours: </span>
-                            </div>
-                            <div class="col-md-3">
-                                <address class="mb-0">
-                                    <!-- Address with Font Awesome icon -->
-                                    <p><i class="fa fa-map-marker-alt"></i> 
-                                        <?php echo isset($row["library_address"]) ? $row["library_address"] : 'Address not available'; ?>
-                                    </p>
-
-                                    <!-- Email with Font Awesome icon -->
-                                    <p><i class="fa fa-envelope"></i> 
-                                        <?php echo isset($row["library_email_address"]) ? $row["library_email_address"] : 'Email not available'; ?>
-                                    </p>
-
-                                    <!-- Phone with Font Awesome icon -->
-                                    <p><i class="fa fa-phone"></i> 
-                                        <?php echo isset($row["library_contact_number"]) ? $row["library_contact_number"] : 'Contact number not available'; ?>
-                                    </p>
-                                </address>
-                            </div>
-
-                        </div>
+        <?php } elseif (is_logged_in('faculty') || is_logged_in('student') || is_logged_in('visitor')) { ?>
+                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+                    <div class="mb-0 d-flex gap-2 align-items-center">
+                        <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
                     </div>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Address with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-map-marker-alt"></i> 
+                            <?php echo isset($row["library_address"]) ? $row["library_address"] : 'Address not available'; ?>
+                        </p>
+                    </address>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Email with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-envelope"></i> 
+                            <?php echo isset($row["library_email_address"]) ? $row["library_email_address"] : 'Email not available'; ?>
+                        </p>
+                    </address>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Phone with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-phone"></i> 
+                            <?php echo isset($row["library_contact_number"]) ? $row["library_contact_number"] : 'Contact number not available'; ?>
+                        </p>
+                    </address>
                 </footer>
             </div>
-        
-                <?php 
-                }
-                ?>
-        </main>
+        <?php 
+        } else { 
+            // Default footer for login/registration or when no user is logged in
+        ?>
+                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+                    <div class="mb-0 d-flex gap-2 align-items-center">
+                        <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
+                    </div>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Address with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-map-marker-alt"></i> 
+                            <?php echo isset($row["library_address"]) ? $row["library_address"] : 'Address not available'; ?>
+                        </p>
+                    </address>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Email with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-envelope"></i> 
+                            <?php echo isset($row["library_email_address"]) ? $row["library_email_address"] : 'Email not available'; ?>
+                        </p>
+                    </address>
+                    <address class="mb-0 d-flex gap-2 align-items-center">
+                        <!-- Phone with Font Awesome icon -->
+                        <p class="m-0"><i class="fa fa-phone"></i> 
+                            <?php echo isset($row["library_contact_number"]) ? $row["library_contact_number"] : 'Contact number not available'; ?>
+                        </p>
+                    </address>
+                </footer>
+
+            </div>
+        <?php 
+        }
+        ?>
         
         <script src="./asset/js/scripts.js"></script>
         <script src="./asset/js/dataTables-simple-demo.js"></script>

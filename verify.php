@@ -11,12 +11,12 @@ include 'header.php';
 if(isset($_GET['code']))
 {
 	$data = array(
-		':user_verificaton_code'		=>	trim($_GET['code'])
-	);
+		':user_verification_code' => trim($_GET['code'])
+	);	
 
 	$query = "
 	SELECT user_verification_status FROM lms_user 
-	WHERE user_verificaton_code = :user_verificaton_code
+	WHERE user_verification_code = :user_verification_code
 	";
 
 	$statement = $connect->prepare($query);
@@ -37,7 +37,7 @@ if(isset($_GET['code']))
 				$query = "
 				UPDATE lms_user 
 				SET user_verification_status = :user_verification_status 
-				WHERE user_verificaton_code = :user_verificaton_code
+				WHERE user_verification_code = :user_verification_code
 				";
 
 				$statement = $connect->prepare($query);

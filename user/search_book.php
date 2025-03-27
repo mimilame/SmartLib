@@ -2,15 +2,11 @@
 
 //search_book.php
 
-include 'database_connection.php';
+include '../database_connection.php';
 
-include 'function.php';
-include 'header.php';
+include '../function.php';
+include '../header.php';
 
-if(!is_user_login())
-{
-	header('location:user_login.php');
-}
 
 $query = "
 	SELECT * FROM lms_book 
@@ -21,9 +17,6 @@ $query = "
 $statement = $connect->prepare($query);
 
 $statement->execute();
-
-
-
 
 ?>
 
@@ -43,7 +36,7 @@ $statement->execute();
 			</div>
 		</div>
 		<div class="card-body">
-			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 dataTable no-footer dtr-column collapsed " style="width:100%">
+			<table id="dataTable" class="table table-bordered table-striped display responsive nowrap py-4 no-footer dtr-column collapsed " style="width:100%">
 				<thead>
 					<tr>
 						<th></th> 
@@ -137,6 +130,6 @@ $statement->execute();
 </script>
 <?php 
 
-include 'footer.php';
+include '../footer.php';
 
 ?>

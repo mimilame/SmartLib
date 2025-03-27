@@ -3,122 +3,258 @@
 
 function base_url()
 {
-	return 'http://localhost/tutorial/library_management_system/';
+	return 'http://localhost/SmartLib/';
+}
+function startUserSession($userUniqueId, $roleId, $adminUniqueId = null, $librarianUniqueId = null) {
+    $_SESSION['user_unique_id'] = $userUniqueId;
+    $_SESSION['admin_unique_id'] = $adminUniqueId;
+    $_SESSION['librarian_unique_id'] = $librarianUniqueId;
+    $_SESSION['role_id'] = $roleId;
 }
 
-function is_admin_login()
-{
-	if(isset($_SESSION['admin_id']))
-	{
-		return true;
+function redirect_logged_in_user($roleId) {
+    $base_url = base_url(); // Use the function to get base URL
+    
+    $redirects = [
+        1 => $base_url . "admin/index.php",  // Admin
+        2 => $base_url . "admin/index.php",  // Librarian
+        3 => $base_url . "user/index.php",   // Faculty
+        4 => $base_url . "user/index.php",   // Student
+        5 => $base_url . "index.php"         // Visitor
+    ];
+
+	error_log("Redirect Role ID: " . $roleId);
+
+	if (isset($redirects[$roleId])) {
+		error_log("Redirecting to: " . $redirects[$roleId]);
+		header("Location: " . $redirects[$roleId]);
+		exit();
+	} else {
+		error_log("Default Redirect to Root Index");
+		header("Location: " . $base_url . "index.php");
+		exit();
 	}
-	return false;
+
+	
 }
 
-function is_user_login()
+function get_user_role()
 {
-	if(isset($_SESSION['user_id']))
-	{
-		return true;
-	}
-	return false;
-}
-
-function set_timezone($connect)
-{
-	$query = "
-	SELECT library_timezone FROM lms_setting 
-	LIMIT 1
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		date_default_timezone_set($row["library_timezone"]);
-	}
-}
-
-function get_date_time($connect)
-{
-	set_timezone($connect);
-
-	return date("Y-m-d H:i:s",  STRTOTIME(date('h:i:sa')));
-}
-
-// Function to redirect logged-in users
-function redirect_logged_in_user()
-{
-    if(isset($_SESSION['user_id'])) {
-        header('location:issue_book_details.php');
-        exit;
-    } else if(isset($_SESSION['admin_id'])) {
-        header('location:admin/index.php');
-        exit;
+    // Check if no session variables are set
+    if (!isset($_SESSION['user_unique_id']) && !isset($_SESSION['librarian_unique_id']) && !isset($_SESSION['admin_unique_id'])) {
+        return null; // No session means no role detected
     }
+
+    // Determine unique ID for the logged-in user
+    $unique_id = $_SESSION['user_unique_id'] ?? $_SESSION['librarian_unique_id'] ?? $_SESSION['admin_unique_id'] ?? null;
+
+    // Return null if no unique ID exists
+    if ($unique_id === null) {
+        return null;
+    }
+
+    // Extract the first character prefix from the unique ID
+    $prefix = strtoupper(substr($unique_id, 0, 1)); // Get the first letter (uppercase)
+
+    // Map the prefix to a role name
+    switch ($prefix) {
+        case 'A':
+            return 'admin';       // Admin
+        case 'L':
+            return 'librarian';   // Librarian
+        case 'U':
+            return 'visitor';     // Visitor
+        case 'F':
+            return 'faculty';     // Faculty
+        case 'S':
+            return 'student';     // Student
+        default:
+            return null;           // Guest or invalid role
+    }
+} 
+
+function fetchRoleName($userUniqueId) {
+	// Return null if the input is empty or invalid
+    if (empty($userUniqueId)) {
+        return null;
+    }
+
+    // Extract the prefix (first character) from the unique ID
+    $prefix = strtoupper(substr($userUniqueId, 0, 1)); // Get the first letter (uppercase)
+    return get_user_role($prefix);
+}
+
+function is_logged_in($role = null)
+{
+    // Check if any type of user session (admin, librarian, or user) is set
+    if (!isset($_SESSION['user_unique_id']) && !isset($_SESSION['librarian_unique_id']) && !isset($_SESSION['admin_unique_id'])) {
+        return false; // No session means not logged in
+    }
+
+    // Determine user role based on which unique_id session is set
+    if (isset($_SESSION['admin_unique_id'])) {
+        $user_role = 'admin';
+    } elseif (isset($_SESSION['librarian_unique_id'])) {
+        $user_role = 'librarian';
+    } elseif (isset($_SESSION['user_unique_id'])) {
+        $user_role = 'user';
+    } else {
+        return false; // No valid role found
+    }
+
+    // If no specific role is requested, just check if logged in
+    if ($role === null) {
+        return true;
+    }
+
+    // Match role if specified
+    return $user_role === strtolower($role);
 }
 
 // Function to process login
 function process_login($connect, $email, $password)
 {
-    $message = '';
-    
-    // First check if the email exists in admin table
-    $admin_data = array(
-        ':admin_email' => $email
-    );
+    // Debugging: Log the login attempt
+    error_log("Login attempt for email: $email");
 
-    $admin_query = "
-    SELECT * FROM lms_admin 
-    WHERE admin_email = :admin_email
-    ";
-
+    // Check if the email exists in admin table
+    $admin_query = "SELECT * FROM lms_admin WHERE admin_email = :email";
     $admin_statement = $connect->prepare($admin_query);
-    $admin_statement->execute($admin_data);
+    $admin_statement->execute([':email' => $email]);
 
-    // If email exists in admin table
-    if($admin_statement->rowCount() > 0) {
-        foreach($admin_statement->fetchAll() as $row) {
-            if($row['admin_password'] == $password) {
-                $_SESSION['admin_id'] = $row['admin_id'];
-                return ['success' => true, 'user_type' => 'admin'];
-            } else {
-                return ['success' => false, 'message' => 'Wrong Password'];
-            }
-        }
-    } else {
-        // If not in admin table, check user table
-        $user_data = array(
-            ':user_email' => $email
-        );
+    if ($admin_statement->rowCount() > 0) {
+        $row = $admin_statement->fetch(PDO::FETCH_ASSOC);
+        
+        // Debug: Log stored password and input password
+        error_log("Admin stored password: " . $row['admin_password']);
+        error_log("Input password: " . $password);
 
-        $user_query = "
-        SELECT * FROM lms_user
-        WHERE user_email = :user_email
-        ";
-
-        $user_statement = $connect->prepare($user_query);
-        $user_statement->execute($user_data);
-
-        if($user_statement->rowCount() > 0) {
-            foreach($user_statement->fetchAll() as $row) {
-                if($row['user_status'] == 'Enable') {
-                    if($row['user_password'] == $password) {
-                        $_SESSION['user_id'] = $row['user_unique_id'];
-                        return ['success' => true, 'user_type' => 'user'];
-                    } else {
-                        return ['success' => false, 'message' => 'Wrong Password'];
-                    }
-                } else {
-                    return ['success' => false, 'message' => 'Your Account has been disabled'];
-                }
-            }
-        } else {
-            return ['success' => false, 'message' => 'Email address not found'];
-        }
+        // Check for exact match or hash match
+        if ($password === $row['admin_password'] || password_verify($password, $row['admin_password'])) {
+			// Start session for Admin
+			$_SESSION['user_unique_id'] = $row['admin_unique_id'];
+			$_SESSION['role_id'] = $row['role_id'];
+		
+			// Debugging: Output session variables
+			error_log("Admin login successful. Session variables: " . print_r($_SESSION, true));
+		
+			return ['success' => true, 'user_type' => 'admin'];
+		}
+		
+        return ['success' => false, 'message' => 'Wrong Password for Admin'];
     }
-    
-    return ['success' => false, 'message' => 'Login failed'];
+
+    // Check if the email exists in librarian table
+    $librarian_query = "SELECT * FROM lms_librarian WHERE librarian_email = :email";
+    $librarian_statement = $connect->prepare($librarian_query);
+    $librarian_statement->execute([':email' => $email]);
+
+    if ($librarian_statement->rowCount() > 0) {
+		$row = $librarian_statement->fetch(PDO::FETCH_ASSOC);
+	
+		error_log("Librarian Stored Password: " . $row['librarian_password']);
+		error_log("Input Password: " . $password);
+	
+		if (password_verify($password, $row['librarian_password']) || $password === $row['librarian_password']) {
+			$_SESSION['user_unique_id'] = $row['librarian_unique_id'];
+			$_SESSION['role_id'] = $row['role_id'];
+	
+			error_log("Librarian Login Successful. Session: " . print_r($_SESSION, true));
+			return ['success' => true, 'user_type' => 'librarian'];
+		}
+	
+		return ['success' => false, 'message' => 'Wrong Password for Librarian'];
+	}
+
+    // Check if the email exists in user table
+    $user_query = "SELECT * FROM lms_user WHERE user_email = :email";
+    $user_statement = $connect->prepare($user_query);
+    $user_statement->execute([':email' => $email]);
+
+    if ($user_statement->rowCount() > 0) {
+        $row = $user_statement->fetch(PDO::FETCH_ASSOC);
+        
+        // Debug: Log stored password and input password
+        error_log("User stored password: " . $row['user_password']);
+        error_log("Input password: " . $password);
+
+        // Check for user status
+        if ($row['user_status'] !== 'Enable') {
+            return ['success' => false, 'message' => 'Your Account has been disabled'];
+        }
+
+        // Check for hash match or exact match
+        if (password_verify($password, $row['user_password']) || 
+            $password === $row['user_password']) {
+            // Start session for User
+            $_SESSION['user_unique_id'] = $row['user_unique_id'];
+            $_SESSION['role_id'] = $row['role_id'];
+            return ['success' => true, 'user_type' => 'user'];
+        }
+        return ['success' => false, 'message' => 'Wrong Password for User'];
+    }
+
+    return ['success' => false, 'message' => 'Email address not found'];
+}
+
+// Function to process registration
+function process_registration($connect, $formdata)
+{
+    // Allow only guests to register
+    if ($formdata['role_id'] != 5) {
+        return ['success' => false, 'message' => 'Only guests can register'];
+    }
+
+    // Check if email already exists
+    $query = "
+    SELECT * FROM lms_user 
+    WHERE user_email = :email
+    ";
+    $statement = $connect->prepare($query);
+    $statement->execute([':email' => $formdata['user_email']]);
+
+    if ($statement->rowCount() > 0) {
+        return ['success' => false, 'message' => 'Email already registered'];
+    }
+
+    // Generate unique ID with "U" prefix for guests
+    $user_unique_id = 'U' . uniqid();
+
+    // Secure password hashing
+    $hashed_password = password_hash($formdata['user_password'], PASSWORD_DEFAULT);
+
+    // Prepare data for insertion
+    $data = [
+        ':user_name'            => $formdata['user_name'],
+        ':user_address'         => $formdata['user_address'],
+        ':user_contact_no'      => $formdata['user_contact_no'],
+        ':user_profile'         => $formdata['user_profile'],
+        ':user_email'           => $formdata['user_email'],
+        ':user_password'        => $hashed_password,
+        ':user_verification_code' => md5(uniqid()),
+        ':user_verification_status' => 'No',
+        ':user_unique_id'       => $user_unique_id,
+        ':user_status'          => 'Enable',
+        ':user_created_on'      => get_date_time($connect),
+        ':role_id'              => 5
+    ];
+
+    $query = "
+    INSERT INTO lms_user 
+    (user_name, user_address, user_contact_no, user_profile, user_email, user_password, user_verification_code, user_verification_status, user_unique_id, user_status, user_created_on, role_id) 
+    VALUES (:user_name, :user_address, :user_contact_no, :user_profile, :user_email, :user_password, :user_verification_code, :user_verification_status, :user_unique_id, :user_status, :user_created_on, :role_id)
+    ";
+    $statement = $connect->prepare($query);
+
+    if ($statement->execute($data)) {
+        return [
+            'success' => true,
+            'user_unique_id' => $user_unique_id,
+            'message' => 'Guest registered successfully'
+        ];
+    }
+
+    return ['success' => false, 'message' => 'Registration failed'];
 }
 
 // Function to validate email
@@ -133,63 +269,37 @@ function validate_email($email)
     return ['valid' => true];
 }
 
-// Function to process registration
-function process_registration($connect, $formdata)
+// Function to send verification email
+function send_verification_email($user_email, $user_name, $user_unique_id, $verification_code)
 {
-    // Check if email already exists
-    $data = array(
-        ':user_email' => $formdata['user_email']
-    );
-
-    $query = "
-    SELECT * FROM lms_user 
-    WHERE user_email = :user_email
-    ";
-
-    $statement = $connect->prepare($query);
-    $statement->execute($data);
-
-    if($statement->rowCount() > 0) {
-        return ['success' => false, 'message' => 'Email Already Register'];
-    }
+    require 'vendor/autoload.php';
     
-    // Generate unique identifiers
-    $user_verificaton_code = md5(uniqid());
-    $user_unique_id = 'U' . rand(10000000,99999999);
+    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
     
-    // Prepare data for insertion
-    $data = array(
-        ':user_name'            => $formdata['user_name'],
-        ':user_address'         => $formdata['user_address'],
-        ':user_contact_no'      => $formdata['user_contact_no'],
-        ':user_profile'         => $formdata['user_profile'],
-        ':user_email'   => $formdata['user_email'],
-        ':user_password'        => $formdata['user_password'],
-        ':user_verificaton_code'=> $user_verificaton_code,
-        ':user_verification_status' => 'No',
-        ':user_unique_id'       => $user_unique_id,
-        ':user_status'          => 'Enable',
-        ':user_created_on'      => get_date_time($connect)
-    );
-
-    $query = "
-    INSERT INTO lms_user 
-    (user_name, user_address, user_contact_no, user_profile, user_email, user_password, user_verificaton_code, user_verification_status, user_unique_id, user_status, user_created_on) 
-    VALUES (:user_name, :user_address, :user_contact_no, :user_profile, :user_email, :user_password, :user_verificaton_code, :user_verification_status, :user_unique_id, :user_status, :user_created_on)
-    ";
-
-    $statement = $connect->prepare($query);
-    $result = $statement->execute($data);
-    
-    if($result) {
-        return [
-            'success' => true, 
-            'user_unique_id' => $user_unique_id, 
-            'verification_code' => $user_verificaton_code,
-            'message' => 'User registered successfully'
-        ];
-    } else {
-        return ['success' => false, 'message' => 'Registration failed'];
+    try {
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';  // SMTP server
+        $mail->SMTPAuth = true;
+        $mail->Username = 'xxxx';  // SMTP username
+        $mail->Password = 'xxxx';  // SMTP password
+        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 80;
+        
+        $mail->setFrom('tutorial@webslesson.info', 'Webslesson');
+        $mail->addAddress($user_email, $user_name);
+        $mail->isHTML(true);
+        $mail->Subject = 'Registration Verification for Library Management System';
+        $mail->Body = '
+            <p>Thank you for registering for Library Management System Demo & your Unique ID is <b>'.$user_unique_id.'</b> which will be used for issue book.</p>
+            <p>This is a verification email, please click the link to verify your email address.</p>
+            <p><a href="'.base_url().'verify.php?code='.$verification_code.'">Click to Verify</a></p>
+            <p>Thank you...</p>
+        ';
+        
+        $mail->send();
+        return ['success' => true, 'message' => 'Verification Email sent to ' . $user_email];
+    } catch (Exception $e) {
+        return ['success' => false, 'message' => "Email could not be sent. Mailer Error: {$mail->ErrorInfo}"];
     }
 }
 
@@ -252,41 +362,6 @@ function process_profile_image_upload($file)
         return ['success' => false, 'message' => 'Failed to upload image'];
     }
 }
-
-// Function to send verification email
-function send_verification_email($user_email, $user_name, $user_unique_id, $verification_code)
-{
-    require 'vendor/autoload.php';
-    
-    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
-    
-    try {
-        $mail->isSMTP();
-        $mail->Host = 'smtp.gmail.com';  // SMTP server
-        $mail->SMTPAuth = true;
-        $mail->Username = 'xxxx';  // SMTP username
-        $mail->Password = 'xxxx';  // SMTP password
-        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 80;
-        
-        $mail->setFrom('tutorial@webslesson.info', 'Webslesson');
-        $mail->addAddress($user_email, $user_name);
-        $mail->isHTML(true);
-        $mail->Subject = 'Registration Verification for Library Management System';
-        $mail->Body = '
-            <p>Thank you for registering for Library Management System Demo & your Unique ID is <b>'.$user_unique_id.'</b> which will be used for issue book.</p>
-            <p>This is a verification email, please click the link to verify your email address.</p>
-            <p><a href="'.base_url().'verify.php?code='.$verification_code.'">Click to Verify</a></p>
-            <p>Thank you...</p>
-        ';
-        
-        $mail->send();
-        return ['success' => true, 'message' => 'Verification Email sent to ' . $user_email];
-    } catch (Exception $e) {
-        return ['success' => false, 'message' => "Email could not be sent. Mailer Error: {$mail->ErrorInfo}"];
-    }
-}
-
 // Function to set flash message
 function set_flash_message($key, $message)
 {
@@ -321,7 +396,150 @@ function sweet_alert($type, $message)
     </script>
     ';
 }
+function is_authenticated_admin() {
+    // Check if admin or librarian session is set
+    $is_logged_in = isset($_SESSION['admin_unique_id']) && 
+                    isset($_SESSION['role_id']) && 
+                    ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2); // Admin or Librarian
+    
+    return $is_logged_in;
+}
 
+function authenticate_admin() {
+    // If not authenticated as admin or librarian, redirect to login page
+    if (!is_authenticated_admin()) {
+        // Log the redirection attempt
+        error_log("Unauthenticated admin/librarian access attempt. Redirecting to login.");
+        
+        // Clear session and destroy it
+        $_SESSION = array();
+        session_destroy();
+        session_start();
+        
+        // Set a flash error message
+        $_SESSION['error'] = "Please log in as an administrator or librarian.";
+        
+        // Redirect to login page
+        header("Location: ../index.php");
+        exit();
+    }
+}
+
+// Function to generate a unique user ID without role-based database lookup
+function generate_unique_id($connect, $role_prefix) {
+    $unique_id = '';
+    $exists = true;
+
+    while ($exists) {
+        $random_digits = str_pad(mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+        $unique_id = $role_prefix . $random_digits;
+
+        // Check if the ID already exists
+        $query = "SELECT COUNT(*) FROM lms_user WHERE user_unique_id = :user_unique_id";
+        $statement = $connect->prepare($query);
+        $statement->execute([':user_unique_id' => $unique_id]);
+        $exists = $statement->fetchColumn() > 0; // Repeat if ID exists
+    }
+
+    return $unique_id;
+}
+function get_user_details_by_unique_id($unique_id, $connect) {
+    // Determine user type based on unique ID prefix
+    $prefix = substr($unique_id, 0, 1);
+    
+    try {
+        switch ($prefix) {
+            case 'A': // Admin
+                $query = "SELECT 
+                    admin_id AS user_id, 
+                    admin_email AS user_email, 
+                    'Admin' AS role_id, 
+                    admin_unique_id AS user_unique_id
+                FROM lms_admin 
+                WHERE admin_unique_id = :unique_id";
+                break;
+            
+            case 'L': // Librarian
+                $query = "SELECT 
+                    librarian_id AS user_id, 
+                    librarian_email AS user_email, 
+                    librarian_name AS user_name,
+                    'Librarian' AS role_id, 
+                    librarian_unique_id AS user_unique_id
+                FROM lms_librarian 
+                WHERE librarian_unique_id = :unique_id";
+                break;
+            
+            case 'F': // Faculty
+                $query = "SELECT 
+                    user_id, 
+                    user_email, 
+                    user_name,
+                    'Faculty' AS role_id, 
+                    user_unique_id
+                FROM lms_user 
+                WHERE user_unique_id = :unique_id AND role_id = 3";
+                break;
+            
+            case 'S': // Student
+                $query = "SELECT 
+                    user_id, 
+                    user_email, 
+                    user_name,
+                    'Student' AS role_id, 
+                    user_unique_id
+                FROM lms_user 
+                WHERE user_unique_id = :unique_id AND role_id = 4";
+                break;
+            
+            case 'U': // Guest User
+                $query = "SELECT 
+                    user_id, 
+                    user_email, 
+                    user_name,
+                    'Guest' AS role_id, 
+                    user_unique_id
+                FROM lms_user 
+                WHERE user_unique_id = :unique_id AND role_id = 5";
+                break;
+            
+            default:
+                return null;
+        }
+        
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':unique_id', $unique_id, PDO::PARAM_STR);
+        $statement->execute();
+        
+        return $statement->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Log error
+        error_log("User lookup error: " . $e->getMessage());
+        return null;
+    }
+}
+
+function set_timezone($connect)
+{
+	$query = "
+	SELECT library_timezone FROM lms_setting 
+	LIMIT 1
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		date_default_timezone_set($row["library_timezone"]);
+	}
+}
+
+function get_date_time($connect)
+{
+	set_timezone($connect);
+
+	return date("Y-m-d H:i:s",  STRTOTIME(date('h:i:sa')));
+}
 function get_one_day_fines($connect)
 {
 	$output = 0;
@@ -428,6 +646,230 @@ function convert_data($string, $action = 'encrypt')
 		$output = openssl_decrypt(base64_decode($string), $encrypt_method, $key, 0, $iv);
 	}
 	return $output;
+}
+
+
+
+function Currency_list()
+{
+	$html = '
+		<option value="">Select Currency</option>
+	';
+	$data = currency_array();
+	foreach($data as $row)
+	{
+		$html .= '<option value="'.$row["code"].'">'.$row["name"].'</option>';
+	}
+	return $html;
+}
+
+
+function fill_author($connect)
+{
+	$query = "
+	SELECT author_name FROM lms_author 
+	WHERE author_status = 'Enable' 
+	ORDER BY author_name ASC
+	";
+
+	$result = $connect->query($query);
+
+	$output = '<option value="">Select Author</option>';
+
+	foreach($result as $row)
+	{
+		$output .= '<option value="'.$row["author_name"].'">'.$row["author_name"].'</option>';
+	}
+
+	return $output;
+}
+
+function fill_category($connect)
+{
+	$query = "
+	SELECT category_name FROM lms_category 
+	WHERE category_status = 'Enable' 
+	ORDER BY category_name ASC
+	";
+
+	$result = $connect->query($query);
+
+	$output = '<option value="">Select Category</option>';
+
+	foreach($result as $row)
+	{
+		$output .= '<option value="'.$row["category_name"].'">'.$row["category_name"].'</option>';
+	}
+
+	return $output;
+}
+
+function fill_location_rack($connect)
+{
+	$query = "
+	SELECT location_rack_name FROM lms_location_rack 
+	WHERE location_rack_status = 'Enable' 
+	ORDER BY location_rack_name ASC
+	";
+
+	$result = $connect->query($query);
+
+	$output = '<option value="">Select Location Rack</option>';
+
+	foreach($result as $row)
+	{
+		$output .= '<option value="'.$row["location_rack_name"].'">'.$row["location_rack_name"].'</option>';
+	}
+
+	return $output;
+}
+
+function Count_total_issue_book_number($connect)
+{
+	$total = 0;
+
+	$query = "SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_returned_book_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
+	WHERE book_issue_status = 'Return'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_not_returned_book_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
+	WHERE book_issue_status = 'Not Return'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_fines_received($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT SUM(book_fines) AS Total FROM lms_issue_book 
+	WHERE book_issue_status = 'Return'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_book_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(book_id) AS Total FROM lms_book 
+	WHERE book_status = 'Enable'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_author_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(author_id) AS Total FROM lms_author 
+	WHERE author_status = 'Enable'
+	";
+
+	$result  = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_category_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(category_id) AS Total FROM lms_category 
+	WHERE category_status = 'Enable'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+	return $total;
+}
+
+function Count_total_location_rack_number($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT COUNT(location_rack_id) AS Total FROM lms_location_rack 
+	WHERE location_rack_status = 'Enable'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
 }
 
 function currency_array()
@@ -1013,20 +1455,6 @@ function currency_array()
 	
 	return $currencies;
 }
-
-function Currency_list()
-{
-	$html = '
-		<option value="">Select Currency</option>
-	';
-	$data = currency_array();
-	foreach($data as $row)
-	{
-		$html .= '<option value="'.$row["code"].'">'.$row["name"].'</option>';
-	}
-	return $html;
-}
-
 function Timezone_list()
 {
 	$timezones = array(
@@ -1440,215 +1868,6 @@ function Timezone_list()
 	
 	return $html;
 }
-
-function fill_author($connect)
-{
-	$query = "
-	SELECT author_name FROM lms_author 
-	WHERE author_status = 'Enable' 
-	ORDER BY author_name ASC
-	";
-
-	$result = $connect->query($query);
-
-	$output = '<option value="">Select Author</option>';
-
-	foreach($result as $row)
-	{
-		$output .= '<option value="'.$row["author_name"].'">'.$row["author_name"].'</option>';
-	}
-
-	return $output;
-}
-
-function fill_category($connect)
-{
-	$query = "
-	SELECT category_name FROM lms_category 
-	WHERE category_status = 'Enable' 
-	ORDER BY category_name ASC
-	";
-
-	$result = $connect->query($query);
-
-	$output = '<option value="">Select Category</option>';
-
-	foreach($result as $row)
-	{
-		$output .= '<option value="'.$row["category_name"].'">'.$row["category_name"].'</option>';
-	}
-
-	return $output;
-}
-
-function fill_location_rack($connect)
-{
-	$query = "
-	SELECT location_rack_name FROM lms_location_rack 
-	WHERE location_rack_status = 'Enable' 
-	ORDER BY location_rack_name ASC
-	";
-
-	$result = $connect->query($query);
-
-	$output = '<option value="">Select Location Rack</option>';
-
-	foreach($result as $row)
-	{
-		$output .= '<option value="'.$row["location_rack_name"].'">'.$row["location_rack_name"].'</option>';
-	}
-
-	return $output;
-}
-
-function Count_total_issue_book_number($connect)
-{
-	$total = 0;
-
-	$query = "SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_returned_book_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Return'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_not_returned_book_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Not Return'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_fines_received($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT SUM(book_fines) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Return'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_book_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(book_id) AS Total FROM lms_book 
-	WHERE book_status = 'Enable'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_author_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(author_id) AS Total FROM lms_author 
-	WHERE author_status = 'Enable'
-	";
-
-	$result  = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
-function Count_total_category_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(category_id) AS Total FROM lms_category 
-	WHERE category_status = 'Enable'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-	return $total;
-}
-
-function Count_total_location_rack_number($connect)
-{
-	$total = 0;
-
-	$query = "
-	SELECT COUNT(location_rack_id) AS Total FROM lms_location_rack 
-	WHERE location_rack_status = 'Enable'
-	";
-
-	$result = $connect->query($query);
-
-	foreach($result as $row)
-	{
-		$total = $row["Total"];
-	}
-
-	return $total;
-}
-
 
 
 ?>

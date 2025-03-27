@@ -4,11 +4,6 @@
 include '../database_connection.php';
 include '../function.php';
 
-// Check if admin is logged in
-if (!is_admin_login()) {
-    header('location:../admin_login.php');
-    exit;
-}
 
 $message = '';
 $error = '';

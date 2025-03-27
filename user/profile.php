@@ -2,15 +2,11 @@
 
 //profile.php
 
-include 'database_connection.php';
+include '../database_connection.php';
 
-include 'function.php';
-include 'header.php';
+include '../function.php';
+include '../header.php';
 
-if(!is_user_login())
-{
-	header('location:user_login.php');
-}
 
 $message = '';
 
@@ -125,7 +121,7 @@ if(isset($_POST['save_button']))
 			':user_email'	=>	$formdata['user_email'],
 			':user_password'		=>	$formdata['user_password'],
 			':user_updated_on'		=>	get_date_time($connect),
-			':user_unique_id'		=>	$_SESSION['user_id']
+			':user_unique_id'		=>	$_SESSION['user_unique_id']
 		);
 
 		$query = "
@@ -151,7 +147,7 @@ if(isset($_POST['save_button']))
 
 $query = "
 	SELECT * FROM lms_user 
-	WHERE user_unique_id = '".$_SESSION['user_id']."'
+	WHERE user_unique_id = '".$_SESSION['user_unique_id']."'
 ";
 
 $result = $connect->query($query);
@@ -225,6 +221,6 @@ $result = $connect->query($query);
 
 <?php 
 
-include 'footer.php';
+include '../footer.php';
 
 ?>

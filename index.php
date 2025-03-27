@@ -1,8 +1,6 @@
 <?php
 	include 'database_connection.php';
-	include 'function.php';
-
-	redirect_logged_in_user();
+	include 'function.php';	
 
 	// Initialize variables for form processing
 	$message = '';
@@ -20,105 +18,117 @@
 			set_flash_message('error', 'Password is required');
 		}
 		else {
+			// Log the login attempt
+			error_log("Login Attempt - Email: " . trim($_POST["email"]));
+			
 			$result = process_login(
 				$connect,
 				trim($_POST["email"]),
 				trim($_POST['password'])
 			);
 			
+			// Log the login result
+			error_log("Login Result: " . ($result['success'] ? 'Success' : 'Failure'));
+			error_log("Session Role ID: " . ($_SESSION['role_id'] ?? 'Not Set'));
+			
 			if($result['success']) {
-				if($result['user_type'] == 'admin') {
-					header('location:admin/index.php');
-				} else {
-					header('location:issue_book_details.php');
-				}
-				exit;
+				// Get the user's role from session and redirect accordingly
+				$roleId = $_SESSION['role_id'] ?? null;
+				
+				// Log the role ID before redirection
+				error_log("Redirecting with Role ID: " . $roleId);
+				
+				redirect_logged_in_user($roleId);
 			} else {
 				set_flash_message('error', $result['message']);
 			}
 		}
 	}
 
-	// Process user registration form submission
-	if(isset($_POST["register_button"])) {
-		$formdata = array();
-		$message = '';
-		
-		// Validate email
-		$email_validation = validate_email($_POST["user_email"] ?? '');
-		if(!$email_validation['valid']) {
-			$message = $email_validation['message'];
-		} else {
-			$formdata['user_email'] = trim($_POST['user_email']);
-		}
-		
-		// Validate other required fields
-		if(empty($_POST["user_password"])) {
-			$message .= 'Password is required';
-		} else {
-			$formdata['user_password'] = trim($_POST['user_password']);
-		}
-		
-		if(empty($_POST['user_name'])) {
-			$message .= 'User Name is required';
-		} else {
-			$formdata['user_name'] = trim($_POST['user_name']);
-		}
-		
-		if(empty($_POST['user_address'])) {
-			$message .= 'User Address Detail is required';
-		} else {
-			$formdata['user_address'] = trim($_POST['user_address']);
-		}
-		
-		if(empty($_POST['user_contact_no'])) {
-			$message .= 'User Contact Number Detail is required';
-		} else {
-			$formdata['user_contact_no'] = trim($_POST['user_contact_no']);
-		}
-		
-		// Process profile image upload
-		$image_result = process_profile_image_upload($_FILES['user_profile']);
-		if(!$image_result['success']) {
-			$message .= $image_result['message'];
-		} else {
-			$formdata['user_profile'] = $image_result['file_name'];
-		}
-		
-		// If no validation errors, process registration
-		if($message == '') {
-			$registration_result = process_registration($connect, $formdata);
-			
-			if($registration_result['success']) {
-				// Send verification email
-				$email_result = send_verification_email(
-					$formdata['user_email'],
-					$formdata['user_name'],
-					$registration_result['user_unique_id'],
-					$registration_result['verification_code']
-				);
-				
-				if($email_result['success']) {
-					set_flash_message('success', $email_result['message']);
-				} else {
-					set_flash_message('error', $email_result['message']);
-				}
-			} else {
-				set_flash_message('error', $registration_result['message']);
-			}
-		} else {
-			set_flash_message('error', $message);
-		}
-		
-		// Redirect to avoid form resubmission
-		header('Location: ' . $_SERVER['PHP_SELF']);
-		exit;
-	}
+	// Process user registration form submission (ONLY for Visitors)
+    if(isset($_POST["register_button"])) {
+        $formdata = array();
+        $message = '';
+        
+        // Validate email
+        $email_validation = validate_email($_POST["user_email"] ?? '');
+        if(!$email_validation['valid']) {
+            $message = $email_validation['message'];
+        } else {
+            $formdata['user_email'] = trim($_POST['user_email']);
+        }
+        
+        // Validate other required fields
+        if(empty($_POST["user_password"])) {
+            $message .= 'Password is required';
+        } else {
+            $formdata['user_password'] = trim($_POST['user_password']);
+        }
+        
+        if(empty($_POST['user_name'])) {
+            $message .= 'User Name is required';
+        } else {
+            $formdata['user_name'] = trim($_POST['user_name']);
+        }
+        
+        if(empty($_POST['user_address'])) {
+            $message .= 'User Address is required';
+        } else {
+            $formdata['user_address'] = trim($_POST['user_address']);
+        }
+        
+        if(empty($_POST['user_contact_no'])) {
+            $message .= 'User Contact Number is required';
+        } else {
+            $formdata['user_contact_no'] = trim($_POST['user_contact_no']);
+        }
+        
+        // Process profile image upload
+        $image_result = process_profile_image_upload($_FILES['user_profile']);
+        if(!$image_result['success']) {
+            $message .= $image_result['message'];
+        } else {
+            $formdata['user_profile'] = $image_result['file_name'];
+        }
+
+        // **Automatically Assign Visitor Role (role_id = 5)**
+        $formdata['role_id'] = 5;
+        
+        // If no validation errors, process registration
+        if($message == '') {
+            $registration_result = process_registration($connect, $formdata);
+            
+            if($registration_result['success']) {
+                $_SESSION['user_unique_id'] = $registration_result['user_unique_id'];
+                $_SESSION['role_id'] = 5; // Set session role as visitor
+
+                // Redirect visitors after registration
+                redirect_logged_in_user(5);
+            } else {
+                set_flash_message('error', $registration_result['message']);
+            }
+        } else {
+            set_flash_message('error', $message);
+        }
+        
+        // Redirect to avoid form resubmission
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
+    }
 
 	// Get any flash messages at the beginning of the page
 	$error_message = get_flash_message('error');
 	$success_message = get_flash_message('success');
 
+	$query = "
+	SELECT * FROM lms_book 
+    WHERE book_status = 'Enable' 
+    ORDER BY book_id DESC
+";
+
+$statement = $connect->prepare($query);
+
+$statement->execute();
 	include 'head.php';
 
 ?>
@@ -128,8 +138,6 @@
 <div class="bg1"></div>
 <div class="bg1 bg2"></div>
 <div class="bg1 bg3"></div>
-
-<main class="landing-page">
 	<?php
 	// Display SweetAlert messages if they exist
 	if(!empty($error_message)) {
@@ -141,7 +149,8 @@
 	}
 	?>
 
-    <section class="index">
+	
+	<section class="index" id="modalOverlay">
         <div class="toggle-box">
             <article class="toggle-panel toggle-left">
                 <div class="p-3">
@@ -286,6 +295,7 @@
 				</div>
 			</header>
 			<form action="" method="POST" enctype="multipart/form-data" class="my-auto p-3">
+
 				<h1>Register</h1>
 				<div class="w-75 mx-5 mx-auto">
 					<div class="input-box mb-3">
@@ -307,6 +317,7 @@
 						<input type="file" class="form-control" name="user_profile" id="user_profile" placeholder="Profile Image" required>
 						<small class="text-muted">Only .jpg & .png (height greater than width, max 2MB)</small>
 					</div>
+					
 				</div>
 				<button type="submit" name="register_button" class="btn btn-primary">Sign Up</button>
 			</form>
@@ -314,6 +325,96 @@
           
     </section>
 
+	<header class="d-flex flex-wrap fixed-top align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-light">
+      <a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
+	  	<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
+      </a>
+
+      <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+        <li><a href="#" class="nav-link px-2 link-secondary">Home</a></li>
+        <li><a href="#" class="nav-link px-2 link-dark">Books</a></li>
+        <li><a href="#" class="nav-link px-2 link-dark">FAQs</a></li>
+        <li><a href="#" class="nav-link px-2 link-dark">About</a></li>
+      </ul>
+
+      <div class="col-md-3 text-end d-flex">
+        <button type="button" class="btn btn-outline-primary me-2">Login</button>
+        <button type="button" class="btn btn-primary">Sign-up</button>
+      </div>
+    </header>
+	<div class="mt-5 pt-4">	
+		<img src="asset\img\image.png" width="100%" height="300px">
+	</div>
+	<section class="bg-loght py-5">
+		<div class="container px-4 px-lg-5 mt-5">
+			<div class="row gx-4 gx-lg-5 row-cols-12 row-cols-md-12 row-cols-xl-12 justify-content-center">
+				<div class="row align-items-stretch g-4 py-5">
+					<div class="col">
+						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-1.jpg');">
+							<div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
+								<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Short title, long jacket</h2>
+								<ul class="d-flex list-unstyled mt-auto">
+								<li class="me-auto">
+									<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
+								</li>
+								<li class="d-flex align-items-center me-3">
+									<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
+									<small>Earth</small>
+								</li>
+								<li class="d-flex align-items-center">
+									<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
+									<small>3d</small>
+								</li>
+								</ul>
+							</div>
+						</div>
+      				</div>
+
+					<div class="col">
+						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-2.jpg');">
+						<div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
+							<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Much longer title that wraps to multiple lines</h2>
+							<ul class="d-flex list-unstyled mt-auto">
+							<li class="me-auto">
+								<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
+							</li>
+							<li class="d-flex align-items-center me-3">
+								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
+								<small>Pakistan</small>
+							</li>
+							<li class="d-flex align-items-center">
+								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
+								<small>4d</small>
+							</li>
+							</ul>
+						</div>
+						</div>
+					</div>
+
+					<div class="col">
+						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-3.jpg');">
+						<div class="d-flex flex-column h-100 p-5 pb-3 text-shadow-1">
+							<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Another longer title belongs here</h2>
+							<ul class="d-flex list-unstyled mt-auto">
+							<li class="me-auto">
+								<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
+							</li>
+							<li class="d-flex align-items-center me-3">
+								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
+								<small>California</small>
+							</li>
+							<li class="d-flex align-items-center">
+								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
+								<small>5d</small>
+							</li>
+							</ul>
+						</div>
+						</div>
+					</div>
+    			</div>
+			</div>
+		</div>
+	</section>
     
 
 

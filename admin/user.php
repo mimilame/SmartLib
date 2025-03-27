@@ -4,9 +4,7 @@
 include '../database_connection.php';
 include '../function.php';
 
-if (!is_admin_login()) {
-	header('location:../admin_login.php');
-}
+
 
 $message = ''; // Feedback message
 
@@ -206,6 +204,13 @@ include '../header.php';
 						<select name="user_status" class="form-select">
 							<option value="Enable">Active</option>
 							<option value="Disable">Inactive</option>
+						</select>
+					</div>
+					<div class="input-box mb-3">
+						<label>User Role:</label>
+						<select name="user_role" required>
+							<option value="S">Student</option>
+							<option value="F">Faculty</option>
 						</select>
 					</div>
 					<input type="submit" name="add_user" class="btn btn-success" value="Add User">

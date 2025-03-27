@@ -6,11 +6,7 @@ include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
-// Check if admin is logged in
-if (!is_admin_login()) {
-    header('location:../admin_login.php');
-    exit;
-}
+
 
 $connect = new PDO("mysql:host=localhost;dbname=lms", "root", "");
 $connect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

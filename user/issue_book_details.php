@@ -2,21 +2,17 @@
 
 //issue_book_details.php
 
-include 'database_connection.php';
+include '../database_connection.php';
+include '../function.php';
+include '../header.php';
 
-include 'function.php';
-include 'header.php';
 
-if(!is_user_login())
-{
-	header('location:user_login.php');
-}
 
 $query = "
 	SELECT * FROM lms_issue_book 
 	INNER JOIN lms_book 
 	ON lms_book.book_isbn_number = lms_issue_book.book_id 
-	WHERE lms_issue_book.user_id = '".$_SESSION['user_id']."' 
+	WHERE lms_issue_book.user_id = '".$_SESSION['user_unique_id']."' 
 	ORDER BY lms_issue_book.issue_book_id DESC
 ";
 
@@ -93,7 +89,7 @@ $statement->execute();
 			</table>
 		</div>
 	</div>
-	</main>
+</main>
 <script>
 	$(document).ready(function() {  
 		$('#dataTable').DataTable({
@@ -126,6 +122,6 @@ $statement->execute();
 </script>
 <?php 
 
-include 'footer.php';
+include '../footer.php';
 
 ?>
