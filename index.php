@@ -1,17 +1,13 @@
 <?php
 	include 'database_connection.php';
 	include 'function.php';	
-	include 'head.php';
+	include 'header.php';
 
 	// Start session if not already started
 	if (session_status() == PHP_SESSION_NONE) {
 		session_start();
 	}
 	
-	$query = "SELECT * FROM lms_setting LIMIT 1";
-	$statement = $connect->prepare($query);
-	$statement->execute();
-	$row = $statement->fetch(PDO::FETCH_ASSOC);
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
 	$statement = $connect->prepare($query);
@@ -36,6 +32,7 @@
 	}
 	
 	$page_title = $library_name . " - " . ucfirst($user_type); 
+
 
 	// Initialize variables for form processing
 	$message = '';
@@ -164,7 +161,6 @@
 	$statement = $connect->prepare($query);
 
 	$statement->execute();
-	include 'head.php';
 
 ?>
 <div class="bg"></div>
@@ -290,7 +286,7 @@
 						<nav class="navbar navbar-expand-lg navbar-light">
 							<div class="container-fluid">
 								<a class="navbar-brand" href="index.php">
-									<img src="asset/img/logo-removebg.png" height="40" class="me-2">
+									<img src="asset/img/logo.png" height="40" class="me-2">
 									<span class="fw-bold">SmartLib</span>
 								</a>
 							</div>
@@ -322,7 +318,7 @@
 						<nav class="navbar navbar-expand-lg navbar-light">
 							<div class="container-fluid">
 								<a class="navbar-brand" href="index.php">
-									<img src="asset/img/logo-removebg.png" height="40" class="me-2">
+									<img src="asset/img/logo.png" height="40" class="me-2">
 									<span class="fw-bold">SmartLib</span>
 								</a>
 							</div>
@@ -360,123 +356,178 @@
 			
 		</section>
 	</div>
-	
-	<div class="d-flex flex-wrap fixed-top align-items-center justify-content-center justify-content-md-between mb-4">
-			<div class="bg-dark text-white pb-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
-				<div class="mb-0 d-flex gap-2 align-items-center">
-					<span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
-				</div>
-				<address class="mb-0 d-flex gap-2 align-items-center">
-					<!-- Address with Font Awesome icon -->
-					<p class="m-0"><i class="fa fa-map-marker-alt"></i> 
-						<?php echo isset($row["library_address"]) ? $row["library_address"] : 'Address not available'; ?>
-					</p>
-				</address>
-				<address class="mb-0 d-flex gap-2 align-items-center">
-					<!-- Email with Font Awesome icon -->
-					<p class="m-0"><i class="fa fa-envelope"></i> 
-						<?php echo isset($row["library_email_address"]) ? $row["library_email_address"] : 'Email not available'; ?>
-					</p>
-				</address>
-				<address class="mb-0 d-flex gap-2 align-items-center">
-					<!-- Phone with Font Awesome icon -->
-					<p class="m-0"><i class="fa fa-phone"></i> 
-						<?php echo isset($row["library_contact_number"]) ? $row["library_contact_number"] : 'Contact number not available'; ?>
-					</p>
-				</address>
+
+    <div class="custom-bg">
+        <div class="book-slide">
+            <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
+                <div class="book-cell">
+                    <div class="book-img">
+                        <img src="https://images-na.ssl-images-amazon.com/images/I/81WcnNQ-TBL.jpg" alt="" class="book-photo">
+                    </div>
+                    <div class="book-content">
+                        <div class="book-title">BIG MAGIC</div>
+                        <div class="book-author">by Elizabeth Gilbert</div>
+                        <div class="rate">
+                            <fieldset class="rating">
+                                <input type="checkbox" id="star5" name="rating" value="5" />
+                                <label class="full" for="star5"></label>
+                                <input type="checkbox" id="star4" name="rating" value="4" />
+                                <label class="full" for="star4"></label>
+                                <input type="checkbox" id="star3" name="rating" value="3" />
+                                <label class="full" for="star3"></label>
+                                <input type="checkbox" id="star2" name="rating" value="2" />
+                                <label class="full" for="star2"></label>
+                                <input type="checkbox" id="star1" name="rating" value="1" />
+                                <label class="full" for="star1"></label>
+                            </fieldset>
+                            <span class="book-voters">1.987 voters</span>
+                        </div>
+                        <div class="book-sum">Readers of all ages and walks of life have drawn inspiration and empowerment from Elizabeth Gilbert's books for years. </div>
+                        <div class="book-see">See The Book</div>
+                    </div>
+                </div>
+                <!-- Repeat for other book-cell elements from original document -->
+                <div class="book-cell">
+                    <div class="book-img">
+                        <img src="https://i.pinimg.com/originals/a8/b9/ff/a8b9ff74ed0f3efd97e09a7a0447f892.jpg" alt="" class="book-photo">
+                    </div>
+                    <div class="book-content">
+                        <div class="book-title">Ten Thousand Skies Above You</div>
+                        <div class="book-author">by Claudia Gray</div>
+                        <div class="rate">
+							<fieldset class="rating blue">
+								<input type="checkbox" id="star6" name="rating" value="5">
+								<label class="full1" for="star6"></label>
+								<input type="checkbox" id="star7" name="rating" value="4">
+								<label class="full1" for="star7"></label>
+								<input type="checkbox" id="star8" name="rating" value="3">
+								<label class="full1" for="star8"></label>
+								<input type="checkbox" id="star9" name="rating" value="2">
+								<label class="full1" for="star9"></label>
+								<input type="checkbox" id="star10" name="rating" value="1">
+								<label class="full1" for="star10"></label>
+							</fieldset>
+							<span class="book-voters">1.987 voters</span>
+						</div>
+                        <div class="book-sum">The hunt for each splinter of Paul's soul sends Marguerite racing through a war-torn San Francisco.</div>
+                        <div class="book-see book-blue">See The Book</div>
+                    </div>
+                </div>
+                <!-- Additional book-cell elements would follow the same pattern -->
+            </div>
+        </div>
+
+        <div class="main-wrapper">
+            <div class="books-of">
+                <div class="week">
+                    <div class="author-title">Author of the week</div>
+                    <div class="author">
+                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1400&q=80" alt="" class="author-img">
+                        <div class="author-name">Sebastian Jeremy</div>
+                    </div>
+                    <div class="author">
+                        <img src="https://images.unsplash.com/photo-1586297098710-0382a496c814?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1650&q=80" alt="" class="author-img">
+                        <div class="author-name">Jonathan Doe</div>
+                    </div>
+                    <!-- Additional author elements would follow the same pattern -->
+                </div>
+
+                <div class="week year">
+                    <div class="author-title">Books of the year</div>
+                    <div class="year-book">
+                        <img src="https://images-na.ssl-images-amazon.com/images/I/A1kNdYXw0GL.jpg" alt="" class="year-book-img">
+                        <div class="year-book-content">
+                            <div class="year-book-name">Disappearing Earth</div>
+                            <div class="year-book-author">by Julia Phillips</div>
+                        </div>
+                    </div>
+                    <!-- Additional year-book elements would follow the same pattern -->
+                </div>
+            </div>
+
+            <div class="popular-books">
+                <div class="main-menu">
+                    <div class="genre">Popular by Genre</div>
+                    <div class="book-types">
+                        <a href="#" class="book-type active"> All Genres</a>
+                        <a href="#" class="book-type"> Business</a>
+                        <a href="#" class="book-type"> Science</a>
+                        <a href="#" class="book-type"> Fiction</a>
+                        <a href="#" class="book-type"> Philosophy</a>
+                        <a href="#" class="book-type"> Biography</a>
+                    </div>
+                </div>
+
+                <div class="book-cards">
+                    <div class="book-card">
+                        <div class="content-wrapper">
+                            <img src="https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fstatic.onecms.io%2Fwp-content%2Fuploads%2Fsites%2F6%2F2019%2F07%2Fchances-are-1-2000.jpg&q=85" alt="" class="book-card-img">
+                            <div class="card-content">
+                                <div class="book-name">Changes Are</div>
+                                <div class="book-by">by Richard Russo</div>
+                                <div class="rate">
+                                    <fieldset class="rating book-rate">
+                                        <input type="checkbox" id="star-c1" name="rating" value="5">
+                                        <label class="full" for="star-c1"></label>
+                                        <!-- Additional rating inputs -->
+                                    </fieldset>
+                                    <span class="book-voters card-vote">1.987 voters</span>
+                                </div>
+                                <div class="book-sum card-sum">Readers of all ages and walks of life have drawn inspiration and empowerment from Elizabeth Gilbert's books for years. </div>
+                            </div>
+                        </div>
+                        <div class="likes">
+                            <div class="like-profile">
+                                <img src="https://randomuser.me/api/portraits/women/63.jpg" alt="" class="like-img">
+                            </div>
+                            <!-- Additional like profiles -->
+                            <div class="like-name"><span>Samantha William</span> and <span>2 other friends</span> like this</div>
+                        </div>
+                    </div>
+                    <!-- Additional book-card elements would follow the same pattern -->
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-4" id="front-page-home-sections">    
+			<div id="education-soul-call-to-action" class="home-section home-section-call-to-action">
+				<div class="container">
+					<div class="cta-content">
+						<h2 class="section-title">Western Mindanao State University</h2>
+						<div class="cta-content-text">
+										</div><!-- .cta-content-text -->
+					</div><!-- .cta-content -->
+					<div class="cta-buttons" style="position: relative; top: 5em;">
+						<a href="http://apply.wmsu.edu.ph/admission/" class="custom-button cta-btn">Freshmen Registration</a>
+						<a href="http://register.wmsu.edu.ph/encoding/" class="custom-button button-secondary cta-btn">Old Student Registration</a>
+					</div><!-- .cta-buttons -->
+				</div><!-- .container -->
 			</div>
-		<header class="d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-light w-100">
-		<a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
-			<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
-		</a>
+        </div>
 
-		<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-			<li><a href="#" class="nav-link px-2 link-secondary">Home</a></li>
-			<li><a href="#" class="nav-link px-2 link-dark">Books</a></li>
-			<li><a href="#" class="nav-link px-2 link-dark">FAQs</a></li>
-			<li><a href="#" class="nav-link px-2 link-dark">About</a></li>
-		</ul>
+        <section class="py-5">
+            <div class="container px-4 px-lg-5 mt-5">
+                <div class="row gx-4 gx-lg-5 row-cols-12 row-cols-md-12 row-cols-xl-12 justify-content-center">
+                    <div class="row align-items-stretch g-4 py-5">
+                        <div class="col">
+                            <div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-1.jpg');">
+                                <div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
+                                    <h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Short title, long jacket</h2>
+                                    <ul class="d-flex list-unstyled mt-auto">
+                                        <li class="me-auto">
+                                            <img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle ">
+                                        </li>
+                                        <!-- Additional list items -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Additional column divs -->
+                    </div>
+                </div>
+            </div>
+        </section>
 
-		<div class="col-md-3 text-end d-flex">
-			<button type="button" class="logbtn btn btn-outline-primary me-3">Login</button>
-			<button type="button" class="regbtn btn btn-primary me-4">Sign-up</button>
-		</div>
-		</header>
-	</div>
-	<div class="mt-5 pt-4">	
-		<img src="asset\img\image.png" width="100%" height="300px">
-	</div>
-	<section class="py-5">
-		<div class="container px-4 px-lg-5 mt-5">
-			<div class="row gx-4 gx-lg-5 row-cols-12 row-cols-md-12 row-cols-xl-12 justify-content-center">
-				<div class="row align-items-stretch g-4 py-5">
-					<div class="col">
-						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-1.jpg');">
-							<div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
-								<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Short title, long jacket</h2>
-								<ul class="d-flex list-unstyled mt-auto">
-								<li class="me-auto">
-									<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
-								</li>
-								<li class="d-flex align-items-center me-3">
-									<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
-									<small>Earth</small>
-								</li>
-								<li class="d-flex align-items-center">
-									<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
-									<small>3d</small>
-								</li>
-								</ul>
-							</div>
-						</div>
-      				</div>
-
-					<div class="col">
-						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-2.jpg');">
-						<div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
-							<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Much longer title that wraps to multiple lines</h2>
-							<ul class="d-flex list-unstyled mt-auto">
-							<li class="me-auto">
-								<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
-							</li>
-							<li class="d-flex align-items-center me-3">
-								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
-								<small>Pakistan</small>
-							</li>
-							<li class="d-flex align-items-center">
-								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
-								<small>4d</small>
-							</li>
-							</ul>
-						</div>
-						</div>
-					</div>
-
-					<div class="col">
-						<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-3.jpg');">
-						<div class="d-flex flex-column h-100 p-5 pb-3 text-shadow-1">
-							<h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Another longer title belongs here</h2>
-							<ul class="d-flex list-unstyled mt-auto">
-							<li class="me-auto">
-								<img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle border border-white">
-							</li>
-							<li class="d-flex align-items-center me-3">
-								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#geo-fill"></use></svg>
-								<small>California</small>
-							</li>
-							<li class="d-flex align-items-center">
-								<svg class="bi me-2" width="1em" height="1em"><use xlink:href="#calendar3"></use></svg>
-								<small>5d</small>
-							</li>
-							</ul>
-						</div>
-						</div>
-					</div>
-    			</div>
-			</div>
-		</div>
-	</section>
-    
 
 
 
