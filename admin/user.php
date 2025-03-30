@@ -38,7 +38,6 @@ if (isset($_POST['add_user'])) {
 	$password = $_POST['user_password'];
 	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
-	$type = $_POST['user_type'];
 	$status = $_POST['user_status'];
 
 
@@ -46,8 +45,8 @@ if (isset($_POST['add_user'])) {
 
 	$query = "
 		INSERT INTO lms_user 
-		(user_name, user_email, user_password, user_unique_id, user_contact_no, user_type user_status, user_created_on, user_updated_on) 
-		VALUES (:name, :email, :password, :unique_id :contact, :type :status, :created_on, :updated_on)
+		(user_name, user_email, user_password, user_unique_id, user_contact_no, user_status, user_created_on, user_updated_on) 
+		VALUES (:name, :email, :password, :unique_id :contact, :status, :created_on, :updated_on)
 	";
 
 	$statement = $connect->prepare($query);
@@ -57,7 +56,6 @@ if (isset($_POST['add_user'])) {
 		':password' => password_hash($password, PASSWORD_DEFAULT),
 		':unique_id' => $unique_id,
 		':contact' => $contact,
-		':type' => $type,
 		':status' => $status,
 		':created_on' => $date_now,
         ':updated_on' => $date_now
@@ -75,7 +73,6 @@ if (isset($_POST['edit_user'])) {
 	$password = $_POST['user_password'];
 	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
-	$type = $_POST['user_type'];
 	$status = $_POST['user_status'];
 
 	// Optional password update
@@ -84,8 +81,7 @@ if (isset($_POST['edit_user'])) {
 		SET user_name = :name, 
 		    user_email = :email, 
 			user_unique_id = :unique_id,
-		    user_contact_no = :contact,
-			user_type = :type, 
+		    user_contact_no = :contact, 
 		    user_status = :status";
 
 	if (!empty($password)) {
@@ -99,7 +95,6 @@ if (isset($_POST['edit_user'])) {
 		':email' => $email,
 		':unique_id' => $unique_id,
 		':contact' => $contact,
-		':type' => $type,
 		':status' => $status,
 		':id' => $id
 	];
@@ -205,14 +200,6 @@ include '../header.php';
 						<input type="text" name="user_contact_no" class="form-control" required>
 					</div>
 					<div class="mb-3">
-						<label>User Type</label>
-						<select name="user_type" class="form-select">
-							<option value="Student">Student</option>
-							<option value="Faculty">Faculty</option>
-						</select>
-					</div>
-					
-					<div class="mb-3">
 						<label>Status</label>
 						<select name="user_status" class="form-select">
 							<option value="Enable">Active</option>
@@ -254,7 +241,7 @@ include '../header.php';
 					</div>
 					<div class="mb-3">
 						<label>Email</label>
-						<input type="email" name="user_email" class="form-control" value="<?= $user['user_email'] ?>" required>
+						<input type="email" name="luser_email" class="form-control" value="<?= $user['user_email'] ?>" required>
 					</div>
 					<div class="mb-3">
 						<label>New Password (Leave blank to keep current)</label>
@@ -267,14 +254,6 @@ include '../header.php';
 					<div class="mb-3">
 						<label>Contact</label>
 						<input type="text" name="user_contact_no" class="form-control" value="<?= $user['user_contact_no'] ?>" required>
-					</div>
-					<div class="mb-3">
-						<label>User Type</label>
-						<select name="user_type" class="form-select">
-							<option value="none" <?= $user['user_type'] == 'none' ? 'selected' : '' ?>>----------NONE----------</option>
-							<option value="Student" <?= $user['user_type'] == 'Student' ? 'selected' : '' ?>>Student</option>
-							<option value="Faculty" <?= $user['user_type'] == 'Faculty' ? 'selected' : '' ?>>Faculty</option>
-						</select>
 					</div>
 					<div class="mb-3">
 						<label>Status</label>
@@ -310,7 +289,6 @@ include '../header.php';
 				<p><strong>Email:</strong> <?= htmlspecialchars($user['user_email']) ?></p>
 				<p><strong>User Unique ID:</strong> <?= htmlspecialchars($user['user_unique_id']) ?></p>
 				<p><strong>Contact:</strong> <?= htmlspecialchars($user['user_contact_no']) ?></p>
-				<p><strong>User Type:</strong> <?= htmlspecialchars($user['user_type']) ?></p>
 				<p><strong>Status:</strong> <?= htmlspecialchars($user['user_status']) ?></p>
 				<p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_created_on'])) ?></p>
 				<p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_updated_on'])) ?></p>
@@ -351,7 +329,6 @@ include '../header.php';
 							<th>Email</th>
 							<th>User Unique ID</th>
 							<th>Contact No.</th>
-							<th>User Type</th>
 							<th>Status</th>
                             <th>Created On</th>
                             <th>Updated On</th> 
@@ -367,7 +344,6 @@ include '../header.php';
             <td><?= $row['user_email'] ?></td>
 			<td><?= $row['user_unique_id'] ?></td>
             <td><?= $row['user_contact_no'] ?></td>
-			<td><?= $row['user_type'] ?></td>
             <td>
                 <?= ($row['user_status'] === 'Enable') 
                     ? '<span class="badge bg-success">Active</span>' 

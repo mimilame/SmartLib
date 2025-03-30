@@ -1870,6 +1870,4 @@ function Timezone_list()
 }
 
 
-
-
 ?>
