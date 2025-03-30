@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 <?php
 ob_start();
-=======
-<?php 
->>>>>>> parent of f2d4db1 (ok)
 include 'head.php';
 
 if (session_status() == PHP_SESSION_NONE) {
@@ -220,7 +216,6 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 
 
 <?php 
-<<<<<<< HEAD
     // Redirect guests to index
     /* if ($role_id == 5) {
         header('location:index.php');
@@ -228,9 +223,6 @@ $page_title = $library_name . " - " . ucfirst($user_type);
     } */
 
 ob_end_flush();
-=======
-} 
->>>>>>> parent of f2d4db1 (ok)
 ?>
 
             <!-- Main Page Content Here -->
