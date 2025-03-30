@@ -1,11 +1,20 @@
 <?php
 
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
 //admin/index.php
+// Include path correction - use absolute paths
+$root_path = $_SERVER['DOCUMENT_ROOT'] . '/SmartLib/';
+include_once($root_path . 'database_connection.php');
+include_once($root_path . 'function.php');
 
-include '../database_connection.php';
+// Debug the session to see what's happening
+error_log("Admin index - Session data: " . print_r($_SESSION, true));
 
-include '../function.php';
-include '../header.php';
+// Only include header after session is started and verified
+include_once($root_path . 'header.php');
 
 
 ?>
@@ -82,6 +91,6 @@ include '../header.php';
 
 <?php
 
-include '../footer.php';
+include_once($root_path . 'footer.php');
 
 ?>

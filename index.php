@@ -1,12 +1,20 @@
 <?php
+if (session_status() == PHP_SESSION_NONE) {
+    // Set the cookie parameters to ensure session persistence
+    $lifetime = 86400; // 24 hours in seconds
+    $path = '/';
+    $domain = '';
+    $secure = false;
+    $httponly = true;
+    
+    session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
+    session_start();
+    
+    error_log("Session started with path: " . session_save_path());
+}
 	include 'database_connection.php';
 	include 'function.php';	
 	include 'header.php';
-
-	// Start session if not already started
-	if (session_status() == PHP_SESSION_NONE) {
-		session_start();
-	}
 	
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
@@ -506,21 +514,67 @@
         </div>
 
         <section class="py-5">
-            <div class="container px-4 px-lg-5 mt-5">
+            <div class="container px-4 px-lg-5 mt-2 mb-4">
                 <div class="row gx-4 gx-lg-5 row-cols-12 row-cols-md-12 row-cols-xl-12 justify-content-center">
                     <div class="row align-items-stretch g-4 py-5">
                         <div class="col">
-                            <div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-1.jpg');">
-                                <div class="d-flex flex-column h-100 p-5 pb-3 text-white text-shadow-1">
-                                    <h2 class="pt-5 mt-5 mb-4 display-6 lh-1 fw-bold">Short title, long jacket</h2>
-                                    <ul class="d-flex list-unstyled mt-auto">
-                                        <li class="me-auto">
-                                            <img src="https://github.com/twbs.png" alt="Bootstrap" width="32" height="32" class="rounded-circle ">
-                                        </li>
-                                        <!-- Additional list items -->
-                                    </ul>
-                                </div>
-                            </div>
+							<div class="card card-cover h-100 overflow-hidden text-white bg-dark rounded-5 shadow-lg" style="background-image: url('unsplash-photo-1.jpg');">
+								<div class="d-flex align-items-start justify-content-between">
+		
+										<!-- Left Section: Logo and Title -->
+										<div class="d-flex flex-column align-items-center p-4" style="flex: 1;">
+											<img src="asset\img\campus_logo.png" alt="School Logo" class="logo" />
+											<h1 class="logo-name text-white mt-3">WMSU ESU CURUAN</h1>
+											<h2 class="faq-title text-white">Frequently Asked Questions</h2>
+										</div>
+
+										<!-- Right Section: Accordion -->
+										<div class="accordion-container p-4" style="flex: 2;">
+											<div class="accordion" id="libraryFaqAccordion">
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="faqHeading1">
+												<button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse1" aria-expanded="true" aria-controls="faqCollapse1">
+													What are the library’s operating hours?
+												</button>
+												</h2>
+												<div id="faqCollapse1" class="accordion-collapse collapse show" aria-labelledby="faqHeading1" data-bs-parent="#libraryFaqAccordion">
+												<div class="accordion-body">
+													The library is open Monday to Friday, 8:00 AM to 6:00 PM, and Saturday, 9:00 AM to 1:00 PM.
+												</div>
+												</div>
+											</div>
+
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="faqHeading2">
+												<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse2" aria-expanded="false" aria-controls="faqCollapse2">
+													How can I borrow books?
+												</button>
+												</h2>
+												<div id="faqCollapse2" class="accordion-collapse collapse" aria-labelledby="faqHeading2" data-bs-parent="#libraryFaqAccordion">
+												<div class="accordion-body">
+													Students and faculty can borrow books using their library card. Visit the front desk for assistance.
+												</div>
+												</div>
+											</div>
+											<div class="accordion-item">
+												<h2 class="accordion-header" id="faqHeading2">
+												<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse3" aria-expanded="false" aria-controls="faqCollapse3">
+													What if I return a book late?
+												</button>
+												</h2>
+												<div id="faqCollapse3" class="accordion-collapse collapse" aria-labelledby="faqHeading3" data-bs-parent="#libraryFaqAccordion">
+												<div class="accordion-body">
+													Late returns incur a fee of PHP 10 per day. Please ensure timely returns to avoid penalties.
+												</div>
+												</div>
+											</div>
+											<!-- Add other accordion items here as necessary -->
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
                         </div>
                         <!-- Additional column divs -->
                     </div>
@@ -582,8 +636,6 @@ loginBtn.addEventListener('click', () => {
 });
 
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.3/TimelineLite.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/87/three.min.js"></script>
 <script src="./asset/js/background.js"></script>
 <script src="./asset/js/background.min.js"></script>
 
