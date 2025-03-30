@@ -143,7 +143,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 					</p>
 				</address>
 			</div>
-		<header class="header mask d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-light w-100">
+		<header class="mask d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-light w-100">
 			<a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
 				<img src="asset\img\logo.png" alt="SmartLib" width="32" height="32" class="rounded-circle ">
 				<?php echo $library_name; ?>
@@ -193,7 +193,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 					</p>
 				</address>
 			</div>
-		<header class="header mask d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-danger w-100">
+		<header class="mask d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-danger w-100">
 			<a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 ms-2 text-light fw-bold text-decoration-none">
 				<img src="asset\img\logo.png" alt="SmartLib" width="32" height="32" class="rounded-circle ">
 				<?php echo $library_name; ?>
