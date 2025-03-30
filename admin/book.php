@@ -4,7 +4,13 @@
 include '../database_connection.php';
 include '../function.php';
 
-
+// Get the user role
+$user_role = $_SESSION['role_id'];
+// Restrict access to Admin & Librarian only
+if ($user_role != 1 && $user_role != 2) {
+    header("Location: index.php");
+    exit();
+}
 
 $message = '';
 
@@ -51,25 +57,45 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
     exit;
 }
 
-// ADD Book
+// ADD Book (Form Submit)
 if (isset($_POST['add_book'])) {
-    $name = $_POST['book_name'];
-    $category_id = $_POST['category_id'];
-    $author = $_POST['book_author'];
-    $rack = $_POST['book_location_rack'];
-    $isbn = $_POST['book_isbn_number'];
-    $no_of_copies = $_POST['book_no_of_copy'];
-    $status = $_POST['book_status'];
+    $name = trim($_POST['book_name']); // Clean the input
+    $category_id = trim($_POST['category_id']);
+    $author = trim($_POST['book_author']);
+    $rack = trim($_POST['book_location_rack']);
+    $isbn = trim($_POST['book_isbn_number']);
+    $no_of_copies = trim($_POST['book_no_of_copy']);
+    $status = trim($_POST['book_status']);
 
+    // Check for duplicate Title or ISBN (case-insensitive comparison)
+    $check_query = "
+        SELECT COUNT(*) 
+        FROM lms_book 
+        WHERE LOWER(book_name) = LOWER(:name) OR book_isbn_number = :isbn
+    ";
 
-    $date_now = get_date_time($connect);
+    $statement = $connect->prepare($check_query);
+    $statement->execute([
+        ':name' => $name,
+        ':isbn' => $isbn
+    ]);
+    $count = $statement->fetchColumn();
+
+    if ($count > 0) {
+        // Book title or ISBN already exists
+        header('location:book.php?action=add&error=exists');
+        exit;
+    }
+
+    // If not existing, insert new book
+    $date_now = get_date_time($connect); // Get the current date once
 
     $query = "
         INSERT INTO lms_book 
-        (book_name, category_id, book_author, book_location_rack, book_isbn_number , book_no_of_copy, book_status, book_added_on, book_updated_on) 
-        VALUES (:name, :category_id, :author, :rack, :isbn , :no_of_copies, :status, :added_on, :updated_on)
+        (book_name, category_id, book_author, book_location_rack, book_isbn_number, book_no_of_copy, book_status, book_added_on, book_updated_on) 
+        VALUES (:name, :category_id, :author, :rack, :isbn, :no_of_copies, :status, :added_on, :updated_on)
     ";
-
+    
     $statement = $connect->prepare($query);
     $statement->execute([
         ':name' => $name,
@@ -79,13 +105,15 @@ if (isset($_POST['add_book'])) {
         ':isbn' => $isbn,
         ':no_of_copies' => $no_of_copies,
         ':status' => $status,
-        ':added_on' => $date_now,
+        ':added_on' => $date_now,   
         ':updated_on' => $date_now
     ]);
 
     header('location:book.php?msg=add');
     exit;
 }
+
+
 
 // EDIT Book
 if (isset($_POST['edit_book'])) {
@@ -168,66 +196,99 @@ include '../header.php';
             });
         </script>
     <?php endif; ?>
-	<?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
-		<!-- Add Book Form -->
-		<div class="card">
-			<div class="card-header"><h5>Add Book</h5></div>
-			<div class="card-body">
-				<form method="post">
-					<div class="mb-3">
-						<label>Book Title</label>
-						<input type="text" name="book_name" class="form-control" required>
-					</div>
-					<div class="mb-3">
-	<label>Author</label>
-	<select name="book_author" class="form-control select2-author" required>
-		<option value="">Select Author</option>
-		<?php foreach ($authors as $author): ?>
-			<option value="<?= htmlspecialchars($author['author_name']) ?>"><?= htmlspecialchars($author['author_name']) ?></option>
-		<?php endforeach; ?>
-	</select>
+    
+    <?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
+    <!-- Add Book Form -->
+    <div class="card">
+        <div class="card-header"><h5>Add Book</h5></div>
+        <div class="card-body">
+
+            <?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
+                <div class="alert alert-danger" id="error-alert">
+                    The book title or ISBN number already exists. Please try again with a different one.
+                </div>
+            <?php endif; ?>
+
+            <form method="post">
+                <div class="mb-3">
+                    <label>Book Title</label>
+                    <input type="text" name="book_name" class="form-control" required>
+                </div>
+
+                <!-- Author Dropdown (Only enabled authors) -->
+                <div class="mb-3">
+    <label>Author</label>
+    <select name="book_author" class="form-control select2-author" required>
+        <option value="">Select Author</option>
+        <?php 
+        $query = "SELECT author_name FROM lms_author WHERE author_status = 'Enable' ORDER BY author_name ASC";
+        $statement = $connect->prepare($query);
+        $statement->execute();
+        $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($authors as $author): ?>
+            <option value="<?= htmlspecialchars($author['author_name']) ?>"><?= htmlspecialchars($author['author_name']) ?></option>
+        <?php endforeach; ?>
+    </select>
 </div>
 
-<div class="mb-3">
-	<label>Category</label>
-	<select name="category_id" class="form-control select2-category" required>
-		<option value="">Select Category</option>
-		<?php foreach ($categories as $category): ?>
-			<option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-		<?php endforeach; ?>
-	</select>
+                <!-- Category Dropdown (Only enabled categories) -->
+                <div class="mb-3">
+    <label>Category</label>
+    <select name="category_id" class="form-control select2-category" required>
+        <option value="">Select Category</option>
+        <?php 
+        $query = "SELECT category_id, category_name FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
+        $statement = $connect->prepare($query);
+        $statement->execute();
+        $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($categories as $category): ?>
+            <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
+        <?php endforeach; ?>
+    </select>
 </div>
 
-<div class="mb-3">
-	<label>Location Rack</label>
-	<select name="book_location_rack" class="form-control select2-rack" required>
-		<option value="">Select Rack</option>
-		<?php foreach ($racks as $rack): ?>
-			<option value="<?= htmlspecialchars($rack['book_location_rack']) ?>"><?= htmlspecialchars($rack['book_location_rack']) ?></option>
-		<?php endforeach; ?>
-	</select>
+                <!-- Rack Dropdown (Only enabled racks) -->
+                <div class="mb-3">
+    <label>Location Rack</label>
+    <select name="book_location_rack" class="form-control select2-rack" required>
+        <option value="">Select Rack</option>
+        <?php 
+        $query = "SELECT location_rack_id, location_rack_name FROM lms_location_rack WHERE location_rack_status = 'Enable' ORDER BY location_rack_name ASC";
+        $statement = $connect->prepare($query);
+        $statement->execute();
+        $racks = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($racks as $rack): ?>
+            <option value="<?= htmlspecialchars($rack['location_rack_id']) ?>"><?= htmlspecialchars($rack['location_rack_name']) ?></option>
+        <?php endforeach; ?>
+    </select>
 </div>
 
-					<div class="mb-3">
-						<label>ISBN Number</label>
-						<input type="text" name="book_isbn_number" class="form-control">
-					</div>
-					<div class="mb-3">
-						<label>No. of Copy</label>
-						<input type="number" name="book_no_of_copy" class="form-control" required>
-					</div>
-					<div class="mb-3">
-						<label>Status</label>
-						<select name="book_status" class="form-select">
-							<option value="Enable">Active</option>
-							<option value="Disable">Not Active</option>
-						</select>
-					</div>
-					<input type="submit" name="add_book" class="btn btn-success" value="Add Book">
-					<a href="book.php" class="btn btn-secondary">Cancel</a>
-				</form>
-			</div>
-		</div>
+                <div class="mb-3">
+                    <label>ISBN Number</label>
+                    <input type="text" name="book_isbn_number" class="form-control">
+                </div>
+                
+                <div class="mb-3">
+                    <label>No. of Copy</label>
+                    <input type="number" name="book_no_of_copy" class="form-control" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label>Status</label>
+                    <select name="book_status" class="form-select">
+                        <option value="Enable">Active</option>
+                        <option value="Disable">Not Active</option>
+                    </select>
+                </div>
+
+                <input type="submit" name="add_book" class="btn btn-success" value="Add Book">
+                <a href="book.php" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
 
 
 	<?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>   
@@ -499,5 +560,53 @@ document.addEventListener('DOMContentLoaded', function() {
 	});
 </script>
 
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		const alertBox = document.getElementById('error-alert');
+
+		if (alertBox) {
+			// Display the alert for 3 seconds (3000ms)
+			setTimeout(function() {
+				// Optional fade-out effect
+				alertBox.style.transition = 'opacity 0.5s ease';
+				alertBox.style.opacity = '0';
+
+				// Remove the alert after fade (0.5s delay)
+				setTimeout(function() {
+					alertBox.remove();
+				}, 500);
+
+				// Remove 'error' param from the URL after the alert disappears
+				if (window.history.replaceState) {
+					const url = new URL(window.location);
+					url.searchParams.delete('error');
+					window.history.replaceState({}, document.title, url.pathname + url.search);
+				}
+			}, 3000); // You can change this to 5000 for 5 seconds, etc.
+		}
+	});
+</script>
+
+<?php if (isset($_GET["msg"])): ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                <?php if ($_GET["msg"] == 'disable'): ?>
+                    Swal.fire('Book Disabled', 'The book has been successfully disabled.', 'success');
+                <?php elseif ($_GET["msg"] == 'enable'): ?>
+                    Swal.fire('Book Enabled', 'The book has been successfully enabled.', 'success');
+                <?php elseif ($_GET["msg"] == 'add'): ?>
+                    Swal.fire('Book Added', 'The book was added successfully!', 'success');
+                <?php elseif ($_GET["msg"] == 'edit'): ?>
+                    Swal.fire('Book Updated', 'The book was updated successfully!', 'success');
+                <?php endif; ?>
+
+                if (window.history.replaceState) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('msg');
+                    window.history.replaceState({}, document.title, url.pathname + url.search);
+                }
+            });
+        </script>
+    <?php endif; ?>
 
 

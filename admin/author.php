@@ -4,6 +4,14 @@
 include '../database_connection.php';
 include '../function.php';
 
+// Get the user role
+$user_role = $_SESSION['role_id'];
+// Restrict access to Admin & Librarian only
+if ($user_role != 1 && $user_role != 2) {
+    header("Location: index.php");
+    exit();
+}
+
 $message = ''; // Feedback message
 
 // DELETE (Disable/Enable)
@@ -438,6 +446,3 @@ document.addEventListener('DOMContentLoaded', function() {
 	});
 </script>
 
-
-
-<?php include '../footer.php'; ?>
