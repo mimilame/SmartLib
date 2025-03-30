@@ -12832,7 +12832,7 @@ a:focus {
 
 .book-slide {
   width: 100%;
-  margin-top: 130px;
+  margin-top: 65px;
 }
 
 .book {
@@ -13461,7 +13461,7 @@ h1 {
   background: #002147 none repeat scroll 0 0;
   text-align: center;
   position: relative;
-  z-index: 1;
+  z-index: 0;
   background-size: cover;
 }
 
@@ -13522,3 +13522,55 @@ h1 {
 #front-page-home-sections .home-section-call-to-action::before{background-color:#ff5577;}
 #front-page-home-sections .home-section-call-to-action .cta-buttons a,#front-page-home-sections .home-section-call-to-action .cta-buttons a.custom-button.button-secondary.cta-btn:hover, #front-page-home-sections .home-section-call-to-action .cta-buttons a.custom-button.button-secondary.cta-btn:active, #front-page-home-sections .home-section-call-to-action .cta-buttons a.custom-button.button-secondary.cta-btn:focus{background-color:#1e73be;     color: #ffff;}
 #front-page-home-sections .home-section-team  .section-title {color:#0a0000}
+
+/* Left Section: Logo and Text */
+.logo {
+  width: 220px;
+  height: auto;
+  border-radius: 50%;
+}
+
+.logo-name {
+  font-size: 24px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.faq-title {
+  font-size: 18px;
+  margin-top: 10px;
+  color: #e5e5e5;
+}
+
+/* Right Section: Accordion */
+.accordion .accordion-item {
+  background-color: transparent;
+  border: none;
+}
+
+.accordion .accordion-header .accordion-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.accordion .accordion-header .accordion-button:not(.collapsed) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffff;
+}
+
+.accordion .accordion-body {
+  color: white;
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .d-flex {
+    flex-direction: column;
+  }
+  .logo {
+    margin: 0 auto;
+  }
+}

@@ -5,193 +5,77 @@ function base_url()
 {
 	return 'http://localhost/SmartLib/';
 }
-function startUserSession($userUniqueId, $roleId, $adminUniqueId = null, $librarianUniqueId = null) {
-    $_SESSION['user_unique_id'] = $userUniqueId;
-    $_SESSION['admin_unique_id'] = $adminUniqueId;
-    $_SESSION['librarian_unique_id'] = $librarianUniqueId;
-    $_SESSION['role_id'] = $roleId;
+
+function startUserSession($user_unique_id, $role_id, $role_name) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $_SESSION['user_unique_id'] = $user_unique_id;
+    $_SESSION['role_id'] = $role_id;
+    $_SESSION['role_name'] = $role_name;
+
+    error_log("Session started: " . print_r($_SESSION, true)); // Debugging
 }
 
 function redirect_logged_in_user($roleId) {
-    $base_url = base_url(); // Use the function to get base URL
-    
-    $redirects = [
-        1 => $base_url . "admin/index.php",  // Admin
-        2 => $base_url . "admin/index.php",  // Librarian
-        3 => $base_url . "user/index.php",   // Faculty
-        4 => $base_url . "user/index.php",   // Student
-        5 => $base_url . "index.php"         // Visitor
-    ];
+    $base_url = base_url();
 
-	error_log("Redirect Role ID: " . $roleId);
-
-	if (isset($redirects[$roleId])) {
-		error_log("Redirecting to: " . $redirects[$roleId]);
-		header("Location: " . $redirects[$roleId]);
-		exit();
-	} else {
-		error_log("Default Redirect to Root Index");
-		header("Location: " . $base_url . "index.php");
-		exit();
-	}
-
-	
-}
-
-function get_user_role()
-{
-    // Check if no session variables are set
-    if (!isset($_SESSION['user_unique_id']) && !isset($_SESSION['librarian_unique_id']) && !isset($_SESSION['admin_unique_id'])) {
-        return null; // No session means no role detected
-    }
-
-    // Determine unique ID for the logged-in user
-    $unique_id = $_SESSION['user_unique_id'] ?? $_SESSION['librarian_unique_id'] ?? $_SESSION['admin_unique_id'] ?? null;
-
-    // Return null if no unique ID exists
-    if ($unique_id === null) {
-        return null;
-    }
-
-    // Extract the first character prefix from the unique ID
-    $prefix = strtoupper(substr($unique_id, 0, 1)); // Get the first letter (uppercase)
-
-    // Map the prefix to a role name
-    switch ($prefix) {
-        case 'A':
-            return 'admin';       // Admin
-        case 'L':
-            return 'librarian';   // Librarian
-        case 'U':
-            return 'visitor';     // Visitor
-        case 'F':
-            return 'faculty';     // Faculty
-        case 'S':
-            return 'student';     // Student
+    switch ($roleId) {
+        case 1: // Admin
+        case 2: // Librarian
+            header("Location: " . $base_url . "admin/index.php");
+            break;
+        case 3: // Faculty
+        case 4: // Student
+            header("Location: " . $base_url . "user/index.php");
+            break;
+        case 5: // Visitor
+            header("Location: " . $base_url);
+            break;
         default:
-            return null;           // Guest or invalid role
+            header("Location: " . $base_url);
     }
-} 
-
-function fetchRoleName($userUniqueId) {
-	// Return null if the input is empty or invalid
-    if (empty($userUniqueId)) {
-        return null;
-    }
-
-    // Extract the prefix (first character) from the unique ID
-    $prefix = strtoupper(substr($userUniqueId, 0, 1)); // Get the first letter (uppercase)
-    return get_user_role($prefix);
+    exit();
 }
 
-function is_logged_in($role = null)
-{
-    // Check if any type of user session (admin, librarian, or user) is set
-    if (!isset($_SESSION['user_unique_id']) && !isset($_SESSION['librarian_unique_id']) && !isset($_SESSION['admin_unique_id'])) {
-        return false; // No session means not logged in
+// Process login function
+function process_login($connect, $email, $password) {
+	if (session_status() == PHP_SESSION_NONE) {
+        session_start();
     }
-
-    // Determine user role based on which unique_id session is set
-    if (isset($_SESSION['admin_unique_id'])) {
-        $user_role = 'admin';
-    } elseif (isset($_SESSION['librarian_unique_id'])) {
-        $user_role = 'librarian';
-    } elseif (isset($_SESSION['user_unique_id'])) {
-        $user_role = 'user';
-    } else {
-        return false; // No valid role found
-    }
-
-    // If no specific role is requested, just check if logged in
-    if ($role === null) {
-        return true;
-    }
-
-    // Match role if specified
-    return $user_role === strtolower($role);
-}
-
-// Function to process login
-function process_login($connect, $email, $password)
-{
-    // Debugging: Log the login attempt
     error_log("Login attempt for email: $email");
 
-    // Check if the email exists in admin table
-    $admin_query = "SELECT * FROM lms_admin WHERE admin_email = :email";
-    $admin_statement = $connect->prepare($admin_query);
-    $admin_statement->execute([':email' => $email]);
+    // Query to search across all user types using UNION
+    $query = "
+        SELECT u.*, r.role_name
+        FROM (
+            SELECT admin_unique_id AS user_unique_id, admin_email AS email, admin_password AS password, role_id FROM lms_admin
+            UNION ALL
+            SELECT librarian_unique_id, librarian_email, librarian_password, role_id FROM lms_librarian
+            UNION ALL
+            SELECT user_unique_id, user_email, user_password, role_id FROM lms_user
+        ) AS u
+        INNER JOIN user_roles r ON u.role_id = r.role_id
+        WHERE u.email = :email
+    ";
 
-    if ($admin_statement->rowCount() > 0) {
-        $row = $admin_statement->fetch(PDO::FETCH_ASSOC);
+    $statement = $connect->prepare($query);
+    $statement->execute([':email' => $email]);
+    
+    if ($statement->rowCount() > 0) {
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        error_log("Stored password: " . $row['password']);
         
-        // Debug: Log stored password and input password
-        error_log("Admin stored password: " . $row['admin_password']);
-        error_log("Input password: " . $password);
+        // Verify password
+        if (password_verify($password, $row['password']) || $password === $row['password']) {
+            startUserSession($row['user_unique_id'], $row['role_id'], $row['role_name']);
 
-        // Check for exact match or hash match
-        if ($password === $row['admin_password'] || password_verify($password, $row['admin_password'])) {
-			// Start session for Admin
-			$_SESSION['user_unique_id'] = $row['admin_unique_id'];
-			$_SESSION['role_id'] = $row['role_id'];
-		
-			// Debugging: Output session variables
-			error_log("Admin login successful. Session variables: " . print_r($_SESSION, true));
-		
-			return ['success' => true, 'user_type' => 'admin'];
-		}
-		
-        return ['success' => false, 'message' => 'Wrong Password for Admin'];
-    }
-
-    // Check if the email exists in librarian table
-    $librarian_query = "SELECT * FROM lms_librarian WHERE librarian_email = :email";
-    $librarian_statement = $connect->prepare($librarian_query);
-    $librarian_statement->execute([':email' => $email]);
-
-    if ($librarian_statement->rowCount() > 0) {
-		$row = $librarian_statement->fetch(PDO::FETCH_ASSOC);
-	
-		error_log("Librarian Stored Password: " . $row['librarian_password']);
-		error_log("Input Password: " . $password);
-	
-		if (password_verify($password, $row['librarian_password']) || $password === $row['librarian_password']) {
-			$_SESSION['user_unique_id'] = $row['librarian_unique_id'];
-			$_SESSION['role_id'] = $row['role_id'];
-	
-			error_log("Librarian Login Successful. Session: " . print_r($_SESSION, true));
-			return ['success' => true, 'user_type' => 'librarian'];
-		}
-	
-		return ['success' => false, 'message' => 'Wrong Password for Librarian'];
-	}
-
-    // Check if the email exists in user table
-    $user_query = "SELECT * FROM lms_user WHERE user_email = :email";
-    $user_statement = $connect->prepare($user_query);
-    $user_statement->execute([':email' => $email]);
-
-    if ($user_statement->rowCount() > 0) {
-        $row = $user_statement->fetch(PDO::FETCH_ASSOC);
+            error_log("Login successful. Role ID: " . $_SESSION['role_id'] . " | Role Name: " . $_SESSION['role_name']);
+            return ['success' => true, 'role_id' => $row['role_id']];
+        }
         
-        // Debug: Log stored password and input password
-        error_log("User stored password: " . $row['user_password']);
-        error_log("Input password: " . $password);
-
-        // Check for user status
-        if ($row['user_status'] !== 'Enable') {
-            return ['success' => false, 'message' => 'Your Account has been disabled'];
-        }
-
-        // Check for hash match or exact match
-        if (password_verify($password, $row['user_password']) || 
-            $password === $row['user_password']) {
-            // Start session for User
-            $_SESSION['user_unique_id'] = $row['user_unique_id'];
-            $_SESSION['role_id'] = $row['role_id'];
-            return ['success' => true, 'user_type' => 'user'];
-        }
-        return ['success' => false, 'message' => 'Wrong Password for User'];
+        return ['success' => false, 'message' => 'Wrong password'];
     }
 
     return ['success' => false, 'message' => 'Email address not found'];
@@ -396,6 +280,73 @@ function sweet_alert($type, $message)
     </script>
     ';
 }
+
+function get_user_role()
+{
+    // Check if no session variables are set
+    if (!isset($_SESSION['user_unique_id']) && !isset($_SESSION['librarian_unique_id']) && !isset($_SESSION['admin_unique_id'])) {
+        return null; // No session means no role detected
+    }
+
+    // Determine unique ID for the logged-in user
+    $unique_id = $_SESSION['user_unique_id'] ?? $_SESSION['librarian_unique_id'] ?? $_SESSION['admin_unique_id'] ?? null;
+
+    // Return null if no unique ID exists
+    if ($unique_id === null) {
+        return null;
+    }
+
+    // Extract the first character prefix from the unique ID
+    $prefix = strtoupper(substr($unique_id, 0, 1)); // Get the first letter (uppercase)
+
+    // Map the prefix to a role name
+    switch ($prefix) {
+        case 'A':
+            return 'admin';       // Admin
+        case 'L':
+            return 'librarian';   // Librarian
+        case 'U':
+            return 'visitor';     // Visitor
+        case 'F':
+            return 'faculty';     // Faculty
+        case 'S':
+            return 'student';     // Student
+        default:
+            return null;           // Guest or invalid role
+    }
+} 
+
+function fetchRoleName($userUniqueId) {
+	// Return null if the input is empty or invalid
+    if (empty($userUniqueId)) {
+        return null;
+    }
+
+    // Extract the prefix (first character) from the unique ID
+    $prefix = strtoupper(substr($userUniqueId, 0, 1)); // Get the first letter (uppercase)
+    return get_user_role($prefix);
+}
+
+function is_logged_in($type) {
+    if (!isset($_SESSION['role_name'])) {
+        return false;
+    }
+    
+    if ($type == 'admin' && $_SESSION['role_id'] == 1) {
+        return true;
+    } else if ($type == 'librarian' && $_SESSION['role_id'] == 2) {
+        return true;
+    } else if ($type == 'faculty' && $_SESSION['role_id'] == 3) {
+        return true;
+    } else if ($type == 'student' && $_SESSION['role_id'] == 4) {
+        return true;
+    } else if ($type == 'visitor' && $_SESSION['role_id'] == 5) {
+        return true;
+    }
+    
+    return false;
+}
+
 function is_authenticated_admin() {
     // Check if admin or librarian session is set
     $is_logged_in = isset($_SESSION['admin_unique_id']) && 
