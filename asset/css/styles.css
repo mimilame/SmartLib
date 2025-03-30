@@ -12619,11 +12619,7 @@ div.dataTable {
 }
 
 
-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
+.header {
   padding: 16px 20px 30px 20px;
   display: flex;
   align-items: center;
@@ -12639,19 +12635,19 @@ canvas {
   background-color: var(--theme-bg-color) !important;
 }
 
-header.mask {
+.header.mask {
   top: 60px;
   mask-image: linear-gradient(#000000 70%, #000000 80%, #00000000);
   -webkit-mask-image: linear-gradient(#000000 70%, #000000 80%, #00000000);
 }
 
 @media (min-width: 640px) {
-  header {
+  .header {
     padding: 16px 50px 30px 50px;
   }
 }
 
-header.is-hidden {
+.header.is-hidden {
   transform: translateY(-100%);
 }
 
