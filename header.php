@@ -44,7 +44,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
                     <a class="nav-link text-light" href="<?php echo base_url(); ?>admin/user.php">Users</a>
                 <?php endif; ?>
                 <a class="nav-link text-light" href="<?php echo base_url(); ?>admin/report.php">Reports</a>
-                <a class="nav-link text-light" href="<?php echo base_url(); ?>admin/fine.php">Fines</a>
+                <a class="nav-link text-light" href="<?php echo base_url(); ?>admin/fines.php">Fines</a>
             </nav>
         </div>
         <div class="flex-grow-1 overflow-auto">

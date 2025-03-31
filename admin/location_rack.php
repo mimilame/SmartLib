@@ -4,14 +4,6 @@
 include '../database_connection.php';
 include '../function.php';
 
-// Get the user role
-$user_role = $_SESSION['role_id'];
-// Restrict access to Admin & Librarian only
-if ($user_role != 1 && $user_role != 2) {
-    header("Location: index.php");
-    exit();
-}
-
 $message = ''; // Feedback message
 
 
@@ -34,7 +26,7 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 	$statement = $connect->prepare($query);
 	$statement->execute($data);
 
-	header('location:category.php?msg=' . strtolower($status) . '');
+	header('location:location_rack.php?msg=' . strtolower($status) . '');
 	exit;
 }
 
@@ -77,7 +69,7 @@ if (isset($_POST['add_rack'])) {
         ':updated_on' => $date_now
     ]);
     
-    header('location:rack.php?msg=add');
+    header('location:location_rack.php?msg=add');
     exit;
 }
 
