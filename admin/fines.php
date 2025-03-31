@@ -1,12 +1,11 @@
 <?php
-// book.php
+// fines.php
 
 include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
 $message = '';
-
 
 // DELETE (Disable/Enable)
 if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
@@ -30,51 +29,6 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
     header('location:fines.php?msg=' . strtolower($status));
     exit;
 }
-
-
-// EDIT fine (Form Submit)
-if (isset($_POST['edit_fine'])) {
-    $fines_id = $_POST['fines_id'];
-    $user_id = $_POST['user_id'];
-    $issue_book_id = $_POST['issue_book_id'];
-    $expected_return_date = $_POST['expected_return_date'];
-    $return_date = $_POST['return_date'];
-    $days_late = $_POST['days_late'];
-    $fines_amount = $_POST['fines_amount'];
-    $fines_status = $_POST['fines_status'];
-
-    $update_query = "
-        UPDATE lms_fines 
-        SET user_id = :user_id,
-            issue_book_id = :issue_book_id,
-            expected_return_date = :expected_return_date,
-            return_date = :return_date,
-            days_late = :days_late,
-            fines_amount = :fines_amount,
-            fines_status = :fines_status,
-            fines_updated_on = :updated_on
-        WHERE fines_id = :fines_id
-    ";
-
-    $params = [
-        ':user_id' => $user_id,
-        ':issue_book_id' => $issue_book_id,
-        ':expected_return_date' => $expected_return_date,
-        ':return_date' => $return_date,
-        ':days_late' => $days_late,
-        ':fines_amount' => $fines_amount,
-        ':fines_status' => $fines_status,
-        ':updated_on' => get_date_time($connect),
-        ':fines_id' => $fines_id
-    ];
-
-    $statement = $connect->prepare($update_query);
-    $statement->execute($params);
-
-    header('location:fines.php?msg=edit');
-    exit;
-}
-
 
 
 // Fetch all fines with user and book details
@@ -108,7 +62,50 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
-    <h1 class="my-3">Fines Management</h1>
+
+<h1 class="my-3">Fines Management</h1>
+	<div class="row mb-4">
+
+    <div class="col-xl-3 col-md-6">
+         <div class="card bg-white text-danger shadow mx-3 mb-4">
+             <div class="card-body">
+             <h5 class="text-center text-black">Total Outstanding</h5>
+             <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_total_fines_outstanding($connect); ?></h1>
+            <p class="text-center text-black">From <?php echo Count_total_users_with_fines($connect); ?> users</p>
+             </div>
+         </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+         <div class="card bg-white text-success shadow mx-3 mb-4">
+             <div class="card-body">
+             <h5 class="text-center text-black">Collected This Month</h5>
+             <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_total_fines_received($connect); ?></h1>
+             <p class="text-center text-black"><?php echo Count_total_payments_made($connect); ?> payments</p>
+             </div>
+         </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+    <div class="card bg-white text-black shadow mx-3 mb-4">
+        <div class="card-body">
+            <h5 class="text-center text-black">Total Fines</h5>
+            <h1 class="text-center"><?php echo Count_total_fines($connect); ?></h1>
+            <p class="text-center text-black">Total number of fines issued</p>
+        </div>
+    </div>
+</div>
+
+<div class="col-xl-3 col-md-6">
+    <div class="card bg-white text-black shadow mx-3 mb-4">
+        <div class="card-body">
+            <h5 class="text-center text-black">Fines Paid Today</h5>
+            <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_fines_paid_today($connect); ?></h1>
+            <p class="text-center text-black">Fines paid on <?php echo date('F j, Y'); ?></p>
+        </div>
+    </div>
+</div>
+
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
@@ -165,116 +162,11 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
         </script>
     <?php endif; ?>
 
-    <?php if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>
-
-<?php
-$id = $_GET['code'];
-$query = "SELECT * FROM lms_fines WHERE fines_id = :id LIMIT 1";
-$statement = $connect->prepare($query);
-$statement->execute([':id' => $id]);
-$fine = $statement->fetch(PDO::FETCH_ASSOC);
-?>
-
-<?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
-<div class="alert alert-danger">
-    Fine already exists. Please choose another name.
-</div>
-<?php endif; ?>
-
-<!-- Edit Fine Form -->
-<div class="card">
-    <div class="card-header"><h5>Edit Fine</h5></div>
-    <div class="card-body">
-        <form method="post">
-            <input type="hidden" name="fines_id" value="<?= $fine['fines_id'] ?>">
-
-            <div class="mb-3">
-                <label>User ID</label>
-                <input type="number" name="user_id" class="form-control" value="<?= htmlspecialchars($fine['user_id']) ?>" required>
-            </div>
-
-            <div class="mb-3">
-                <label>Issue Book ID</label>
-                <input type="number" name="issue_book_id" class="form-control" value="<?= htmlspecialchars($fine['issue_book_id']) ?>" required>
-            </div>
-
-            <div class="mb-3">
-                <label>Expected Return Date</label>
-                <input type="date" name="expected_return_date" class="form-control" value="<?= htmlspecialchars($fine['expected_return_date']) ?>" required>
-            </div>
-
-            <div class="mb-3">
-                <label>Return Date</label>
-                <input type="date" name="return_date" class="form-control" value="<?= htmlspecialchars($fine['return_date']) ?>" required>
-            </div>
-
-            <div class="mb-3">
-                <label>Days Late</label>
-                <input type="number" name="days_late" class="form-control" value="<?= htmlspecialchars($fine['days_late']) ?>" required min="0">
-            </div>
-
-            <div class="mb-3">
-                <label>Fine Amount</label>
-                <input type="number" name="fines_amount" class="form-control" value="<?= htmlspecialchars($fine['fines_amount']) ?>" required min="0" step="0.01">
-            </div>
-
-            <div class="mb-3">
-                <label>Status</label>
-                <select name="fines_status" class="form-select">
-                <option value="Paid" <?= $fine['fines_status'] == 'Paid' ? 'selected' : '' ?>>Paid</option>
-                <option value="Unpaid" <?= $fine['fines_status'] == 'Unpaid' ? 'selected' : '' ?>>Unpaid</option>
-                </select>
-
-            </div>
-
-            <input type="submit" name="edit_fine" class="btn btn-primary" value="Update Fine">
-            <a href="fines.php" class="btn btn-secondary">Cancel</a>
-        </form>
-    </div>
-</div>
-
-
-<?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
-    <?php
-        $id = $_GET['code'];
-        $query = "SELECT * FROM lms_fines WHERE fines_id = :id LIMIT 1";
-        $statement = $connect->prepare($query);
-        $statement->execute([':id' => $id]);
-        $fine = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if ($fine): 
-    ?>
-
-    <!-- View Fine Details -->
-    <div class="card">
-        <div class="card-header"><h5>View Fine</h5></div>
-        <div class="card-body">
-            <p><strong>ID:</strong> <?= htmlspecialchars($fine['fines_id']) ?></p>
-            <p><strong>User ID:</strong> <?= htmlspecialchars($fine['user_id']) ?></p>
-            <p><strong>Issue Book ID:</strong> <?= htmlspecialchars($fine['issue_book_id']) ?></p>
-            <p><strong>Fine Amount:</strong> ₱<?= htmlspecialchars(number_format($fine['fines_amount'], 2)) ?></p>
-            <p><strong>Status:</strong> <?= htmlspecialchars($fine['fines_status']) ?></p>
-            <p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($fine['fines_created_on'])) ?></p>
-            <p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($fine['fines_updated_on'])) ?></p>
-            <a href="fines.php" class="btn btn-secondary">Back</a>
-        </div>
-    </div>
-
-    <?php 
-        else: 
-    ?>
-        <p class="alert alert-danger">Fine not found.</p>
-        <a href="fines.php" class="btn btn-secondary">Back</a>
-    <?php 
-        endif;
-    
-    else: ?>
-
 
 <!-- Fines Management -->
 
 
-<div class="d-flex justify-content-between mb-3">
+<div class="d-flex justify-content-between mx-3 mb-3">
     <!-- Long Search Bar -->
     <div class="w-75 me-2">
         <input type="text" class="form-control" id="searchInput" placeholder="Search by User Name or Issue Book ID">
@@ -290,8 +182,8 @@ $fine = $statement->fetch(PDO::FETCH_ASSOC);
     </div>
 </div>
 
-    <div class="card-body" style="overflow-x: auto;">
-        <table id="dataTable" class="display nowrap" style="width:100%">
+    <div class="card-body mx-3" style="overflow-x: auto;">
+        <table id="dataTable" class="display nowrap cell-border" style="width:100%">
             <thead>
                 <tr>
                     <th>Fine ID</th>
@@ -330,10 +222,10 @@ $fine = $statement->fetch(PDO::FETCH_ASSOC);
                             <td><?= date('Y-m-d H:i:s', strtotime($row['fines_created_on'])) ?></td>
                             <td><?= date('Y-m-d H:i:s', strtotime($row['fines_updated_on'])) ?></td>
                             <td class="text-center">
-                                <a href="fines.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                <a href="fines_action.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm mb-1">
                                     <i class="fa fa-eye"></i>
                                 </a>
-                                <a href="fines.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                <a href="fines_action.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm mb-1">
                                     <i class="fa fa-edit"></i>
                                 </a>
                                 <button type="button" class="btn btn-danger btn-sm delete-btn"
@@ -351,7 +243,6 @@ $fine = $statement->fetch(PDO::FETCH_ASSOC);
         </table>
     </div>
 </div>
-<?php endif; ?>
 </main>
 
 <script>
@@ -406,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmButtonText: `Yes, ${action} it!`
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `fine.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${fineId}`;
+                    window.location.href = `fines.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${fineId}`;
                 }
             });
         });
