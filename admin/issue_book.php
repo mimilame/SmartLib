@@ -28,6 +28,7 @@ $user_statement = $connect->prepare($user_query);
 $user_statement->execute();
 $users = $user_statement->fetchAll(PDO::FETCH_ASSOC);
 
+
 // Mark as Lost (Instead of Delete)
 if (isset($_GET["action"], $_GET['code']) && $_GET["action"] == 'delete') {
     $issue_book_id = $_GET["code"];
@@ -202,19 +203,28 @@ if (isset($_POST['edit_issue_book'])) {
 }
 
 // Fetch all issued books with user and book details
-$query = "SELECT lms_issue_book.issue_book_id, lms_book.book_name, lms_user.user_name, 
-                 lms_issue_book.issue_date, lms_issue_book.expected_return_date, lms_issue_book.return_date, lms_issue_book.book_fines,
-                 lms_issue_book.issue_book_status, lms_issue_book.issued_on, lms_issue_book.issue_updated_on 
-          FROM lms_issue_book 
-          INNER JOIN lms_book ON lms_issue_book.book_id = lms_book.book_id 
-          INNER JOIN lms_user ON lms_issue_book.user_id = lms_user.user_id
-          ORDER BY lms_issue_book.issue_book_id ASC";
-
-
+$query = "
+    SELECT 
+        ib.issue_book_id, 
+        b.book_name, 
+        u.user_name, 
+        ib.issue_date, 
+        ib.expected_return_date, 
+        ib.return_date, 
+        ib.book_fines,
+        ib.issue_book_status, 
+        ib.issued_on, 
+        ib.issue_updated_on 
+    FROM lms_issue_book AS ib
+    LEFT JOIN lms_book AS b ON ib.book_id = b.book_id 
+    LEFT JOIN lms_user AS u ON ib.user_id = u.user_id
+    ORDER BY ib.issue_book_id ASC
+";
 
 $statement = $connect->prepare($query);
 $statement->execute();
 $issue_book = $statement->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
