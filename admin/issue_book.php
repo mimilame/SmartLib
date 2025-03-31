@@ -82,13 +82,35 @@ $issued_books = $statement->fetchAll(PDO::FETCH_ASSOC);
                             <td><?= htmlspecialchars($row['issue_book_id']) ?></td>
                             <td><?= htmlspecialchars($row['book_name']) ?></td>
                             <td><?= htmlspecialchars($row['user_name']) ?></td>
-                            <td><?= htmlspecialchars($row['issue_date_time']) ?></td>
-                            <td><?= htmlspecialchars($row['return_date_time']) ?></td>
+                            <td><?= htmlspecialchars($row['issue_date']) ?></td>
+                            <td><?= htmlspecialchars($row['return_date']) ?></td>
                             <td>
-                                <?= ($row['issue_book_status'] === 'Returned') 
+                                <?= ($row['issue_status'] === 'Returned') 
                                     ? '<span class="badge bg-success">Returned</span>' 
                                      : '<span class="badge bg-warning">Issued</span>' ?>
                             </td>
+                            <td><?= htmlspecialchars($row['issue_date']) ?></td>
+                            <td><?= htmlspecialchars($row['expected_return_date']) ?></td>
+                            <td><?= htmlspecialchars($row['return_date']) ?></td>
+                            <td>
+    <?php
+        $currentDate = date('Y-m-d'); // Get today's date
+        $expectedReturnDate = $row['expected_return_date']; 
+        $returnDate = $row['return_date']; 
+        
+        if (!empty($returnDate)) {
+            echo '<span class="badge bg-success">Returned</span>'; // Book is returned
+        } elseif ($currentDate > $expectedReturnDate) {
+            echo '<span class="badge bg-danger">Overdue</span>'; // Book is overdue
+        } else {
+            echo '<span class="badge bg-warning">Issued</span>'; // Book is still issued
+        }
+    ?>
+</td>
+                            
+                            <td><?= date('Y-m-d H:i:s', strtotime($row['issued_on'])) ?></td>
+							<td><?= date('Y-m-d H:i:s', strtotime($row['issue_updated_on'])) ?></td>
+
                             <td class="text-center">
                                 <a href="issue_book.php?action=view&code=<?= $row['issue_book_id'] ?>" class="btn btn-info btn-sm mb-1">
                                     <i class="fa fa-eye"></i>
@@ -97,7 +119,8 @@ $issued_books = $statement->fetchAll(PDO::FETCH_ASSOC);
                                     <i class="fa fa-edit"></i>
                                 </a>
                                 <button type="button" class="btn btn-danger btn-sm delete-btn"
-                                        data-id="<?= $row['issue_id'] ?>">
+                                        data-id="<?= $row['issue_book_id'] ?>">
+                                        data-id="<?= $row['issue_book_id'] ?>">
                                     <i class="fa fa-trash"></i>
                                 </button>
                             </td>

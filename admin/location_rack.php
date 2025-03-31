@@ -32,11 +32,11 @@ if (isset($_POST["add_location_rack"])) {
             $data = [
                 ':location_rack_name' => $formdata['location_rack_name'],
                 ':location_rack_status' => 'Enable',
-                ':location_rack_created_on' => get_date_time($connect)
+                ':rack_created_on' => get_date_time($connect)
             ];
 
-            $query = "INSERT INTO lms_location_rack (location_rack_name, location_rack_status, location_rack_created_on)
-                      VALUES (:location_rack_name, :location_rack_status, :location_rack_created_on)";
+            $query = "INSERT INTO lms_location_rack (location_rack_name, location_rack_status, rack_created_on)
+                      VALUES (:location_rack_name, :location_rack_status, :rack_created_on)";
             $statement = $connect->prepare($query);
             $statement->execute($data);
 
@@ -74,13 +74,13 @@ if (isset($_POST["edit_location_rack"])) {
         } else {
             $data = [
                 ':location_rack_name' => $formdata['location_rack_name'],
-                ':location_rack_updated_on' => get_date_time($connect),
+                ':rack_updated_on' => get_date_time($connect),
                 ':location_rack_id' => $location_rack_id
             ];
 
             $query = "UPDATE lms_location_rack 
                       SET location_rack_name = :location_rack_name, 
-                          location_rack_updated_on = :location_rack_updated_on  
+                          rack_updated_on = :rack_updated_on  
                       WHERE location_rack_id = :location_rack_id";
             $statement = $connect->prepare($query);
             $statement->execute($data);
@@ -98,13 +98,13 @@ if (isset($_GET["action"], $_GET["code"], $_GET["status"]) && $_GET["action"] ==
 
     $data = [
         ':location_rack_status' => $status,
-        ':location_rack_updated_on' => get_date_time($connect),
+        ':rack_updated_on' => get_date_time($connect),
         ':location_rack_id' => $location_rack_id
     ];
 
     $query = "UPDATE lms_location_rack 
               SET location_rack_status = :location_rack_status, 
-                  location_rack_updated_on = :location_rack_updated_on 
+                  rack_updated_on = :rack_updated_on 
               WHERE location_rack_id = :location_rack_id";
     $statement = $connect->prepare($query);
     $statement->execute($data);
@@ -231,8 +231,8 @@ if($error != '') {
                                             <?= ($row['location_rack_status'] === 'Enable') ? 'Available' : 'Full'; ?>
                                         </div>
                                     </td>
-                                    <td><?= $row["location_rack_created_on"]; ?></td>
-                                    <td><?= $row["location_rack_updated_on"] ?? 'N/A'; ?></td>
+                                    <td><?= $row["rack_created_on"]; ?></td>
+                                    <td><?= $row["rack_updated_on"] ?? 'N/A'; ?></td>
                                     <td>
                                         <a href="javascript:void(0);" onclick="openEditModal('<?= convert_data($row["location_rack_id"]); ?>', '<?= htmlspecialchars($row["location_rack_name"]); ?>')" class="btn btn-sm btn-primary"><i class="fa fa-edit"></i></a>
                                         <button type="button" class="btn btn-<?= ($row['location_rack_status'] === 'Enable') ? 'danger' : 'success'; ?> btn-sm"
