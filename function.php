@@ -550,7 +550,7 @@ function get_total_book_issue_per_user($connect, $user_unique_id)
 	$query = "
 	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
 	WHERE user_id = '".$user_unique_id."' 
-	AND book_issue_status = 'Issue'
+	AND book_issue_status = 'Issued'
 	";
 
 	$result = $connect->query($query);
@@ -697,7 +697,7 @@ function Count_total_returned_book_number($connect)
 
 	$query = "
 	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Return'
+	WHERE issue_book_status = 'Returned'
 	";
 
 	$result = $connect->query($query);
@@ -716,7 +716,7 @@ function Count_total_not_returned_book_number($connect)
 
 	$query = "
 	SELECT COUNT(issue_book_id) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Not Return'
+	WHERE issue_book_status = 'Lost'
 	";
 
 	$result = $connect->query($query);
@@ -735,7 +735,7 @@ function Count_total_fines_received($connect)
 
 	$query = "
 	SELECT SUM(book_fines) AS Total FROM lms_issue_book 
-	WHERE book_issue_status = 'Return'
+	WHERE issue_book_status = 'Returned'
 	";
 
 	$result = $connect->query($query);

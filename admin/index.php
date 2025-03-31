@@ -89,8 +89,3 @@ include_once($root_path . 'header.php');
 	</div>
 </main>
 
-<?php
-
-include_once($root_path . 'footer.php');
-
-?>
