@@ -729,13 +729,76 @@ function Count_total_not_returned_book_number($connect)
 	return $total;
 }
 
+function Count_total_fines($connect)
+{
+    $total_fines = 0;
+
+    $query = "
+    SELECT COUNT(fines_id) AS Total FROM lms_fines
+    ";
+
+    $result = $connect->query($query);
+
+    foreach ($result as $row)
+    {
+        $total_fines = $row["Total"];
+    }
+
+    return $total_fines;
+}
+
+function Count_fines_paid_today($connect)
+{
+    $total_fines_paid_today = 0; // Default value is 0
+
+    $query = "
+    SELECT SUM(fines_amount) AS Total 
+    FROM lms_fines
+    WHERE fines_status = 'Paid' AND DATE(fines_updated_on) = CURDATE()
+    ";
+
+    $result = $connect->query($query);
+
+    // Check if the query returned a result and if the total is not null
+    if ($result) {
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        if ($row && $row['Total'] !== null) {
+            $total_fines_paid_today = $row['Total'];
+        }
+    }
+
+    return $total_fines_paid_today;
+}
+
+
+
+
+function Count_total_payments_made($connect)
+{
+    $total_payments = 0;
+
+	$query = "
+    SELECT COUNT(user_id) AS Total FROM lms_fines 
+    WHERE fines_status = 'Paid'
+    ";
+
+    $result = $connect->query($query);
+
+    foreach($result as $row)
+    {
+        $total_payments = $row["Total"];
+    }
+
+    return $total_payments;
+}
+
 function Count_total_fines_received($connect)
 {
 	$total = 0;
 
 	$query = "
-	SELECT SUM(book_fines) AS Total FROM lms_issue_book 
-	WHERE issue_book_status = 'Returned'
+	SELECT SUM(fines_amount) AS Total FROM lms_fines 
+	WHERE fines_status = 'Paid'
 	";
 
 	$result = $connect->query($query);
@@ -746,6 +809,44 @@ function Count_total_fines_received($connect)
 	}
 
 	return $total;
+}
+
+function Count_total_fines_outstanding($connect)
+{
+	$total = 0;
+
+	$query = "
+	SELECT SUM(fines_amount) AS Total FROM lms_fines 
+	WHERE fines_status = 'Unpaid'
+	";
+
+	$result = $connect->query($query);
+
+	foreach($result as $row)
+	{
+		$total = $row["Total"];
+	}
+
+	return $total;
+}
+
+function Count_total_users_with_fines($connect)
+{
+    $total_users = 0;
+
+    $query = "
+    SELECT COUNT(user_id) AS Total FROM lms_fines 
+    WHERE fines_status = 'Unpaid'
+    ";
+
+    $result = $connect->query($query);
+
+    foreach($result as $row)
+    {
+        $total_users = $row["Total"];
+    }
+
+    return $total_users;
 }
 
 function Count_total_book_number($connect)

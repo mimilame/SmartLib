@@ -27,7 +27,7 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 	$statement = $connect->prepare($query);
 	$statement->execute($data);
 
-	header('location:category.php?msg=' . strtolower($status) . '');
+	header('location:location_rack.php?msg=' . strtolower($status) . '');
 	exit;
 }
 
@@ -70,7 +70,7 @@ if (isset($_POST['add_rack'])) {
         ':updated_on' => $date_now
     ]);
     
-    header('location:rack.php?msg=add');
+    header('location:location_rack.php?msg=add');
     exit;
 }
 

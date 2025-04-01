@@ -92,10 +92,11 @@ if (isset($_POST['issue_book'])) {
 
         // Insert issue record
         $insert_query = "
-            INSERT INTO lms_issue_book 
-            (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
-            VALUES (:book_id, :user_id, :issue_date, :expected_return_date, :issue_book_status, :issued_on, :updated_on)
-        ";
+    INSERT INTO lms_issue_book 
+    (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
+    VALUES (:book_id, :user_id, :issue_date, :expected_return_date, :issue_book_status, :issued_on, :updated_on)
+";
+
 
         $statement = $connect->prepare($insert_query);
         $statement->execute([
@@ -131,8 +132,6 @@ if (isset($_POST['issue_book'])) {
 }
 
 
-
-
 // EDIT Issue Book
 if (isset($_POST['edit_issue_book'])) {
     $issue_book_id = $_POST['issue_book_id'];
@@ -143,6 +142,89 @@ if (isset($_POST['edit_issue_book'])) {
     $return_date = $_POST['return_date'];
     $issue_book_status = $_POST['issue_book_status']; // New status input (Issued, Returned, Lost, Damaged)
     $date_now = get_date_time($connect);
+
+// Automatically update books to "Overdue" if their expected return date has passed
+$update_overdue_query = "
+    UPDATE lms_issue_book
+    SET issue_book_status = 'Overdue'
+    WHERE issue_book_status = 'Issued' 
+    AND expected_return_date < CURDATE()
+";
+$statement = $connect->prepare($update_overdue_query);
+$statement->execute();
+
+// Check if any book is marked as "Overdue" and insert a fine if not already recorded
+$overdue_books_query = "
+    SELECT issue_book_id, user_id, expected_return_date 
+    FROM lms_issue_book
+    WHERE issue_book_status = 'Overdue'
+";
+$statement = $connect->prepare($overdue_books_query);
+$statement->execute();
+$overdue_books = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+foreach ($overdue_books as $book) {
+    $issue_book_id = $book['issue_book_id'];
+    $user_id = $book['user_id'];
+    $expected_return_date = $book['expected_return_date'];
+    $days_late = (strtotime(date('Y-m-d')) - strtotime($expected_return_date)) / (60 * 60 * 24);
+
+    if ($days_late > 0) {
+        $fine_per_day = 5; // Fine amount per day
+        $fines_amount = $days_late * $fine_per_day;
+
+        // Check if a fine record already exists
+        $check_query = "
+            SELECT fines_id FROM lms_fines 
+            WHERE issue_book_id = :issue_book_id AND user_id = :user_id
+        ";
+        $statement = $connect->prepare($check_query);
+        $statement->execute([':issue_book_id' => $issue_book_id, ':user_id' => $user_id]);
+        $existing_fine = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existing_fine) {
+            // Insert new fine record
+            $insert_query = "
+                INSERT INTO lms_fines (user_id, issue_book_id, expected_return_date, days_late, fines_amount, fines_status, fines_created_on)
+                VALUES (:user_id, :issue_book_id, :expected_return_date, :days_late, :fines_amount, 'Unpaid', NOW())
+            ";
+            $statement = $connect->prepare($insert_query);
+            $statement->execute([
+                ':user_id' => $user_id,
+                ':issue_book_id' => $issue_book_id,
+                ':expected_return_date' => $expected_return_date,
+                ':days_late' => $days_late,
+                ':fines_amount' => $fines_amount
+            ]);
+        }
+    }
+}
+
+
+    // Check for duplicate entry before updating
+    $check_duplicate_query = "
+        SELECT COUNT(*) as duplicate_count
+        FROM lms_issue_book
+        WHERE book_id = :book_id 
+        AND user_id = :user_id 
+        AND issue_book_status = 'Issued'
+        AND issue_book_id != :issue_book_id
+    ";
+
+    $statement = $connect->prepare($check_duplicate_query);
+    $statement->execute([
+        ':book_id' => $book_id,
+        ':user_id' => $user_id,
+        ':issue_book_id' => $issue_book_id
+    ]);
+
+    $duplicate = $statement->fetch(PDO::FETCH_ASSOC);
+
+    if ($duplicate['duplicate_count'] > 0) {
+        // Duplicate found, redirect with error message
+        header('location:issue_book.php?action=edit&error=duplicate');
+        exit;
+    }
 
     // Update the issue record
     $update_query = "
@@ -171,6 +253,59 @@ if (isset($_POST['edit_issue_book'])) {
     $statement = $connect->prepare($update_query);
     $statement->execute($params);
 
+    // Fine calculation logic
+    if ($issue_book_status === 'Returned' || $issue_book_status === 'Overdue') {
+        $return_date_actual = $return_date ?: date('Y-m-d');
+        $days_late = (strtotime($return_date_actual) - strtotime($expected_return_date)) / (60 * 60 * 24);
+
+        if ($days_late > 0) {
+            $fine_per_day = 5; // Fine amount is now set to 5 pesos per day
+            $fines_amount = $days_late * $fine_per_day;
+
+            // Check if a fine record already exists
+            $check_query = "
+                SELECT fines_id FROM lms_fines 
+                WHERE issue_book_id = :issue_book_id AND user_id = :user_id
+            ";
+            $statement = $connect->prepare($check_query);
+            $statement->execute([':issue_book_id' => $issue_book_id, ':user_id' => $user_id]);
+            $existing_fine = $statement->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing_fine) {
+                // Update existing fine record
+                $update_query = "
+                    UPDATE lms_fines 
+                    SET fines_amount = :fines_amount, 
+                        days_late = :days_late, 
+                        fines_status = 'Unpaid',
+                        fines_updated_on = NOW()
+                    WHERE fines_id = :fines_id
+                ";
+                $statement = $connect->prepare($update_query);
+                $statement->execute([
+                    ':fines_amount' => $fines_amount,
+                    ':days_late' => $days_late,
+                    ':fines_id' => $existing_fine['fines_id']
+                ]);
+            } else {
+                // Insert new fine record
+                $insert_query = "
+                    INSERT INTO lms_fines (user_id, issue_book_id, expected_return_date, return_date, days_late, fines_amount, fines_status, fines_created_on)
+                    VALUES (:user_id, :issue_book_id, :expected_return_date, :return_date, :days_late, :fines_amount, 'Unpaid', NOW())
+                ";
+                $statement = $connect->prepare($insert_query);
+                $statement->execute([
+                    ':user_id' => $user_id,
+                    ':issue_book_id' => $issue_book_id,
+                    ':expected_return_date' => $expected_return_date,
+                    ':return_date' => $return_date_actual,
+                    ':days_late' => $days_late,
+                    ':fines_amount' => $fines_amount
+                ]);
+            }
+        }
+    }
+
     // Automatically update the number of copies in lms_book table if status is changed
     if ($issue_book_status === 'Returned') {
         $update_book_query = "
@@ -194,6 +329,9 @@ if (isset($_POST['edit_issue_book'])) {
     exit;
 }
 
+
+
+
 // Fetch all issued books with user and book details
 $query = "
     SELECT 
@@ -203,7 +341,6 @@ $query = "
         ib.issue_date, 
         ib.expected_return_date, 
         ib.return_date, 
-        ib.book_fines,
         ib.issue_book_status, 
         ib.issued_on, 
         ib.issue_updated_on 
@@ -445,7 +582,6 @@ $issue_book = $statement->fetchAll(PDO::FETCH_ASSOC);
                     <th>Issue Date</th>
                     <th>Expected Return Date</th>
                     <th>Return Date</th>
-                    <th>Book Fines</th>
                     <th>Status</th>
                     <th>Issued On</th>
                     <th>Updated On</th>
@@ -462,7 +598,6 @@ $issue_book = $statement->fetchAll(PDO::FETCH_ASSOC);
                             <td><?= htmlspecialchars($row['issue_date']) ?></td>
                             <td><?= htmlspecialchars($row['expected_return_date']) ?></td>
                             <td><?= htmlspecialchars($row['return_date']) ?></td>
-                            <td><?= htmlspecialchars($row['book_fines']) ?></td>
                             <td>
                                 <?php
                                     switch ($row['issue_book_status']) {
