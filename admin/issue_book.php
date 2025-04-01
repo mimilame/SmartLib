@@ -794,3 +794,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     </script>
 <?php endif; ?>
+<?php 
+
+include '../footer.php';
+
+?>

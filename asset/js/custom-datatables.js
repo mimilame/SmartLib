@@ -68,4 +68,4 @@ $(document).ready(function() {
     if (document.readyState === 'complete') {
       setTimeout(initDataTable, 200);
     }
-  })();
+  });

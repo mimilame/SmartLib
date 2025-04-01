@@ -54,7 +54,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
                     <button class="btn btn-outline-light me-2 d-lg-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user fa-fw"></i>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -85,7 +85,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
                     <button class="btn btn-outline-light me-2 d-lg-none" id="sidebarToggle"><i class="fas fa-bars"></i></button>
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user fa-fw"></i>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">

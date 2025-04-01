@@ -4045,6 +4045,7 @@ textarea.form-control-lg {
   list-style: none;
 }
 
+/* NAV_LINK_STYLE */
 .nav-link {
   display: block;
   padding: 0.5rem 1rem;
@@ -12937,11 +12938,6 @@ label {
   padding: 0;
   display: inline-block;
   vertical-align: middle;
-}
-
-h1 {
-  font-size: 0.5em;
-  margin: 10px;
 }
 
 .rating {
