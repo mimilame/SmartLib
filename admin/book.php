@@ -4,14 +4,6 @@
 include '../database_connection.php';
 include '../function.php';
 
-// Get the user role
-$user_role = $_SESSION['role_id'];
-// Restrict access to Admin & Librarian only
-if ($user_role != 1 && $user_role != 2) {
-    header("Location: index.php");
-    exit();
-}
-
 $message = '';
 
 // Fetch all categories for dropdown lists
@@ -61,7 +53,7 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 if (isset($_POST['add_book'])) {
     $name = trim($_POST['book_name']); // Clean the input
     $category_id = trim($_POST['category_id']);
-    $author = trim($_POST['book_author']);
+    $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
     $rack = trim($_POST['book_location_rack']);
     $isbn = trim($_POST['book_isbn_number']);
     $no_of_copies = trim($_POST['book_no_of_copy']);
@@ -100,7 +92,6 @@ if (isset($_POST['add_book'])) {
     $statement->execute([
         ':name' => $name,
         ':category_id' => $category_id,
-        ':author' => $author,
         ':rack' => $rack,
         ':isbn' => $isbn,
         ':no_of_copies' => $no_of_copies,
@@ -108,10 +99,32 @@ if (isset($_POST['add_book'])) {
         ':added_on' => $date_now,   
         ':updated_on' => $date_now
     ]);
+    // Get the new book's ID
+    $book_id = $connect->lastInsertId();
+        
+    // Insert entries into junction table for each author
+    if (!empty($author_ids)) {
+        $insert_author_query = "
+            INSERT INTO lms_book_author (book_id, author_id) 
+            VALUES (:book_id, :author_id)
+        ";
+        
+        $author_statement = $connect->prepare($insert_author_query);
+        
+        foreach ($author_ids as $author_id) {
+            $author_statement->execute([
+                ':book_id' => $book_id,
+                ':author_id' => $author_id
+            ]);
+        }
+    }
 
+    // Commit transaction
+    $connect->commit();
+        
     header('location:book.php?msg=add');
     exit;
-}
+} 
 
 
 
@@ -120,7 +133,7 @@ if (isset($_POST['edit_book'])) {
     $id = $_POST['book_id'];
     $name = $_POST['book_name'];
     $category_id = $_POST['category_id'];
-    $author = $_POST['book_author'];
+    $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
     $rack = $_POST['book_location_rack'];
     $isbn = $_POST['book_isbn_number'];
     $no_of_copies = $_POST['book_no_of_copy'];
@@ -130,7 +143,6 @@ if (isset($_POST['edit_book'])) {
         UPDATE lms_book 
         SET book_name = :name,
             category_id = :category_id,
-            book_author = :author,  
             book_location_rack = :rack,
             book_isbn_number = :isbn,  
             book_no_of_copy = :no_of_copies,
@@ -152,15 +164,45 @@ if (isset($_POST['edit_book'])) {
     $statement = $connect->prepare($update_query);
     $statement->execute($params);
 
+    // Delete existing author relationships
+    $delete_query = "DELETE FROM lms_book_author WHERE book_id = :book_id";
+    $delete_statement = $connect->prepare($delete_query);
+    $delete_statement->execute([':book_id' => $id]);
+    
+    // Insert new author relationships
+    if (!empty($author_ids)) {
+        $insert_author_query = "
+            INSERT INTO lms_book_author (book_id, author_id) 
+            VALUES (:book_id, :author_id)
+        ";
+        
+        $author_statement = $connect->prepare($insert_author_query);
+        
+        foreach ($author_ids as $author_id) {
+            $author_statement->execute([
+                ':book_id' => $id,
+                ':author_id' => $author_id
+            ]);
+        }
+    }
+    
+    // Commit transaction
+    $connect->commit();
+    
     header('location:book.php?msg=edit');
     exit;
-}
+} 
+
 
 // List all books with their category names
 $query = "
-    SELECT b.*, c.category_name
+    SELECT b.*, c.category_name, 
+           GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
     FROM lms_book b
     LEFT JOIN lms_category c ON b.category_id = c.category_id
+    LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+    LEFT JOIN lms_author a ON ba.author_id = a.author_id
+    GROUP BY b.book_id
     ORDER BY b.book_id ASC
 ";
 
@@ -217,54 +259,53 @@ include '../header.php';
 
                 <!-- Author Dropdown (Only enabled authors) -->
                 <div class="mb-3">
-    <label>Author</label>
-    <select name="book_author" class="form-control select2-author" required>
-        <option value="">Select Author</option>
-        <?php 
-        $query = "SELECT author_name FROM lms_author WHERE author_status = 'Enable' ORDER BY author_name ASC";
-        $statement = $connect->prepare($query);
-        $statement->execute();
-        $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+                    <label>Author(s)</label>
+                    <select name="author_ids[]" class="form-control select2-author" multiple required>
+                        <?php 
+                        $query = "SELECT author_id, author_name FROM lms_author WHERE author_status = 'Enable' ORDER BY author_name ASC";
+                        $statement = $connect->prepare($query);
+                        $statement->execute();
+                        $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($authors as $author): ?>
-            <option value="<?= htmlspecialchars($author['author_name']) ?>"><?= htmlspecialchars($author['author_name']) ?></option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                        foreach ($authors as $author): ?>
+                            <option value="<?= $author['author_id'] ?>"><?= htmlspecialchars($author['author_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
                 <!-- Category Dropdown (Only enabled categories) -->
                 <div class="mb-3">
-    <label>Category</label>
-    <select name="category_id" class="form-control select2-category" required>
-        <option value="">Select Category</option>
-        <?php 
-        $query = "SELECT category_id, category_name FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
-        $statement = $connect->prepare($query);
-        $statement->execute();
-        $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
+                    <label>Category</label>
+                    <select name="category_id" class="form-control select2-category" required>
+                        <option value="">Select Category</option>
+                        <?php 
+                        $query = "SELECT category_id, category_name FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
+                        $statement = $connect->prepare($query);
+                        $statement->execute();
+                        $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($categories as $category): ?>
-            <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                        foreach ($categories as $category): ?>
+                            <option value="<?= $category['category_id'] ?>"><?= htmlspecialchars($category['category_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
                 <!-- Rack Dropdown (Only enabled racks) -->
                 <div class="mb-3">
-    <label>Location Rack</label>
-    <select name="book_location_rack" class="form-control select2-rack" required>
-        <option value="">Select Rack</option>
-        <?php 
-        $query = "SELECT location_rack_id, location_rack_name FROM lms_location_rack WHERE location_rack_status = 'Enable' ORDER BY location_rack_name ASC";
-        $statement = $connect->prepare($query);
-        $statement->execute();
-        $racks = $statement->fetchAll(PDO::FETCH_ASSOC);
+                    <label>Location Rack</label>
+                    <select name="book_location_rack" class="form-control select2-rack" required>
+                        <option value="">Select Rack</option>
+                        <?php 
+                        $query = "SELECT location_rack_id, location_rack_name FROM lms_location_rack WHERE location_rack_status = 'Enable' ORDER BY location_rack_name ASC";
+                        $statement = $connect->prepare($query);
+                        $statement->execute();
+                        $racks = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($racks as $rack): ?>
-            <option value="<?= htmlspecialchars($rack['location_rack_id']) ?>"><?= htmlspecialchars($rack['location_rack_name']) ?></option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                        foreach ($racks as $rack): ?>
+                            <option value="<?= htmlspecialchars($rack['location_rack_id']) ?>"><?= htmlspecialchars($rack['location_rack_name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
                 <div class="mb-3">
                     <label>ISBN Number</label>
@@ -312,41 +353,50 @@ include '../header.php';
                     <input type="text" name="book_name" class="form-control" value="<?= htmlspecialchars($book['book_name']) ?>" required>
                 </div>
                 <div class="mb-3">
-                    <div class="mb-3">
-	<label>Category</label>
-	<select name="category_id" class="form-control select2-category" required>
-		<option value="">Select Category</option>
-		<?php foreach ($categories as $category): ?>
-			<option value="<?= $category['category_id'] ?>" <?= $category['category_id'] == $book['category_id'] ? 'selected' : '' ?>>
-				<?= htmlspecialchars($category['category_name']) ?>
-			</option>
-		<?php endforeach; ?>
-	</select>
-</div>
+                    <label>Category</label>
+                    <select name="category_id" class="form-control select2-category" required>
+                        <option value="">Select Category</option>
+                        <?php foreach ($categories as $category): ?>
+                            <option value="<?= $category['category_id'] ?>" <?= $category['category_id'] == $book['category_id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($category['category_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-<div class="mb-3">
-	<label>Author</label>
-	<select name="book_author" class="form-control select2-author" required>
-		<option value="">Select Author</option>
-		<?php foreach ($authors as $author): ?>
-			<option value="<?= htmlspecialchars($author['author_name']) ?>" <?= $author['author_name'] == $book['book_author'] ? 'selected' : '' ?>>
-				<?= htmlspecialchars($author['author_name']) ?>
-			</option>
-		<?php endforeach; ?>
-	</select>
-</div>
+                <div class="mb-3">
+                    <label>Author</label>
+                    <select name="author_ids[]" class="form-control select2-author" multiple required>
+                        <option value="">Select Author</option>
+                        <?php // Get current authors for this book
+                            $author_query = "
+                                SELECT author_id 
+                                FROM lms_book_author 
+                                WHERE book_id = :book_id
+                            ";
+                            $author_statement = $connect->prepare($author_query);
+                            $author_statement->execute([':book_id' => $id]);
+                            $current_authors = $author_statement->fetchAll(PDO::FETCH_COLUMN);
+                            foreach ($authors as $author): ?>
+                            <option value="<?= $author['author_id'] ?>" 
+                                <?= in_array($author['author_id'], $current_authors) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($author['author_name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-<div class="mb-3">
-	<label>Rack Location</label>
-	<select name="book_location_rack" class="form-control select2-rack" required>
-		<option value="">Select Rack</option>
-		<?php foreach ($racks as $rack): ?>
-			<option value="<?= htmlspecialchars($rack['book_location_rack']) ?>" <?= $rack['book_location_rack'] == $book['book_location_rack'] ? 'selected' : '' ?>>
-				<?= htmlspecialchars($rack['book_location_rack']) ?>
-			</option>
-		<?php endforeach; ?>
-	</select>
-</div>
+                <div class="mb-3">
+                    <label>Rack Location</label>
+                    <select name="book_location_rack" class="form-control select2-rack" required>
+                        <option value="">Select Rack</option>
+                        <?php foreach ($racks as $rack): ?>
+                            <option value="<?= htmlspecialchars($rack['book_location_rack']) ?>" <?= $rack['book_location_rack'] == $book['book_location_rack'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($rack['book_location_rack']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
 				<div class="mb-3">
 						<label>ISBN Number</label>
@@ -376,12 +426,18 @@ include '../header.php';
 
     elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])):
         $id = $_GET['code'];
-        $query = "
-            SELECT b.*, c.category_name
+        // View book details
+            $query = "
+            SELECT b.*, c.category_name,
+                GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
             FROM lms_book b
             LEFT JOIN lms_category c ON b.category_id = c.category_id
-            WHERE b.book_id = :id LIMIT 1
-        ";
+            LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+            LEFT JOIN lms_author a ON ba.author_id = a.author_id
+            WHERE b.book_id = :id
+            GROUP BY b.book_id
+            LIMIT 1
+            ";
         $statement = $connect->prepare($query);
         $statement->execute([':id' => $id]);
         $book = $statement->fetch(PDO::FETCH_ASSOC);
@@ -391,7 +447,7 @@ include '../header.php';
                 <div class="card-header"><h5>View Book</h5></div>
                 <div class="card-body">
                     <p><strong>Name:</strong> <?= htmlspecialchars($book['book_name']); ?></p>
-                    <p><strong>Author:</strong> <?= htmlspecialchars($book['book_author']); ?></p>
+                    <p><strong>Author(s):</strong> <?= htmlspecialchars($book['authors']); ?></p>
                     <p><strong>Category:</strong> <?= htmlspecialchars($book['category_name']); ?></p>
                     <p><strong>Location Rack:</strong> <?= htmlspecialchars($book['book_location_rack']); ?></p>
 					<p><strong>ISBN Number:</strong> <?= htmlspecialchars($book['book_isbn_number']); ?></p>
@@ -442,7 +498,7 @@ include '../header.php';
                                 <tr>
                                     <td><?= $row['book_id'] ?></td>
                                     <td><?= htmlspecialchars($row['book_name']) ?></td>
-                                    <td><?= htmlspecialchars($row['book_author']) ?></td>
+                                    <td><?= htmlspecialchars($row['authors']) ?></td>
                                     <td><?= htmlspecialchars($row['category_name']) ?></td>
 									<td><?= htmlspecialchars($row['book_location_rack']) ?></td>
                                     <td><?= htmlspecialchars($row['book_isbn_number']) ?></td>
@@ -546,9 +602,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 	$(document).ready(function() {
 		$('.select2-author').select2({
-			placeholder: "Select Author",
-			allowClear: true
-		});
+            placeholder: "Select Author(s)",
+            allowClear: true,
+            multiple: true
+        });
 		$('.select2-category').select2({
 			placeholder: "Select Category",
 			allowClear: true

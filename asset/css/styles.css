@@ -12847,19 +12847,19 @@ a:focus {
   height: 250px;
   margin-right: 1px;
 }
-.book-cell:nth-child(1) {
+.book-cell.pink {
   background-color: #fbadaf;
 }
-.book-cell:nth-child(2) {
+.book-cell.blue {
   background-color: #a4e0eb;
 }
-.book-cell:nth-child(3) {
+.book-cell.purple {
   background-color: #edb9d6;
 }
-.book-cell:nth-child(4) {
+.book-cell.yellow {
   background-color: #fdca95;
 }
-.book-cell:nth-child(5) {
+.book-cell.dark-purp {
   background-color: #cbb5e2;
 }
 
@@ -13426,7 +13426,14 @@ h1 {
 }
 @media (max-width: 1045px) {
   .books-of {
-    display: none;
+    display: block;
+  }
+  .main-wrapper {
+    width: 100%;
+    display: flex;
+    flex-grow: 1;
+    flex-wrap: wrap;
+    flex-direction: column-reverse;
   }
 }
 @media (max-width: 725px) {

@@ -29,6 +29,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 
 <?php if ($role_id == 1 || $role_id == 2): ?>
     <!-- Admin & Librarian Header -->
+    <body class="overflow-hidden">
     <div class="d-flex">
         <div id="sidebar" class="bg-dark text-light vh-100 p-3" style="width: 250px;">
             <h5 class="text-center"><?php echo $page_title; ?></h5>
@@ -65,8 +66,10 @@ $page_title = $library_name . " - " . ucfirst($user_type);
                     </ul>
                 </div>
             </nav>
+            <main class="container py-4 overflow-auto" style="min-height: 700px;">
 <?php elseif ($role_id == 3 || $role_id == 4): ?>
     <!-- Faculty & Student Header -->
+    <body class="overflow-hidden">
     <div class="d-flex">
             <div id="sidebar" class="bg-dark text-light vh-100 p-3" style="width: 250px;">
                 <h5 class="text-center"><?php echo $page_title; ?></h5>
@@ -87,12 +90,14 @@ $page_title = $library_name . " - " . ucfirst($user_type);
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/profile.php">Profile</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/setting.php">Settings</a></li>
                                 <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/logout.php">Logout</a></li>
                             </ul>
                         </li>
                     </ul>
                 </div>
             </nav>
+            <main class="container py-4 overflow-auto" style="min-height: 700px;">
 <?php elseif ($role_id == 5): ?>
     <!-- Visitor Header -->
     <div class="d-flex flex-wrap fixed-top align-items-center justify-content-center justify-content-md-between mb-4">
@@ -104,7 +109,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 
 			<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
 				<li><a href="<?php echo base_url(); ?>index.php" class="nav-link px-2 link-secondary text-light">Home</a></li>
-				<li><a href="<?php echo base_url(); ?>#" class="nav-link px-2 link-dark text-light">Books</a></li>
+				<li><a href="<?php echo base_url(); ?>books.php" class="nav-link px-2 link-dark text-light">Books</a></li>
 				<li><a href="<?php echo base_url(); ?>#" class="nav-link px-2 link-dark text-light">Reports</a></li>
 			</ul>
 
@@ -130,7 +135,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 
 			<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
 				<li><a href="<?php echo base_url(); ?>#" class="nav-link px-2 link-secondary text-light">Home</a></li>
-				<li><a href="<?php echo base_url(); ?>#" class="nav-link px-2 link-dark text-light">Books</a></li>
+				<li><a href="<?php echo base_url(); ?>books.php" class="nav-link px-2 link-dark text-light">Books</a></li>
 				<li><a href="<?php echo base_url(); ?>#" class="nav-link px-2 link-dark text-light">About Us</a></li>
 			</ul>
 

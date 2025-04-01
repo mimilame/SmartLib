@@ -68,7 +68,7 @@ function process_login($connect, $email, $password) {
         error_log("Stored password: " . $row['password']);
         
         // Verify password
-        if (password_verify($password, $row['password']) || $password === $row['password']) {
+        if (password_verify($password, $row['password'])) {
             startUserSession($row['user_unique_id'], $row['role_id'], $row['role_name']);
 
             error_log("Login successful. Role ID: " . $_SESSION['role_id'] . " | Role Name: " . $_SESSION['role_name']);

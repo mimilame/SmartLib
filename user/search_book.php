@@ -20,7 +20,7 @@ $statement->execute();
 
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
+
 
 	<h1>Search Book</h1>
 
@@ -71,7 +71,7 @@ $statement->execute();
 								<td></td>
 								<td>'.$row["book_name"].'</td>
 								<td>'.$row["book_isbn_number"].'</td>
-								<td>'.$row["book_category"].'</td>
+								<td>'.$row["category_id"].'</td>
 								<td>'.$row["book_author"].'</td>
 								<td>'.$row["book_location_rack"].'</td>
 								<td>'.$row["book_no_of_copy"].'</td>
@@ -108,18 +108,13 @@ $statement->execute();
                 }
             },
             columnDefs: [
-                // Add a column for the expand/collapse button
-                {
-                    className: 'dtr-control',
-                    orderable: false,
-                    targets: 0
-                },
-                // Adjust your priorities based on the new column ordering
-                { responsivePriority: 1, targets: [0, 1, 2, 9] }, // Control column, ID, Name, Action
-                { responsivePriority: 2, targets: [3, 5] },        // Email, Contact
-                { responsivePriority: 3, targets: [7] },           // Verification 
-                { responsivePriority: 10000, targets: [4, 6, 8] } // Less important columns
-            ],
+				{ responsivePriority: 1, targets: 0 },  // book_id
+				{ responsivePriority: 2, targets: 1 },  // category_id
+				{ responsivePriority: 3, targets: 4 },  // book_name
+				{ responsivePriority: 4, targets: 2 },  // book_author
+				{ responsivePriority: 5, targets: 5 },  // book_isbn_number
+				// Less important columns will hide first on smaller screens
+				],
             order: [[1, 'asc']], // Sort by the second column (ID) instead of first
             autoWidth: false,
             language: {
@@ -127,6 +122,8 @@ $statement->execute();
             }
         });
     });
+	
+	
 </script>
 <?php 
 

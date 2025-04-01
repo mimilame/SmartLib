@@ -86,75 +86,74 @@ if (session_status() == PHP_SESSION_NONE) {
 	}
 
 	// Process user registration form submission (ONLY for Visitors)
-    if(isset($_POST["register_button"])) {
-        $formdata = array();
-        $message = '';
-        
-        // Validate email
-        $email_validation = validate_email($_POST["user_email"] ?? '');
-        if(!$email_validation['valid']) {
-            $message = $email_validation['message'];
-        } else {
-            $formdata['user_email'] = trim($_POST['user_email']);
-        }
-        
-        // Validate other required fields
-        if(empty($_POST["user_password"])) {
-            $message .= 'Password is required';
-        } else {
-            $formdata['user_password'] = trim($_POST['user_password']);
-        }
-        
-        if(empty($_POST['user_name'])) {
-            $message .= 'User Name is required';
-        } else {
-            $formdata['user_name'] = trim($_POST['user_name']);
-        }
-        
-        if(empty($_POST['user_address'])) {
-            $message .= 'User Address is required';
-        } else {
-            $formdata['user_address'] = trim($_POST['user_address']);
-        }
-        
-        if(empty($_POST['user_contact_no'])) {
-            $message .= 'User Contact Number is required';
-        } else {
-            $formdata['user_contact_no'] = trim($_POST['user_contact_no']);
-        }
-        
-        // Process profile image upload
-        $image_result = process_profile_image_upload($_FILES['user_profile']);
-        if(!$image_result['success']) {
-            $message .= $image_result['message'];
-        } else {
-            $formdata['user_profile'] = $image_result['file_name'];
-        }
-
-        // **Automatically Assign Visitor Role (role_id = 5)**
-        $formdata['role_id'] = 5;
-        
-        // If no validation errors, process registration
-        if($message == '') {
-            $registration_result = process_registration($connect, $formdata);
-            
-            if($registration_result['success']) {
-                $_SESSION['user_unique_id'] = $registration_result['user_unique_id'];
-                $_SESSION['role_id'] = 5; // Set session role as visitor
-
-                // Redirect visitors after registration
-                redirect_logged_in_user(5);
-            } else {
-                set_flash_message('error', $registration_result['message']);
-            }
-        } else {
-            set_flash_message('error', $message);
-        }
-        
-        // Redirect to avoid form resubmission
-        header('Location: ' . $_SERVER['PHP_SELF']);
-        exit;
-    }
+	if(isset($_POST["register_button"])) {
+		$formdata = array();
+		$message = '';
+		
+		// Validate email
+		$email_validation = validate_email($_POST["user_email"] ?? '');
+		if(!$email_validation['valid']) {
+			$message = $email_validation['message'];
+		} else {
+			$formdata['user_email'] = trim($_POST['user_email']);
+		}
+		
+		// Validate other required fields
+		if(empty($_POST["user_password"])) {
+			$message .= 'Password is required';
+		} else {
+			// Don't trim passwords - could be intentional spaces
+			$formdata['user_password'] = $_POST['user_password'];
+		}
+		
+		if(empty($_POST['user_name'])) {
+			$message .= 'User Name is required';
+		} else {
+			$formdata['user_name'] = trim($_POST['user_name']);
+		}
+		
+		if(empty($_POST['user_address'])) {
+			$message .= 'User Address is required';
+		} else {
+			$formdata['user_address'] = trim($_POST['user_address']);
+		}
+		
+		if(empty($_POST['user_contact_no'])) {
+			$message .= 'User Contact Number is required';
+		} else {
+			$formdata['user_contact_no'] = trim($_POST['user_contact_no']);
+		}
+		
+		// Process profile image upload
+		$image_result = process_profile_image_upload($_FILES['user_profile']);
+		if(!$image_result['success']) {
+			$message .= $image_result['message'];
+		} else {
+			$formdata['user_profile'] = $image_result['file_name'];
+		}
+		// **Automatically Assign Visitor Role (role_id = 5)**
+		$formdata['role_id'] = 5;
+		
+		// If no validation errors, process registration
+		if($message == '') {
+			$registration_result = process_registration($connect, $formdata);
+			
+			if($registration_result['success']) {
+				$_SESSION['user_unique_id'] = $registration_result['user_unique_id'];
+				$_SESSION['role_id'] = 5; // Set session role as visitor
+				// Redirect visitors after registration
+				redirect_logged_in_user(5);
+			} else {
+				set_flash_message('error', $registration_result['message']);
+			}
+		} else {
+			set_flash_message('error', $message);
+		}
+		
+		// Redirect to avoid form resubmission
+		header('Location: ' . $_SERVER['PHP_SELF']);
+		exit;
+	}
 
 	// Get any flash messages at the beginning of the page
 	$error_message = get_flash_message('error');
@@ -177,7 +176,7 @@ if (session_status() == PHP_SESSION_NONE) {
 <div class="bg1"></div>
 <div class="bg1 bg2"></div>
 <div class="bg1 bg3"></div>
-	<?php
+<?php
 	// Display SweetAlert messages if they exist
 	if(!empty($error_message)) {
 		echo sweet_alert('error', $error_message);
@@ -186,7 +185,7 @@ if (session_status() == PHP_SESSION_NONE) {
 	if(!empty($success_message)) {
 		echo sweet_alert('success', $success_message);
 	}
-	?>
+?>
 
 	<div class="modal-overlay" id="authModal">
 		<section class="index">
@@ -368,60 +367,65 @@ if (session_status() == PHP_SESSION_NONE) {
     <div class="custom-bg">
         <div class="book-slide">
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
-                <div class="book-cell">
-                    <div class="book-img">
-                        <img src="https://images-na.ssl-images-amazon.com/images/I/81WcnNQ-TBL.jpg" alt="" class="book-photo">
-                    </div>
-                    <div class="book-content">
-                        <div class="book-title">BIG MAGIC</div>
-                        <div class="book-author">by Elizabeth Gilbert</div>
-                        <div class="rate">
-                            <fieldset class="rating">
-                                <input type="checkbox" id="star5" name="rating" value="5" />
-                                <label class="full" for="star5"></label>
-                                <input type="checkbox" id="star4" name="rating" value="4" />
-                                <label class="full" for="star4"></label>
-                                <input type="checkbox" id="star3" name="rating" value="3" />
-                                <label class="full" for="star3"></label>
-                                <input type="checkbox" id="star2" name="rating" value="2" />
-                                <label class="full" for="star2"></label>
-                                <input type="checkbox" id="star1" name="rating" value="1" />
-                                <label class="full" for="star1"></label>
-                            </fieldset>
-                            <span class="book-voters">1.987 voters</span>
-                        </div>
-                        <div class="book-sum">Readers of all ages and walks of life have drawn inspiration and empowerment from Elizabeth Gilbert's books for years. </div>
-                        <div class="book-see">See The Book</div>
-                    </div>
-                </div>
-                <!-- Repeat for other book-cell elements from original document -->
-                <div class="book-cell">
-                    <div class="book-img">
-                        <img src="https://i.pinimg.com/originals/a8/b9/ff/a8b9ff74ed0f3efd97e09a7a0447f892.jpg" alt="" class="book-photo">
-                    </div>
-                    <div class="book-content">
-                        <div class="book-title">Ten Thousand Skies Above You</div>
-                        <div class="book-author">by Claudia Gray</div>
-                        <div class="rate">
-							<fieldset class="rating blue">
-								<input type="checkbox" id="star6" name="rating" value="5">
-								<label class="full1" for="star6"></label>
-								<input type="checkbox" id="star7" name="rating" value="4">
-								<label class="full1" for="star7"></label>
-								<input type="checkbox" id="star8" name="rating" value="3">
-								<label class="full1" for="star8"></label>
-								<input type="checkbox" id="star9" name="rating" value="2">
-								<label class="full1" for="star9"></label>
-								<input type="checkbox" id="star10" name="rating" value="1">
-								<label class="full1" for="star10"></label>
-							</fieldset>
-							<span class="book-voters">1.987 voters</span>
-						</div>
-                        <div class="book-sum">The hunt for each splinter of Paul's soul sends Marguerite racing through a war-torn San Francisco.</div>
-                        <div class="book-see book-blue">See The Book</div>
-                    </div>
-                </div>
-                <!-- Additional book-cell elements would follow the same pattern -->
+			<?php
+				// Query to fetch all books
+				$query = "SELECT * FROM lms_book WHERE book_status = 'Enable' ORDER BY book_id ASC";
+				$statement = $connect->prepare($query);
+				$statement->execute();
+				$books = $statement->fetchAll(PDO::FETCH_ASSOC);
+				// Color classes for alternating styles - matching the CSS classes we set
+				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];
+				// Loop through each book
+				foreach($books as $index => $book) {
+					// Use modulo to cycle through colors (0-based index % number of colors)
+					$colorClass = $colors[$index % count($colors)];
+					
+					// Get book cover image path (use placeholder if not available)
+					$book_img = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+					
+					// Start the book cell div - added color class here
+					echo '<div class="book-cell ' . $colorClass . '">';
+					
+					// Book image div
+					echo '<div class="book-img">';
+					echo '<img src="' . $book_img . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-photo">';
+					echo '</div>';
+					
+					// Book content div
+					echo '<div class="book-content">';
+					echo '<div class="book-title">' . htmlspecialchars($book['book_name']) . '</div>';
+					echo '<div class="book-author">by ' . htmlspecialchars($book['book_author']) . '</div>';
+					
+					// Rating div
+					echo '<div class="rate">';
+					echo '<fieldset class="rating ' . $colorClass . '">';
+					
+					// Generate rating inputs with unique IDs
+					$baseId = 'star' . (($index * 5) + 1);
+					for($i = 5; $i >= 1; $i--) {
+						$starId = $baseId . $i;
+						$labelClass = 'full1';
+						echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '" />';
+						echo '<label class="' . $labelClass . '" for="' . $starId . '"></label>';
+					}
+					
+					echo '</fieldset>';
+					echo '<span class="book-voters">' . $book['book_no_of_copy'] . ' copies</span>';
+					echo '</div>';
+					
+					// Book summary and see button
+					echo '<div class="book-sum">ISBN: ' . htmlspecialchars($book['book_isbn_number']) . ' / Location: ' . 
+						htmlspecialchars($book['book_location_rack']) . '</div>';
+					
+					$seeClass = 'book-see book-' . $colorClass;
+					echo '<div class="' . $seeClass . '" data-book-id="' . $book['book_id'] . '">See The Book</div>';
+					
+					echo '</div>'; // End book-content
+					echo '</div>'; // End book-cell
+				}
+				
+				?>
+               
             </div>
         </div>
 

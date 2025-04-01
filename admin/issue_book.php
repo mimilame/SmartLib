@@ -6,14 +6,6 @@ include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
-// Get the user role
-$user_role = $_SESSION['role_id'];
-// Restrict access to Admin & Librarian only
-if ($user_role != 1 && $user_role != 2) {
-    header("Location: index.php");
-    exit();
-}
-
 $message = '';
 
 // Fetch all book names for dropdown lists
