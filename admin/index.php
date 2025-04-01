@@ -49,7 +49,7 @@ include_once($root_path . 'header.php');
                 <h2 class="mb-0"><?php echo Count_total_not_returned_book_number($connect); ?></h2>
                 <h6 class="mb-0">Total Books Not Returned</h6>
             </div>
-            <i class="fas fa-exclamation-circle fa-3x"></i>
+            <i class="fas fa-exclamation-circle fa-3x fs-2"></i>
         </div>
     </div>
 </div>

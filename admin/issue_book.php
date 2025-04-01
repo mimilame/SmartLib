@@ -597,7 +597,8 @@ $issue_book = $statement->fetchAll(PDO::FETCH_ASSOC);
                             <td><?= htmlspecialchars($row['user_name']) ?></td>
                             <td><?= htmlspecialchars($row['issue_date']) ?></td>
                             <td><?= htmlspecialchars($row['expected_return_date']) ?></td>
-                            <td><?= htmlspecialchars($row['return_date']) ?></td>
+                            <td><?= htmlspecialchars($row['return_date'] ?? '') ?></td>
+
                             <td>
                                 <?php
                                     switch ($row['issue_book_status']) {

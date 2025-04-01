@@ -29,7 +29,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
 
 <?php if ($role_id == 1 || $role_id == 2): ?>
     <!-- Admin & Librarian Header -->
-    <body class="overflow-hidden">
+    <body class="">
     <div class="d-flex">
         <div id="sidebar" class="bg-dark text-light vh-100 p-3" style="width: 250px;">
             <h5 class="text-center"><?php echo $page_title; ?></h5>
@@ -69,7 +69,7 @@ $page_title = $library_name . " - " . ucfirst($user_type);
             <main class="container py-4 overflow-auto" style="min-height: 700px;">
 <?php elseif ($role_id == 3 || $role_id == 4): ?>
     <!-- Faculty & Student Header -->
-    <body class="overflow-hidden">
+    <body class="">
     <div class="d-flex">
             <div id="sidebar" class="bg-dark text-light vh-100 p-3" style="width: 250px;">
                 <h5 class="text-center"><?php echo $page_title; ?></h5>
