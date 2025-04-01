@@ -100,10 +100,11 @@ if (isset($_POST['issue_book'])) {
 
         // Insert issue record
         $insert_query = "
-            INSERT INTO lms_issue_book 
-            (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
-            VALUES (:book_id, :user_id, :issue_date, :expected_return_date, :issue_book_status, :issued_on, :updated_on)
-        ";
+    INSERT INTO lms_issue_book 
+    (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
+    VALUES (:book_id, :user_id, :issue_date, :expected_return_date, :issue_book_status, :issued_on, :updated_on)
+";
+
 
         $statement = $connect->prepare($insert_query);
         $statement->execute([
