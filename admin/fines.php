@@ -60,52 +60,117 @@ $statement->execute();
 $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .status-card {
+            transition: all 0.3s ease;
+        }
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .table-responsive {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .nav-tabs .nav-link {
+            color: #495057;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: bold;
+        }
+        .card-counter {
+            padding: 20px;
+            border-radius: 10px;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .card-counter i {
+            font-size: 4rem;
+            opacity: 0.4;
+        }
+        .card-counter .count-numbers {
+            position: absolute;
+            right: 35px;
+            top: 20px;
+            font-size: 32px;
+            display: block;
+        }
+        .card-counter .count-name {
+            position: absolute;
+            right: 35px;
+            top: 65px;
+            font-style: italic;
+            text-transform: capitalize;
+            opacity: 0.8;
+            display: block;
+        }
+        .bg-paid { background-color: #4caf50; }
+        .bg-returned { background-color: #2196F3; }
+        .bg-issued { background-color: #ff9800; }
+        .bg-unpaid { background-color: #f44336; }
+    </style>
+</head>
 <main class="container py-4" style="min-height: 700px;">
 
 <h1 class="my-3">Fines Management</h1>
 	<div class="row mb-4">
+        
+    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card card-counter bg-unpaid status-card">
+                            <i class="bi bi-exclamation-circle float-start"></i>
+                            <span class="count-numbers">
+                            <?php echo get_currency_symbol($connect) . Count_total_fines_outstanding($connect); ?>
+                            </span>
+                            <span class="count-name">Total Outstanding</span>
+                        </div>
+                    </div>
 
-    <div class="col-xl-3 col-md-6">
-         <div class="card bg-white text-danger shadow mx-3 mb-4">
-             <div class="card-body">
-             <h5 class="text-center text-black">Total Outstanding</h5>
-             <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_total_fines_outstanding($connect); ?></h1>
-            <p class="text-center text-black">From <?php echo Count_total_users_with_fines($connect); ?> users</p>
-             </div>
-         </div>
-    </div>
 
-    <div class="col-xl-3 col-md-6">
-         <div class="card bg-white text-success shadow mx-3 mb-4">
-             <div class="card-body">
-             <h5 class="text-center text-black">Collected This Month</h5>
-             <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_total_fines_received($connect); ?></h1>
-             <p class="text-center text-black"><?php echo Count_total_payments_made($connect); ?> payments</p>
-             </div>
-         </div>
-    </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card card-counter bg-paid status-card">
+                            <i class="bi bi-cash-coin float-start"></i>
+                            <span class="count-numbers">
+                            <?php echo get_currency_symbol($connect) . Count_total_fines_received($connect); ?>
+                            </span>
+                            <span class="count-name">Collected This Month</span>
+                        </div>
+                    </div>
 
-    <div class="col-xl-3 col-md-6">
-    <div class="card bg-white text-black shadow mx-3 mb-4">
-        <div class="card-body">
-            <h5 class="text-center text-black">Total Fines</h5>
-            <h1 class="text-center"><?php echo Count_total_fines($connect); ?></h1>
-            <p class="text-center text-black">Total number of fines issued</p>
-        </div>
-    </div>
-</div>
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
+                        <div class="card card-counter bg-issued status-card">
+                            <i class="bi bi-receipt float-start"></i>
+                            <span class="count-numbers">
+                            <?php echo Count_total_fines($connect); ?>
+                            </span>
+                            <span class="count-name">Total Fines Issued</span>
+                        </div>
+                    </div>
 
-<div class="col-xl-3 col-md-6">
-    <div class="card bg-white text-black shadow mx-3 mb-4">
-        <div class="card-body">
-            <h5 class="text-center text-black">Fines Paid Today</h5>
-            <h1 class="text-center"><?php echo get_currency_symbol($connect) . Count_fines_paid_today($connect); ?></h1>
-            <p class="text-center text-black">Fines paid on <?php echo date('F j, Y'); ?></p>
-        </div>
-    </div>
-</div>
-
+                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
+                        <div class="card card-counter bg-returned status-card">
+                            <i class="bi bi-wallet2 float-start"></i>
+                            <span class="count-numbers">
+                            <?php echo get_currency_symbol($connect) . Count_fines_paid_today($connect); ?>
+                            </span>
+                            <span class="count-name">Fines Paid Today</span>
+                        </div>
+                    </div>
+                    </div>
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
