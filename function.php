@@ -31,7 +31,7 @@ function redirect_logged_in_user($roleId) {
             header("Location: " . $base_url . "user/index.php");
             break;
         case 5: // Visitor
-            header("Location: " . $base_url);
+            header("Location: " . $base_url . "guest/index.php");
             break;
         default:
             header("Location: " . $base_url);
