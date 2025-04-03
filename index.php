@@ -472,7 +472,7 @@ if (session_status() == PHP_SESSION_NONE) {
 
                 <div class="book-cards">
                     <div class="book-card">
-                        <div class="content-wrapper">
+                        <div class="d-flex">
                             <img src="https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fstatic.onecms.io%2Fwp-content%2Fuploads%2Fsites%2F6%2F2019%2F07%2Fchances-are-1-2000.jpg&q=85" alt="" class="book-card-img">
                             <div class="card-content">
                                 <div class="book-name">Changes Are</div>

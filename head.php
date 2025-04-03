@@ -40,7 +40,10 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
         
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        
 
+       <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js" ></script>
+       <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
         
         <!-- Favicons -->
         <link rel="apple-touch-icon" href="" sizes="180x180">

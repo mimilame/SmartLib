@@ -6,14 +6,17 @@ function base_url()
 	return 'http://localhost/SmartLib/';
 }
 
-function startUserSession($user_unique_id, $role_id, $role_name) {
+function startUserSession($user_unique_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
     $_SESSION['user_unique_id'] = $user_unique_id;
     $_SESSION['role_id'] = $role_id;
+	$_SESSION['email'] = $user_email;
     $_SESSION['role_name'] = $role_name;
+	$_SESSION['user_name'] = $user_name; 
+	$_SESSION['profile_img'] = $profile_img;
 
     error_log("Session started: " . print_r($_SESSION, true)); // Debugging
 }
@@ -50,11 +53,11 @@ function process_login($connect, $email, $password) {
     $query = "
         SELECT u.*, r.role_name
         FROM (
-            SELECT admin_unique_id AS user_unique_id, admin_email AS email, admin_password AS password, role_id FROM lms_admin
+            SELECT admin_unique_id AS user_unique_id, admin_email AS email, admin_password AS password, role_id, admin_profile AS profile_img FROM lms_admin
             UNION ALL
-            SELECT librarian_unique_id, librarian_email, librarian_password, role_id FROM lms_librarian
+            SELECT librarian_unique_id AS user_unique_id, librarian_email AS email, librarian_password AS password, role_id, librarian_profile AS profile_img FROM lms_librarian
             UNION ALL
-            SELECT user_unique_id, user_email, user_password, role_id FROM lms_user
+            SELECT user_unique_id AS user_unique_id, user_email AS email, user_password AS password, role_id, user_profile AS profile_img FROM lms_user
         ) AS u
         INNER JOIN user_roles r ON u.role_id = r.role_id
         WHERE u.email = :email
@@ -69,9 +72,12 @@ function process_login($connect, $email, $password) {
         
         // Verify password
         if (password_verify($password, $row['password'])) {
-            startUserSession($row['user_unique_id'], $row['role_id'], $row['role_name']);
+			$user_name = explode('@', $row['email'])[0]; // Extract username
+			$user_email = $row['email'];
+			$profile_img = $row['profile_img'];
+            error_log("Extracted username: " . $user_name); // Debugging
 
-            error_log("Login successful. Role ID: " . $_SESSION['role_id'] . " | Role Name: " . $_SESSION['role_name']);
+            startUserSession($row['user_unique_id'], $row['role_id'],  $user_email, $row['role_name'], $user_name, $profile_img);
             return ['success' => true, 'role_id' => $row['role_id']];
         }
         
