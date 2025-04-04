@@ -39,14 +39,16 @@ if (isset($_POST['add_user'])) {
 	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
 	$status = $_POST['user_status'];
+	$role_id = $_POST['role_id'];
 
 
 	$date_now = get_date_time($connect);
 
 	$query = "
 		INSERT INTO lms_user 
-		(user_name, user_email, user_password, user_unique_id, user_contact_no, user_status, user_created_on, user_updated_on) 
-		VALUES (:name, :email, :password, :unique_id :contact, :status, :created_on, :updated_on)
+		(user_name, user_email, user_password, user_unique_id, user_contact_no, user_status, role_id, user_created_on, user_updated_on) 
+		VALUES (:name, :email, :password, :unique_id, :contact, :status, :role_id, :created_on, :updated_on)
+
 	";
 
 	$statement = $connect->prepare($query);
@@ -57,6 +59,7 @@ if (isset($_POST['add_user'])) {
 		':unique_id' => $unique_id,
 		':contact' => $contact,
 		':status' => $status,
+		':role_id' => $role_id,
 		':created_on' => $date_now,
         ':updated_on' => $date_now
 	]);
@@ -74,6 +77,7 @@ if (isset($_POST['edit_user'])) {
 	$unique_id = $_POST['user_unique_id'];
 	$contact = $_POST['user_contact_no'];
 	$status = $_POST['user_status'];
+	$role_id = $_POST['role_id'];
 
 	// Optional password update
 	$update_query = "
@@ -82,7 +86,8 @@ if (isset($_POST['edit_user'])) {
 		    user_email = :email, 
 			user_unique_id = :unique_id,
 		    user_contact_no = :contact, 
-		    user_status = :status";
+		    user_status = :status,
+			role_id = :role_id";
 
 	if (!empty($password)) {
 		$update_query .= ", user_password = :password";
@@ -96,6 +101,7 @@ if (isset($_POST['edit_user'])) {
 		':unique_id' => $unique_id,
 		':contact' => $contact,
 		':status' => $status,
+		':role_id' => $role_id,
 		':id' => $id
 	];
 
@@ -206,9 +212,9 @@ include '../header.php';
 							<option value="Disable">Inactive</option>
 						</select>
 					</div>
-					<div class="input-box mb-3">
-						<label>User Role:</label>
-						<select name="user_role" required>
+					<div class="mb-3">
+						<label>User Type:</label>
+						<select name="role_id" class="form-select" required>
 							<option value="S">Student</option>
 							<option value="F">Faculty</option>
 						</select>
@@ -262,6 +268,13 @@ include '../header.php';
 							<option value="Disable" <?= $user['user_status'] == 'Disable' ? 'selected' : '' ?>>Inactive</option>
 						</select>
 					</div>
+					<div class="mb-3">
+						<label>User Type:</label>
+						<select name="user_role" class="form-select">
+							<option value="S" <?= $user['role_id'] == 'S' ? 'selected' : '' ?>>Student</option>
+							<option value="F" <?= $user['role_id'] == 'F' ? 'selected' : '' ?>>Faculty</option>
+						</select>
+					</div>
 					<input type="submit" name="edit_user" class="btn btn-primary" value="Update User">
 					<a href="user.php" class="btn btn-secondary">Cancel</a>
 				</form>
@@ -290,6 +303,7 @@ include '../header.php';
 				<p><strong>User Unique ID:</strong> <?= htmlspecialchars($user['user_unique_id']) ?></p>
 				<p><strong>Contact:</strong> <?= htmlspecialchars($user['user_contact_no']) ?></p>
 				<p><strong>Status:</strong> <?= htmlspecialchars($user['user_status']) ?></p>
+				<p><strong>User Type:</strong> <?= htmlspecialchars($user['role_id']) ?></p>
 				<p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_created_on'])) ?></p>
 				<p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_updated_on'])) ?></p>
 				<a href="user.php" class="btn btn-secondary">Back</a>

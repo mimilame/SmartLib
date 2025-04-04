@@ -180,7 +180,7 @@ $overdueBooksList = $connect->query("
 </head>
 <body>
     <div class="container-fluid mt-4">
-        <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Library Analytics Dashboard</h1>
+        <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Reports</h1>
         
         <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -214,7 +214,8 @@ $overdueBooksList = $connect->query("
             <!-- Book Transactions Tab -->
             <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
                 <div class="row mb-4">
-                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
+                    
+                <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
                         <div class="card card-counter bg-issued status-card">
                             <i class="bi bi-book float-start"></i>
                             <span class="count-numbers">
@@ -232,6 +233,7 @@ $overdueBooksList = $connect->query("
                             <span class="count-name">Books Issued</span>
                         </div>
                     </div>
+                    
                     <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
                         <div class="card card-counter bg-returned status-card">
                             <i class="bi bi-arrow-return-left float-start"></i>
