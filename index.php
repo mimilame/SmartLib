@@ -1,17 +1,17 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    // Set the cookie parameters to ensure session persistence
-    $lifetime = 86400; // 24 hours in seconds
-    $path = '/';
-    $domain = '';
-    $secure = false;
-    $httponly = true;
-    
-    session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
-    session_start();
-    
-    error_log("Session started with path: " . session_save_path());
-}
+	if (session_status() == PHP_SESSION_NONE) {
+		// Set the cookie parameters to ensure session persistence
+		$lifetime = 86400; // 24 hours in seconds
+		$path = '/';
+		$domain = '';
+		$secure = false;
+		$httponly = true;
+		
+		session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
+		session_start();
+		
+		error_log("Session started with path: " . session_save_path());
+	}
 	include 'database_connection.php';
 	include 'function.php';	
 	include 'header.php';
@@ -460,14 +460,31 @@ if (session_status() == PHP_SESSION_NONE) {
 
                 <div class="week year">
                     <div class="author-title">Books of the year</div>
-                    <div class="year-book">
-                        <img src="https://images-na.ssl-images-amazon.com/images/I/A1kNdYXw0GL.jpg" alt="" class="year-book-img">
-                        <div class="year-book-content">
-                            <div class="year-book-name">Disappearing Earth</div>
-                            <div class="year-book-author">by Julia Phillips</div>
-                        </div>
-                    </div>
-                    <!-- Additional year-book elements would follow the same pattern -->
+					<?php
+					 // Query to get the most frequently borrowed books
+						$topBooksQuery = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, COUNT(ib.issue_book_id) as borrow_count 
+						FROM lms_book b
+						JOIN lms_issue_book ib ON b.book_id = ib.book_id
+						WHERE b.book_status = 'Enable'
+						GROUP BY b.book_id
+						ORDER BY borrow_count DESC
+						LIMIT 5";
+						$topBooksStatement = $connect->prepare($topBooksQuery);
+						$topBooksStatement->execute();
+						$topBooks = $topBooksStatement->fetchAll(PDO::FETCH_ASSOC);
+
+						foreach($topBooks as $book) {
+						$bookImg = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+
+						echo '<div class="year-book">
+						<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
+						<div class="year-book-content">
+						<div class="year-book-name">' . htmlspecialchars($book['book_name']) . '</div>
+						<div class="year-book-author">by ' . htmlspecialchars($book['book_author']) . '</div>
+						</div>
+						</div>';
+						}
+					?>
                 </div>
             </div>
 
@@ -475,42 +492,73 @@ if (session_status() == PHP_SESSION_NONE) {
                 <div class="main-menu">
                     <div class="genre">Popular by Genre</div>
                     <div class="book-types">
-                        <a href="#" class="book-type active"> All Genres</a>
-                        <a href="#" class="book-type"> Business</a>
-                        <a href="#" class="book-type"> Science</a>
-                        <a href="#" class="book-type"> Fiction</a>
-                        <a href="#" class="book-type"> Philosophy</a>
-                        <a href="#" class="book-type"> Biography</a>
+						<?php 
+						// Query to get all categories
+						$categoryQuery = "SELECT * FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
+						$categoryStatement = $connect->prepare($categoryQuery);
+						$categoryStatement->execute();
+						$categories = $categoryStatement->fetchAll(PDO::FETCH_ASSOC);
+
+						// Display categories as navigation links
+						echo '<a href="#" class="book-type active">All Genres</a>';
+
+						foreach($categories as $category) {
+							echo '<a href="#" class="book-type" data-category-id="' . $category['category_id'] . '">' . 
+								htmlspecialchars($category['category_name']) . '</a>';
+						}
+
+						?>
                     </div>
                 </div>
 
                 <div class="book-cards">
-                    <div class="book-card">
-                        <div class="d-flex">
-                            <img src="https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fstatic.onecms.io%2Fwp-content%2Fuploads%2Fsites%2F6%2F2019%2F07%2Fchances-are-1-2000.jpg&q=85" alt="" class="book-card-img">
-                            <div class="card-content">
-                                <div class="book-name">Changes Are</div>
-                                <div class="book-by">by Richard Russo</div>
-                                <div class="rate">
-                                    <fieldset class="rating book-rate">
-                                        <input type="checkbox" id="star-c1" name="rating" value="5">
-                                        <label class="full" for="star-c1"></label>
-                                        <!-- Additional rating inputs -->
-                                    </fieldset>
-                                    <span class="book-voters card-vote">1.987 voters</span>
-                                </div>
-                                <div class="book-sum card-sum">Readers of all ages and walks of life have drawn inspiration and empowerment from Elizabeth Gilbert's books for years. </div>
-                            </div>
-                        </div>
-                        <div class="likes">
-                            <div class="like-profile">
-                                <img src="https://randomuser.me/api/portraits/women/63.jpg" alt="" class="like-img">
-                            </div>
-                            <!-- Additional like profiles -->
-                            <div class="like-name"><span>Samantha William</span> and <span>2 other friends</span> like this</div>
-                        </div>
-                    </div>
-                    <!-- Additional book-card elements would follow the same pattern -->
+					<?php 
+						// Query to get books with their borrow count, joining with category
+						$popularBooksQuery = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, c.category_name, 
+						COUNT(ib.issue_book_id) as borrow_count, b.book_no_of_copy 
+						FROM lms_book b
+						LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+						JOIN lms_category c ON b.category_id = c.category_id
+						WHERE b.book_status = 'Enable'
+						GROUP BY b.book_id
+						ORDER BY borrow_count DESC, b.book_name ASC
+						LIMIT 6";
+						$popularBooksStatement = $connect->prepare($popularBooksQuery);
+						$popularBooksStatement->execute();
+						$popularBooks = $popularBooksStatement->fetchAll(PDO::FETCH_ASSOC);
+
+						foreach($popularBooks as $book) {
+						$bookImg = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+
+						echo '<div class="book-card">
+						<div class="content-wrapper m-0 d-flex">
+						<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
+						<div class="card-content">
+						<div class="book-name">' . htmlspecialchars($book['book_name']) . '</div>
+						<div class="book-by">by ' . htmlspecialchars($book['book_author']) . '</div>
+						<div class="rate">
+						<fieldset class="rating book-rate">';
+
+						// Generate unique star rating inputs
+						for($i = 5; $i >= 1; $i--) {
+						$starId = 'card-star-' . $book['book_id'] . '-' . $i;
+						echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '">
+						<label class="full" for="' . $starId . '"></label>';
+						}
+
+						echo '</fieldset>
+						<span class="book-voters card-vote">' . $book['book_no_of_copy'] . ' copies</span>
+						</div>
+						<div class="book-sum card-sum">Category: ' . htmlspecialchars($book['category_name']) . ' | 
+						Borrowed: ' . $book['borrow_count'] . ' times</div>
+						</div>
+						</div>';
+ ?>
+						</div>
+						<?php
+						}
+					?>
+                    
                 </div>
             </div>
         </div>

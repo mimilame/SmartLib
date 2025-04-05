@@ -66,38 +66,38 @@
         <?php 
         }
         ?>
-        
-        <script src="../asset/js/scripts.js"></script>
-        <script src="../asset/js/dataTables-simple-demo.js"></script>
-        <script src="asset/js/scripts.js"></script>
-        <script src="asset/js/dataTables-simple-demo.js"></script>
-        <!-- Bootstrap Bundle JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 
-        <!-- Simple DataTables -->
-        <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" crossorigin="anonymous"></script>
-        <!-- DataTables Responsive Extension -->
+        <!-- footer.php -->
+
+        <!-- Bootstrap Bundle JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- DataTables JS -->
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
         <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
-        <!-- Bootstrap Bundle (includes Popper) -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Select2 JS -->
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-        <script src="../asset/js/custom-dataTables.js"></script>
-        <script src="asset/js/custom-dataTables.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.pkgd.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <!-- Chart.js -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js" ></script>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.pkgd.js"></script>
+
+        <!-- Custom Scripts -->
+        <script src="../asset/js/scripts.js"></script>
+        <script src="asset/js/scripts.js"></script>
+
+        <!-- Initialize DataTables & Select2 -->
         <script>
             $(document).ready(function() {
+
+                // Initialize Select2
                 $('.js-example-basic-single').select2();
                 $('.js-example-basic-multiple').select2();
             });
         </script>
-
     </body>
 
 </html>

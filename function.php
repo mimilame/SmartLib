@@ -2257,3 +2257,119 @@ function groupAuthorTopBooks($authorTopBooks, $booksPerAuthor = 3) {
     }
     return $authorBooksMap;
 }
+// Function to get paginated books - add this to function.php
+function getPaginatedBooks($connect, $limit = 10, $offset = 0, $category_id = null) {
+    $params = [];
+    $query = "SELECT b.*, c.category_name 
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              WHERE b.book_status = 'Enable'";
+    
+    if ($category_id !== null) {
+        $query .= " AND b.category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $query .= " ORDER BY b.book_id DESC LIMIT :limit OFFSET :offset";
+    $params[':limit'] = $limit;
+    $params[':offset'] = $offset;
+    
+    $statement = $connect->prepare($query);
+    
+    foreach ($params as $key => $value) {
+        if ($key === ':limit' || $key === ':offset') {
+            $statement->bindValue($key, $value, PDO::PARAM_INT);
+        } else {
+            $statement->bindValue($key, $value);
+        }
+    }
+    
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to count total books - add this to function.php
+function countTotalBooks($connect, $category_id = null) {
+    $query = "SELECT COUNT(*) as total FROM lms_book WHERE book_status = 'Enable'";
+    $params = [];
+    
+    if ($category_id !== null) {
+        $query .= " AND category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $statement = $connect->prepare($query);
+    
+    foreach ($params as $key => $value) {
+        $statement->bindValue($key, $value);
+    }
+    
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    return $result['total'];
+}
+
+// Function to get books by author - add this to function.php
+function getBooksByAuthor($connect, $author_id, $limit = 5) {
+    $query = "SELECT b.* 
+              FROM lms_book b
+              JOIN lms_book_author ba ON b.book_id = ba.book_id
+              WHERE ba.author_id = :author_id
+              AND b.book_status = 'Enable'
+              ORDER BY b.book_id DESC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get all categories - add this to function.php
+function getAllCategories($connect) {
+    $query = "SELECT category_id, category_name 
+              FROM lms_category 
+              WHERE category_status = 'Enable' 
+              ORDER BY category_name";
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+// Get author of the week using the existing function from function.php
+// Here we'll need to use a modified function to get authors with their popular books
+function getTopAuthorsWithBooks($connect, $limit = 5) {
+    $query = "SELECT 
+        a.author_id,
+        a.author_name,
+        a.author_profile,
+        COUNT(DISTINCT ba.book_id) as book_count 
+    FROM 
+        lms_author a
+    JOIN 
+        lms_book_author ba ON a.author_id = ba.author_id
+    JOIN 
+        lms_book b ON ba.book_id = b.book_id 
+    WHERE 
+        a.author_status = 'Enable' AND
+        b.book_status = 'Enable'
+    GROUP BY 
+        a.author_id, a.author_name, a.author_profile
+    ORDER BY 
+        book_count DESC
+    LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // For each author, get their top books
+    foreach ($authors as &$author) {
+        $author['books'] = getBooksByAuthor($connect, $author['author_id'], 3);
+    }
+    
+    return $authors;
+}
