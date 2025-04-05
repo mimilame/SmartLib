@@ -2373,3 +2373,112 @@ function getTopAuthorsWithBooks($connect, $limit = 5) {
     
     return $authors;
 }
+// Function to get detailed book information
+function getBookDetails($connect, $book_id) {
+	$query = "SELECT b.*, c.category_name 
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE b.book_id = :book_id AND b.book_status = 'Enable'
+			LIMIT 1";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetch(PDO::FETCH_ASSOC);
+}
+// Function to get book authors
+function getBookAuthors($connect, $book_id) {
+	$query = "SELECT a.* 
+			FROM lms_author a
+			JOIN lms_book_author ba ON a.author_id = ba.author_id
+			WHERE ba.book_id = :book_id AND a.author_status = 'Enable'
+			ORDER BY a.author_name";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get book borrow history
+function getBookBorrowHistory($connect, $book_id, $limit = 10) {
+	$query = "SELECT ib.*, u.user_name 
+			FROM lms_issue_book ib
+			JOIN lms_user u ON ib.user_id = u.user_id
+			WHERE ib.book_id = :book_id
+			ORDER BY ib.issue_date DESC
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get similar books by category
+function getSimilarBooksByCategory($connect, $category_id, $current_book_id, $limit = 5) {
+	$query = "SELECT b.*, c.category_name 
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE b.category_id = :category_id 
+			AND b.book_id != :current_book_id 
+			AND b.book_status = 'Enable'
+			ORDER BY RAND()
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':category_id', $category_id, PDO::PARAM_INT);
+	$statement->bindParam(':current_book_id', $current_book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get books by the same author
+function getBooksBySameAuthor($connect, $book_id, $limit = 5) {
+	$query = "SELECT DISTINCT b.*, c.category_name 
+			FROM lms_book b
+			JOIN lms_book_author ba1 ON b.book_id = ba1.book_id
+			JOIN lms_book_author ba2 ON ba1.author_id = ba2.author_id
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE ba2.book_id = :book_id 
+			AND b.book_id != :book_id 
+			AND b.book_status = 'Enable'
+			ORDER BY RAND()
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get book reviews or comments (assuming there's a reviews table)
+function getBookReviews($connect, $book_id, $limit = 5) {
+	// This is a placeholder function - you'll need to adjust this based on your actual database schema
+	$query = "SELECT r.*, u.user_name 
+			FROM lms_book_reviews r
+			JOIN lms_user u ON r.user_id = u.user_id
+			WHERE r.book_id = :book_id
+			ORDER BY r.created_at DESC
+			LIMIT :limit";
+	
+	try {
+		$statement = $connect->prepare($query);
+		$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+		$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+		$statement->execute();
+		
+		return $statement->fetchAll(PDO::FETCH_ASSOC);
+	} catch (PDOException $e) {
+		// If the table doesn't exist or there's an error, return an empty array
+		return [];
+	}
+}

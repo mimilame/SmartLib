@@ -13230,23 +13230,24 @@ label {
 /* Responsive book cards styles */
 .book-cards {
   display: grid;
-  grid-template-columns: repeat(1, 1fr); /* 1 column on mobile */
-  grid-gap: 20px;
-  padding-top: 40px;
+  grid-template-columns: repeat(3, 1fr); /* 1 column on mobile */
+  grid-column-gap: 20px;
+  grid-row-gap: 40px;
+  padding-top: 42px;
   position: relative;
 }
 
 /* Small tablets (portrait) */
-@media (min-width: 576px) {
+@media (max-width: 576px) {
   .book-cards {
     grid-template-columns: repeat(2, 1fr); /* 2 columns on small tablets */
   }
 }
 
 /* Larger tablets and desktops */
-@media (min-width: 992px) {
+@media (max-width: 1400px) {
   .book-cards {
-    grid-template-columns: repeat(3, 1fr); /* 3 columns on larger screens */
+    grid-template-columns: repeat(2, 1fr); /* 3 columns on larger screens */
   }
 }
 

@@ -1,8 +1,8 @@
 <?php
 // book.php - Modern book catalog/grid view
-include '../database_connection.php';
-include '../function.php';
-include '../header.php';
+include 'database_connection.php';
+include 'function.php';
+include 'header.php';
 
 // Get all books
 $query = "SELECT b.*, c.category_name 
@@ -27,7 +27,7 @@ $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
 <div class="container-fluid py-4 mt-5 px-5">
     <!-- Hero Section -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
-        <img src="../asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
+        <img src="asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
         <div class="card-img-overlay d-flex flex-column justify-content-center">
             <div class="container">
                 <h1 class="display-4 fw-bold">Library Catalog</h1>
@@ -77,7 +77,7 @@ $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
             if (!empty($selected_category) && $book['category_id'] != $selected_category) continue;
             
             // Get book cover image
-            $book_img = !empty($book['book_img']) ? '../asset/img/' . $book['book_img'] : '../asset/img/book_placeholder.png';
+            $book_img = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
             
             // Get authors
             $author_query = "SELECT a.author_name FROM lms_author a 
@@ -332,4 +332,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php include '../footer.php'; ?>
+<?php include 'footer.php'; ?>

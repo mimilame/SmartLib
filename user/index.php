@@ -1,7 +1,4 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
 //issue_book_details.php
 
 include '../database_connection.php';

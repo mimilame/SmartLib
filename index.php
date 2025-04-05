@@ -1,17 +1,4 @@
 <?php
-	if (session_status() == PHP_SESSION_NONE) {
-		// Set the cookie parameters to ensure session persistence
-		$lifetime = 86400; // 24 hours in seconds
-		$path = '/';
-		$domain = '';
-		$secure = false;
-		$httponly = true;
-		
-		session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
-		session_start();
-		
-		error_log("Session started with path: " . session_save_path());
-	}
 	include 'database_connection.php';
 	include 'function.php';	
 	include 'header.php';
@@ -369,21 +356,20 @@
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
 			<?php
 				// Query to fetch all books
-				$query = "SELECT * FROM lms_book WHERE book_status = 'Enable' ORDER BY book_id ASC";
-				$statement = $connect->prepare($query);
-				$statement->execute();
-				$books = $statement->fetchAll(PDO::FETCH_ASSOC);
-				// Color classes for alternating styles - matching the CSS classes we set
+				$books = getPaginatedBooks($connect, 10, 0); // Use the function instead of direct query
+				
+				// Color classes for alternating styles
 				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];
+				
 				// Loop through each book
 				foreach($books as $index => $book) {
-					// Use modulo to cycle through colors (0-based index % number of colors)
+					// Use modulo to cycle through colors
 					$colorClass = $colors[$index % count($colors)];
 					
-					// Get book cover image path (use placeholder if not available)
+					// Get book cover image path
 					$book_img = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
 					
-					// Start the book cell div - added color class here
+					// Start the book cell div
 					echo '<div class="book-cell ' . $colorClass . '">';
 					
 					// Book image div
@@ -423,9 +409,7 @@
 					echo '</div>'; // End book-content
 					echo '</div>'; // End book-cell
 				}
-				
-				?>
-               
+			?>
             </div>
         </div>
 
@@ -434,26 +418,16 @@
                 <div class="week">
                     <div class="author-title">Author of the week</div>
 					<?php 
-						// Query to get the authors of the week (most active authors based on book_author relation)
-						$authorQuery = "SELECT a.author_id, a.author_name, a.author_profile, COUNT(ba.book_id) as book_count 
-						FROM lms_author a
-						JOIN lms_book_author ba ON a.author_id = ba.author_id
-						WHERE a.author_status = 'Enable'
-						GROUP BY a.author_id
-						ORDER BY book_count DESC
-						LIMIT 5";
-						$authorStatement = $connect->prepare($authorQuery);
-						$authorStatement->execute();
-						$authors = $authorStatement->fetchAll(PDO::FETCH_ASSOC);
-
-										
-						foreach($authors as $author) {
-						$authorImg = !empty('upload/' . $author['author_profile']) ? 'asset/img/' . $author['author_profile'] : 'asset/img/author.png';
+						// Use the getTopAuthorsWithBooks function instead of direct query
+						$authors = getTopAuthorsWithBooks($connect, 5);
 						
-						echo '<div class="author">
-								<img src="' . $authorImg . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
-								<div class="author-name">' . htmlspecialchars($author['author_name']) . '</div>
-							</div>';
+						foreach($authors as $author) {
+							$authorImg = !empty($author['author_profile']) ? 'asset/img/' . $author['author_profile'] : 'asset/img/author.png';
+							
+							echo '<div class="author">
+									<img src="' . $authorImg . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
+									<div class="author-name">' . htmlspecialchars($author['author_name']) . '</div>
+								</div>';
 						}
 					?>
                 </div>
@@ -461,28 +435,26 @@
                 <div class="week year">
                     <div class="author-title">Books of the year</div>
 					<?php
-					 // Query to get the most frequently borrowed books
-						$topBooksQuery = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, COUNT(ib.issue_book_id) as borrow_count 
-						FROM lms_book b
-						JOIN lms_issue_book ib ON b.book_id = ib.book_id
-						WHERE b.book_status = 'Enable'
-						GROUP BY b.book_id
-						ORDER BY borrow_count DESC
-						LIMIT 5";
-						$topBooksStatement = $connect->prepare($topBooksQuery);
-						$topBooksStatement->execute();
-						$topBooks = $topBooksStatement->fetchAll(PDO::FETCH_ASSOC);
-
+						// Use the getPopularBooks function instead of direct query
+						$topBooks = getPopularBooks($connect, 5);
+						
 						foreach($topBooks as $book) {
-						$bookImg = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+							// You'll need to fetch the book details
+							$bookQuery = "SELECT book_img, book_author FROM lms_book WHERE book_id = :book_id";
+							$bookStmt = $connect->prepare($bookQuery);
+							$bookStmt->bindParam(':book_id', $book['book_id'], PDO::PARAM_INT);
+							$bookStmt->execute();
+							$bookDetails = $bookStmt->fetch(PDO::FETCH_ASSOC);
+							
+							$bookImg = !empty($bookDetails['book_img']) ? 'asset/img/' . $bookDetails['book_img'] : 'asset/img/book_placeholder.png';
 
-						echo '<div class="year-book">
-						<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
-						<div class="year-book-content">
-						<div class="year-book-name">' . htmlspecialchars($book['book_name']) . '</div>
-						<div class="year-book-author">by ' . htmlspecialchars($book['book_author']) . '</div>
-						</div>
-						</div>';
+							echo '<div class="year-book">
+								<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
+								<div class="year-book-content">
+									<div class="year-book-name">' . htmlspecialchars($book['book_name']) . '</div>
+									<div class="year-book-author">by ' . htmlspecialchars($bookDetails['book_author']) . '</div>
+								</div>
+							</div>';
 						}
 					?>
                 </div>
@@ -492,73 +464,92 @@
                 <div class="main-menu">
                     <div class="genre">Popular by Genre</div>
                     <div class="book-types">
-						<?php 
-						// Query to get all categories
-						$categoryQuery = "SELECT * FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
-						$categoryStatement = $connect->prepare($categoryQuery);
-						$categoryStatement->execute();
-						$categories = $categoryStatement->fetchAll(PDO::FETCH_ASSOC);
-
-						// Display categories as navigation links
-						echo '<a href="#" class="book-type active">All Genres</a>';
-
-						foreach($categories as $category) {
-							echo '<a href="#" class="book-type" data-category-id="' . $category['category_id'] . '">' . 
-								htmlspecialchars($category['category_name']) . '</a>';
-						}
-
+						<?php  
+							// Get the currently selected category (default to 'all')
+							$current_category = isset($_GET['category']) ? $_GET['category'] : 'all';
+							
+							// Use the getAllCategories function 
+							$categories = getAllCategories($connect);
+							
+							// Display "All Genres" link
+							$all_active = ($current_category == 'all') ? 'active' : '';
+							echo '<a href="?category=all" class="book-type ' . $all_active . '">All Genres</a>';
+							
+							// Display category links
+							foreach($categories as $category) {
+								$active = ($current_category == $category['category_id']) ? 'active' : '';
+								echo '<a href="?category=' . $category['category_id'] . '" class="book-type ' . $active . '">' . 
+									htmlspecialchars($category['category_name']) . '</a>'; 
+							} 
 						?>
                     </div>
                 </div>
 
                 <div class="book-cards">
-					<?php 
-						// Query to get books with their borrow count, joining with category
-						$popularBooksQuery = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, c.category_name, 
-						COUNT(ib.issue_book_id) as borrow_count, b.book_no_of_copy 
-						FROM lms_book b
-						LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
-						JOIN lms_category c ON b.category_id = c.category_id
-						WHERE b.book_status = 'Enable'
-						GROUP BY b.book_id
-						ORDER BY borrow_count DESC, b.book_name ASC
-						LIMIT 6";
-						$popularBooksStatement = $connect->prepare($popularBooksQuery);
-						$popularBooksStatement->execute();
-						$popularBooks = $popularBooksStatement->fetchAll(PDO::FETCH_ASSOC);
-
-						foreach($popularBooks as $book) {
-						$bookImg = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
-
-						echo '<div class="book-card">
-						<div class="content-wrapper m-0 d-flex">
-						<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
-						<div class="card-content">
-						<div class="book-name">' . htmlspecialchars($book['book_name']) . '</div>
-						<div class="book-by">by ' . htmlspecialchars($book['book_author']) . '</div>
-						<div class="rate">
-						<fieldset class="rating book-rate">';
-
-						// Generate unique star rating inputs
-						for($i = 5; $i >= 1; $i--) {
-						$starId = 'card-star-' . $book['book_id'] . '-' . $i;
-						echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '">
-						<label class="full" for="' . $starId . '"></label>';
+					<?php
+						// Get the category filter from URL
+						$category_filter = isset($_GET['category']) ? $_GET['category'] : 'all';
+						
+						// Base query
+						$query = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, c.category_name,
+								COUNT(ib.issue_book_id) as borrow_count, b.book_no_of_copy
+								FROM lms_book b
+								LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+								JOIN lms_category c ON b.category_id = c.category_id
+								WHERE b.book_status = 'Enable'";
+						
+						// Add category filter if not 'all'
+						if($category_filter !== 'all') {
+							$query .= " AND b.category_id = :category_id";
 						}
-
-						echo '</fieldset>
-						<span class="book-voters card-vote">' . $book['book_no_of_copy'] . ' copies</span>
-						</div>
-						<div class="book-sum card-sum">Category: ' . htmlspecialchars($book['category_name']) . ' | 
-						Borrowed: ' . $book['borrow_count'] . ' times</div>
-						</div>
-						</div>';
- ?>
-						</div>
-						<?php
+						
+						$query .= " GROUP BY b.book_id
+								ORDER BY borrow_count DESC, b.book_name ASC
+								LIMIT 6";
+						
+						$statement = $connect->prepare($query);
+						
+						// Bind parameter if filtering by category
+						if($category_filter !== 'all') {
+							$statement->bindParam(':category_id', $category_filter);
+						}
+						
+						$statement->execute();
+						$books = $statement->fetchAll(PDO::FETCH_ASSOC);
+						
+						// Display books
+						if(count($books) > 0) {
+							foreach($books as $book) {
+								$bookImg = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+								
+								echo '<div class="book-card">
+										<div class="content-wrapper m-0 d-flex">
+											<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
+											<div class="card-content">
+												<div class="book-name">' . htmlspecialchars($book['book_name']) . '</div>
+												<div class="book-by">by ' . htmlspecialchars($book['book_author']) . '</div>
+												<div class="rate">
+													<fieldset class="rating book-rate">';
+													
+								// Generate unique star rating inputs 
+								for($i = 5; $i >= 1; $i--) {
+									$starId = 'card-star-' . $book['book_id'] . '-' . $i;
+									echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '">
+										<label class="full" for="' . $starId . '"></label>';
+								}
+								
+								echo '</fieldset>
+									<span class="book-voters card-vote">' . $book['book_no_of_copy'] . ' copies</span>
+									</div>
+									<div class="book-sum card-sum">' . htmlspecialchars($book['category_name']) . ' | Borrowed: ' . $book['borrow_count'] . ' times</div>
+									</div>
+									</div>
+								</div>';
+							}
+						} else {
+							echo '<div class="no-books">No books found in this category.</div>';
 						}
 					?>
-                    
                 </div>
             </div>
         </div>
