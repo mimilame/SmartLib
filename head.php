@@ -40,20 +40,15 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
         
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+        
 
        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js" ></script>
-       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
         
         <!-- Favicons -->
         <link rel="apple-touch-icon" href="" sizes="180x180">
         <link rel="icon" href="../asset/img/logo-removebg.png" sizes="32x32" type="image/png">
         <link rel="icon" href="../asset/img/logo-removebg.png" sizes="16x16" type="image/png">
-        <link rel="icon" href="asset/img/logo-removebg.png" sizes="32x32" type="image/png">
-        <link rel="icon" href="asset/img/logo-removebg.png" sizes="16x16" type="image/png">
         <link rel="manifest" href="">
         <link rel="mask-icon" href="" color="#7952b3">
         <link rel="icon" href="">

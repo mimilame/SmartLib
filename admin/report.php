@@ -6,34 +6,122 @@ include '../header.php';
 
 $message = '';
 
-// Fetch all required data for the dashboard
-$bookStatusStats = getBookStatusStats($connect);
-$overdueBooks = getOverdueBooks($connect);
-$monthlyStats = getMonthlyStats($connect);
-$popularBooks = getPopularBooks($connect);
-$categoryStats = getCategoryStats($connect);
-$userRoleStats = getUserRoleStats($connect);
-$activeBorrowers = getActiveBorrowers($connect);
-$recentTransactions = getRecentTransactions($connect);
-$overdueBooksList = getOverdueBooksList($connect);
+// Fetch book circulation statistics
+$bookStatusStats = $connect->query("
+    SELECT issue_book_status as status, COUNT(*) as count 
+    FROM lms_issue_book 
+    GROUP BY issue_book_status
+")->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch author-related data
-$topAuthors = getTopAuthors($connect);
-$authorTimeStats = getAuthorTimeStats($connect);
-$authorTopBooks = getAuthorTopBooks($connect);
+// Convert to format usable by charts
+$statusLabels = [];
+$statusCounts = [];
+foreach ($bookStatusStats as $stat) {
+    $statusLabels[] = $stat['status'];
+    $statusCounts[] = $stat['count'];
+}
 
-// Format author data for charts
-$formattedAuthorStats = formatAuthorTimeStats($authorTimeStats);
-$weeklyAuthors = $formattedAuthorStats['weekly'];
-$monthlyAuthors = $formattedAuthorStats['monthly'];
-$yearlyAuthors = $formattedAuthorStats['yearly'];
+// Fetch overdue books statistics
+$overdueBooks = $connect->query("
+    SELECT COUNT(*) as count 
+    FROM lms_issue_book 
+    WHERE issue_book_status = 'Overdue' 
+")->fetch(PDO::FETCH_ASSOC);
 
-// Group top books by author
-$authorBooksMap = groupAuthorTopBooks($authorTopBooks);
+// Fetch monthly transaction statistics (last 6 months)
+$monthlyStats = $connect->query("
+    SELECT 
+        DATE_FORMAT(issue_date, '%b %Y') as month,
+        COUNT(CASE WHEN issue_book_status = 'Issue' THEN 1 END) as issued,
+        COUNT(CASE WHEN issue_book_status = 'Return' THEN 1 END) as returned,
+        COUNT(CASE WHEN issue_book_status = 'Not Return' THEN 1 END) as lost
+    FROM lms_issue_book
+    WHERE issue_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY DATE_FORMAT(issue_date, '%Y-%m')
+    ORDER BY issue_date
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch most frequently borrowed books
+$popularBooks = $connect->query("
+    SELECT ib.book_id, b.book_name, COUNT(ib.book_id) AS issue_count 
+    FROM lms_issue_book ib 
+    INNER JOIN lms_book b ON ib.book_id = b.book_id 
+    GROUP BY ib.book_id, b.book_name 
+    ORDER BY issue_count DESC 
+    LIMIT 10
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch category distribution
+$categoryStats = $connect->query("SELECT c.category_name, COUNT(b.book_id) as book_count FROM lms_category c LEFT JOIN lms_book b ON c.category_id = b.category_id WHERE c.category_status = 'Enable' GROUP BY c.category_id ORDER BY book_count DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch active users by role
+$userRoleStats = $connect->query("
+    SELECT r.role_name, COUNT(u.user_id) as user_count 
+    FROM user_roles r 
+    LEFT JOIN lms_user u ON r.role_id = u.role_id 
+    WHERE u.user_status = 'Enable' 
+    GROUP BY r.role_id, r.role_name
+    ORDER BY user_count DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch most active borrowers
+$activeBorrowers = $connect->query("
+    SELECT u.user_name, u.user_unique_id, COUNT(i.issue_book_id) as borrow_count 
+    FROM lms_user u 
+    JOIN lms_issue_book i ON u.user_id = i.user_id 
+    GROUP BY u.user_id, u.user_name, u.user_unique_id
+    ORDER BY borrow_count DESC 
+    LIMIT 10
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch recent transactions
+$recentTransactions = $connect->query("
+    SELECT b.book_name, u.user_name, i.issue_date, i.return_date, i.expected_return_date, i.issue_book_status 
+    FROM lms_issue_book i 
+    JOIN lms_book b ON i.book_id = b.book_id 
+    JOIN lms_user u ON i.user_id = u.user_id 
+    ORDER BY i.issue_date DESC 
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// Prepare category data for charts
+$categoryNames = [];
+$categoryCounts = [];
+foreach ($categoryStats as $category) {
+    $categoryNames[] = $category['category_name'];
+    $categoryCounts[] = $category['book_count'];
+}
+
+// Prepare user role data for charts
+$roleNames = [];
+$roleCounts = [];
+foreach ($userRoleStats as $role) {
+    $roleNames[] = $role['role_name'];
+    $roleCounts[] = $role['user_count'];
+}
+
+// Fetch detailed overdue books listing
+$overdueBooksList = $connect->query("
+    SELECT b.book_name, u.user_name, u.user_email, i.issue_date, i.expected_return_date,
+           DATEDIFF(CURDATE(), i.expected_return_date) as days_overdue
+    FROM lms_issue_book i 
+    JOIN lms_book b ON i.book_id = b.book_id 
+    JOIN lms_user u ON i.user_id = u.user_id 
+    WHERE i.issue_book_status = 'Issue' 
+    AND i.expected_return_date < CURDATE()
+    ORDER BY days_overdue DESC
+")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .status-card {
             transition: all 0.3s ease;
@@ -103,11 +191,6 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="popular-tab" data-bs-toggle="tab" data-bs-target="#popular" type="button" role="tab" aria-controls="popular" aria-selected="false">
                     <i class="bi bi-star"></i> Popular Books
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="authors-tab" data-bs-toggle="tab" data-bs-target="#authors" type="button" role="tab" aria-controls="authors" aria-selected="true">
-                    <i class="bi bi-pen"></i> Author Analytics
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -210,6 +293,91 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center"> 
+    <h5 class="card-title mb-0"><i class="bi bi-card-list"></i> Book Transactions History</h5>
+
+    <!-- Short Dropdown Filter -->
+    <div class="w-25">
+        <select class="form-select" id="dateFilter">
+            <option value="All">All</option>
+            <option value="Today">Today</option>
+            <option value="ThisWeek">This Week</option>
+            <option value="ThisMonth">This Month</option>
+        </select>
+    </div>
+</div>
+
+
+
+
+                            <div class="collapse show" id="recentTransactionsTable">
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Book Name</th>
+                                                    <th>User</th>
+                                                    <th>Issue Date</th>
+                                                    <th>Expected Return</th>
+                                                    <th>Return Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($recentTransactions as $transaction): ?>
+                                                <?php 
+                                                    $status_class = '';
+                                                    switch ($transaction['issue_book_status']) {
+                                                        case 'Issue':
+                                                            if (strtotime($transaction['expected_return_date']) < time()) {
+                                                                $status_class = 'table-danger';
+                                                            } else {
+                                                                $status_class = 'table-warning';
+                                                            }
+                                                            break;
+                                                        case 'Return':
+                                                            $status_class = 'table-success';
+                                                            break;
+                                                        case 'Not Return':
+                                                            $status_class = 'table-danger';
+                                                            break;
+                                                        default:
+                                                            $status_class = '';
+                                                    }
+                                                ?>
+                                                <tr class="<?= $status_class ?>">
+                                                    <td><?= htmlspecialchars($transaction['book_name']) ?></td>
+                                                    <td><?= htmlspecialchars($transaction['user_name']) ?></td>
+                                                    <td><?= date('M d, Y', strtotime($transaction['issue_date'])) ?></td>
+                                                    <td><?= date('M d, Y', strtotime($transaction['expected_return_date'])) ?></td>
+                                                    <td><?= $transaction['return_date'] ? date('M d, Y', strtotime($transaction['return_date'])) : 'Not returned' ?></td>
+                                                    <td>
+    <?php if ($transaction['issue_book_status'] == 'Issued'): ?>
+        <span class="badge bg-warning">Issued</span>
+    <?php elseif ($transaction['issue_book_status'] == 'Returned'): ?>
+        <span class="badge bg-success">Returned</span>
+    <?php elseif ($transaction['issue_book_status'] == 'Overdue'): ?>
+        <span class="badge bg-danger">Overdue</span>
+    <?php elseif ($transaction['issue_book_status'] == 'Lost'): ?>
+        <span class="badge bg-dark">Lost</span>
+    <?php endif; ?>
+</td>
+
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card mb-4">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h5 class="card-title mb-0"><i class="bi bi-exclamation-triangle"></i> Overdue Books</h5>
                                 <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#overdueTable">
@@ -255,91 +423,7 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                         </div>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center"> 
-                        <h5 class="card-title mb-0"><i class="bi bi-card-list"></i> Book Transactions History</h5>
-
-                        <!-- Short Dropdown Filter -->
-                        <div class="w-25">
-                            <select class="form-select" id="dateFilter">
-                                <option value="All">All</option>
-                                <option value="Today">Today</option>
-                                <option value="ThisWeek">This Week</option>
-                                <option value="ThisMonth">This Month</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="collapse show" id="recentTransactionsTable">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Book Name</th>
-                                            <th>User</th>
-                                            <th>Issue Date</th>
-                                            <th>Expected Return</th>
-                                            <th>Return Date</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($recentTransactions as $transaction): ?>
-                                        <?php 
-                                            $status_class = '';
-                                            switch ($transaction['issue_book_status']) {
-                                                case 'Issue':
-                                                    if (strtotime($transaction['expected_return_date']) < time()) {
-                                                        $status_class = 'table-danger';
-                                                    } else {
-                                                        $status_class = 'table-warning';
-                                                    }
-                                                    break;
-                                                case 'Return':
-                                                    $status_class = 'table-success';
-                                                    break;
-                                                case 'Not Return':
-                                                    $status_class = 'table-danger';
-                                                    break;
-                                                default:
-                                                    $status_class = '';
-                                            }
-                                        ?>
-                                        <tr class="<?= $status_class ?>" data-issue-date="<?= $transaction['issue_date'] ?>">
-                                            <td><?= htmlspecialchars($transaction['book_name']) ?></td>
-                                            <td><?= htmlspecialchars($transaction['user_name']) ?></td>
-                                            <td><?= date('M d, Y', strtotime($transaction['issue_date'])) ?></td>
-                                            <td><?= date('M d, Y', strtotime($transaction['expected_return_date'])) ?></td>
-                                            <td><?= $transaction['return_date'] ? date('M d, Y', strtotime($transaction['return_date'])) : 'Not returned' ?></td>
-                                            <td>
-                                                <?php if ($transaction['issue_book_status'] == 'Issued'): ?>
-                                                    <span class="badge bg-warning">Issued</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Returned'): ?>
-                                                    <span class="badge bg-success">Returned</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Overdue'): ?>
-                                                    <span class="badge bg-danger">Overdue</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Lost'): ?>
-                                                    <span class="badge bg-dark">Lost</span>
-                                                <?php endif; ?>
-                                            </td>
-
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </div>
-    </div>
-  
             
             <!-- Popular Books Tab -->
             <div class="tab-pane fade" id="popular" role="tabpanel" aria-labelledby="popular-tab">
@@ -377,173 +461,7 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                     </div>
                 </div>
             </div>
-            <!-- Author Analytics -->
-            <div class="tab-pane fade" id="authors" role="tabpanel" aria-labelledby="authors-tab">
-                <div class="row mb-4">
-                        <!-- Time period filters -->
-                        <div class="col-md-8 mb-4">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 class="card-title"><i class="bi bi-filter"></i> Author Analytics by Time Period</h5>
-                                    
-                                    <!-- Short Dropdown Filter -->
-                                    <div class="w-25 mb-3">
-                                        <select class="form-select" id="author-time-select">
-                                            <option value="author-week" selected>This Week</option>
-                                            <option value="author-month">This Month</option>
-                                            <option value="author-year">This Year</option>
-                                            <option value="author-all">All Time</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                
-                                    
-                                    <div class="tab-content" id="author-time-content">
-                                        <!-- This Week -->
-                                        <div class="tab-pane fade show active" id="author-week" role="tabpanel" aria-labelledby="author-week-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorWeekChart"></canvas>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- This Month -->
-                                        <div class="tab-pane fade" id="author-month" role="tabpanel" aria-labelledby="author-month-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorMonthChart"></canvas>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- This Year -->
-                                        <div class="tab-pane fade" id="author-year" role="tabpanel" aria-labelledby="author-year-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorYearChart"></canvas>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- All Time -->
-                                        <div class="tab-pane fade" id="author-all" role="tabpanel" aria-labelledby="author-all-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorAllTimeChart"></canvas>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Author Spotlight -->
-                        <div class="col-xl-4 col-lg-4 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title"><i class="bi bi-award"></i> Author Spotlight</h5>
-                                </div>
-                                <div class="card-body">
-                                    <?php 
-                                    // Get the top author from the collected data
-                                    $spotlightAuthor = !empty($topAuthors) ? $topAuthors[0] : null;
-                                    
-                                    if ($spotlightAuthor):
-                                        // Extract unique books using book name as the identifier
-                                        $uniqueBooks = [];
-                                        if (isset($authorBooksMap[$spotlightAuthor['author_id']])) {
-                                            foreach ($authorBooksMap[$spotlightAuthor['author_id']] as $book) {
-                                                // Use book_name as the identifier since book_id might not be available
-                                                $bookIdentifier = $book['book_name']; // We're assuming book_name always exists
-                                                
-                                                // If this book hasn't been added yet or has a higher borrow count, use this entry
-                                                if (!isset($uniqueBooks[$bookIdentifier]) || $uniqueBooks[$bookIdentifier]['borrow_count'] < $book['borrow_count']) {
-                                                    $uniqueBooks[$bookIdentifier] = $book;
-                                                }
-                                            }
-                                        }
-                                        // Convert associative array back to indexed array
-                                        $spotlightAuthorBooks = array_values($uniqueBooks);
-                                        
-                                        // Sort books by borrow count (highest first)
-                                        usort($spotlightAuthorBooks, function($a, $b) {
-                                            return $b['borrow_count'] - $a['borrow_count'];
-                                        });
-
-                                        // Limit to top 3 books
-                                        $spotlightAuthorBooks = array_slice($spotlightAuthorBooks, 0, 3);
-                                    ?>
-                                    <div class="text-center mb-3">
-                                        <div class="display-6"><?= htmlspecialchars($spotlightAuthor['author_name']) ?></div>
-                                        <div class="text-muted">Top Author This Month</div>
-                                        <div class="fs-4 mt-2">
-                                            <span class="badge bg-primary rounded-pill">
-                                                <?= $spotlightAuthor['total_borrows'] ?> Total Borrows
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <hr>
-                                    
-                                    <h6 class="card-subtitle mb-2 text-muted">Most Popular Books:</h6>
-                                    <?php if (!empty($spotlightAuthorBooks)): ?>
-                                        <ol class="list-group list-group-numbered">
-                                            <?php foreach ($spotlightAuthorBooks as $book): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-start">
-                                                <div class="ms-2 me-auto">
-                                                    <div class="fw-bold"><?= htmlspecialchars($book['book_name']) ?></div>
-                                                </div>
-                                                <span class="badge bg-primary rounded-pill"><?= $book['borrow_count'] ?> borrows</span>
-                                            </li>
-                                            <?php endforeach; ?>
-                                        </ol>
-                                    <?php else: ?>
-                                        <p class="text-muted">No book data available for this author.</p>
-                                    <?php endif; ?>
-                                    <?php else: ?>
-                                        <div class="alert alert-info">
-                                            No author data available.
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Top Authors Table -->
-                        <div class="col-xl-12 col-lg-12 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title"><i class="bi bi-list-stars"></i> Top Authors</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-hover">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Author</th>
-                                                    <th>Unique Books Borrowed</th>
-                                                    <th>Total Borrows</th>
-                                                    <th>This Week</th>
-                                                    <th>This Month</th>
-                                                    <th>This Year</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($topAuthors as $author): ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars($author['author_name']) ?></td>
-                                                    <td><span class="badge bg-info"><?= $author['unique_books_borrowed'] ?></span></td>
-                                                    <td><span class="badge bg-primary"><?= $author['total_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-success"><?= $author['week_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-warning"><?= $author['month_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-danger"><?= $author['year_borrows'] ?></span></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    
-                        
-                </div>
-            </div>
-
+            
             <!-- Categories Tab -->
             <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab">
                 <div class="row">
@@ -697,366 +615,167 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
         </div>
     </div>
 
-
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-           // Convert PHP data for charts (these have been prepared above)
-            const popularBooks = <?php echo json_encode($popularBooks); ?>;
-            const categoryStats = <?php echo json_encode($categoryStats); ?>;
-            const userRoleStats = <?php echo json_encode($userRoleStats); ?>;
-            const activeBorrowers = <?php echo json_encode($activeBorrowers); ?>;
-            const bookStatusStats = <?php echo json_encode($bookStatusStats); ?>;
-            const weeklyAuthors = <?php echo json_encode($weeklyAuthors); ?>;
-            const monthlyAuthors = <?php echo json_encode($monthlyAuthors); ?>;
-            const yearlyAuthors = <?php echo json_encode($yearlyAuthors); ?>;
-            const topAuthors = <?php echo json_encode($topAuthors); ?>;
-            const monthlyStats = <?php echo json_encode($monthlyStats); ?>; // For transaction trends
-            
-            // Only initialize charts if their canvas elements exist
-            
-            // Book Status Chart (Doughnut)
-            const bookStatusCanvas = document.getElementById("bookStatusChart");
-            if (bookStatusCanvas) {
-                const bookStatusCtx = bookStatusCanvas.getContext("2d");
-                new Chart(bookStatusCtx, {
-                    type: "doughnut",
-                    data: {
-                        labels: bookStatusStats.map(stat => stat.status),
-                        datasets: [{
-                            data: bookStatusStats.map(stat => stat.count),
-                            backgroundColor: ["#007bff", "#28a745", "#dc3545", "#ffc107"]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
+ <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Initialize transaction trends chart
+        const transactionTrendsCtx = document.getElementById("transactionTrendsChart").getContext("2d");
+        const transactionTrendsChart = new Chart(transactionTrendsCtx, {
+            type: "line",
+            data: {
+                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                datasets: [{
+                    label: "Books Issued",
+                    data: [50, 75, 60, 90, 120, 110],
+                    borderColor: "#007bff",
+                    backgroundColor: "rgba(0, 123, 255, 0.1)",
+                    fill: true
+                }, {
+                    label: "Books Returned",
+                    data: [40, 70, 55, 85, 115, 105],
+                    borderColor: "#28a745",
+                    backgroundColor: "rgba(40, 167, 69, 0.1)",
+                    fill: true
+                }]
             }
-            
-            // Transaction Trends Chart (Line)
-            const transactionTrendsCanvas = document.getElementById("transactionTrendsChart");
-            if (transactionTrendsCanvas) {
-                const transactionTrendsCtx = transactionTrendsCanvas.getContext("2d");
-                // This should use your monthlyStats data, but using placeholder for now
-                new Chart(transactionTrendsCtx, {
-                    type: "line",
-                    data: {
-                        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"], // Replace with actual months
-                        datasets: [{
-                            label: "Books Issued",
-                            data: [50, 75, 60, 90, 120, 110], // Replace with actual data
-                            borderColor: "#007bff",
-                            backgroundColor: "rgba(0, 123, 255, 0.1)",
-                            fill: true
-                        }, {
-                            label: "Books Returned",
-                            data: [40, 70, 55, 85, 115, 105], // Replace with actual data
-                            borderColor: "#28a745",
-                            backgroundColor: "rgba(40, 167, 69, 0.1)",
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-            
-            // Popular Books Chart (Bar)
-            const popularBooksCanvas = document.getElementById("popularBooksChart");
-            if (popularBooksCanvas) {
-                const popularBooksCtx = popularBooksCanvas.getContext("2d");
-                new Chart(popularBooksCtx, {
-                    type: "bar",
-                    data: {
-                        labels: popularBooks.map(book => book.book_name),
-                        datasets: [{
-                            label: "Times Borrowed",
-                            data: popularBooks.map(book => book.issue_count),
-                            backgroundColor: "#007bff"
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Category Distribution Chart (Doughnut)
-            const categoryCanvas = document.getElementById("categoryDistributionChart");
-            if (categoryCanvas) {
-                const categoryCtx = categoryCanvas.getContext("2d");
-                new Chart(categoryCtx, {
-                    type: "doughnut",
-                    data: {
-                        labels: categoryStats.map(category => category.category_name),
-                        datasets: [{
-                            data: categoryStats.map(category => category.book_count),
-                            backgroundColor: [
-                                "#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", 
-                                "#ff9f40", "#9966ff", "#c9cbcf", "#7bc043",
-                                "#f37736", "#ee4035"
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-            
-            // User Roles Chart (Pie)
-            const userRolesCanvas = document.getElementById("userRolesChart");
-            if (userRolesCanvas) {
-                const userRolesCtx = userRolesCanvas.getContext("2d");
-                new Chart(userRolesCtx, {
-                    type: "pie",
-                    data: {
-                        labels: userRoleStats.map(role => role.role_name),
-                        datasets: [{
-                            data: userRoleStats.map(role => role.user_count),
-                            backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0"]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-            
-            // Active Borrowers Chart (Bar)
-            const activeBorrowersCanvas = document.getElementById("activeBorrowersChart");
-            if (activeBorrowersCanvas) {
-                const activeBorrowersCtx = activeBorrowersCanvas.getContext("2d");
-                new Chart(activeBorrowersCtx, {
-                    type: "bar",
-                    data: {
-                        labels: activeBorrowers.map(borrower => borrower.user_name),
-                        datasets: [{
-                            label: "Books Borrowed",
-                            data: activeBorrowers.map(borrower => borrower.borrow_count),
-                            backgroundColor: "#28a745"
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y', // Horizontal bar chart
-                        scales: {
-                            x: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Date filter functionality for transactions table
-            const dateFilter = document.getElementById("dateFilter");
-            if (dateFilter) {
-                dateFilter.addEventListener("change", function() {
-                    const dateRange = this.value;
-                    const rows = document.querySelectorAll("#recentTransactionsTable tbody tr");
-                    
-                    const today = new Date();
-                    rows.forEach(row => {
-                        // Get issue date from data attribute, or fallback to cell content
-                        let issueDateCell = row.querySelector("td:nth-child(3)");
-                        let issueDateStr = issueDateCell ? issueDateCell.textContent : "";
-                        let issueDate = new Date(issueDateStr);
-                        
-                        let isVisible = false;
-                        
-                        switch(dateRange) {
-                            case 'All':
-                                isVisible = true;
-                                break;
-                            case 'Today':
-                                isVisible = issueDate.toDateString() === today.toDateString();
-                                break;
-                            case 'ThisWeek':
-                                const oneWeekAgo = new Date();
-                                oneWeekAgo.setDate(today.getDate() - 7);
-                                isVisible = issueDate >= oneWeekAgo && issueDate <= today;
-                                break;
-                            case 'ThisMonth':
-                                const oneMonthAgo = new Date();
-                                oneMonthAgo.setMonth(today.getMonth() - 1);
-                                isVisible = issueDate >= oneMonthAgo && issueDate <= today;
-                                break;
-                            default:
-                                isVisible = true;
-                        }
-                        
-                        row.style.display = isVisible ? "" : "none";
-                    });
-                });
-            }
-            
-            // Toggle table views
-            document.querySelectorAll("[data-bs-toggle='collapse']").forEach(button => {
-                button.addEventListener("click", function() {
-                    const targetId = this.getAttribute("data-bs-target");
-                    const target = document.querySelector(targetId);
-                    if (target) {
-                        target.classList.toggle("show");
-                    }
-                });
-            });
+        });
 
-            const weeklyCanvas = document.getElementById("authorWeekChart");
-            if (weeklyCanvas) {
-                const weeklyCtx = weeklyCanvas.getContext("2d");
-                new Chart(weeklyCtx, {
-                    // Chart configuration remains the same
-                    type: "bar",
-                    data: {
-                        labels: weeklyAuthors.map(item => item.author_name),
-                        datasets: [{
-                            label: "Books Borrowed This Week",
-                            data: weeklyAuthors.map(item => item.borrow_count),
-                            backgroundColor: "#4CAF50" // Green
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y', // Horizontal bar chart
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Books Borrowed'
-                                }
-                            }
-                        }
-                    }
-                });
+        // Initialize book status chart
+        const bookStatusCtx = document.getElementById("bookStatusChart").getContext("2d");
+        const bookStatusChart = new Chart(bookStatusCtx, {
+            type: "doughnut",
+            data: {
+                labels: ["Issued", "Returned", "Overdue", "Lost"],
+                datasets: [{
+                    data: [120, 90, 15, 5],
+                    backgroundColor: ["#007bff", "#28a745", "#dc3545", "#ffc107"]
+                }]
             }
-            
-   
-            const monthlyCanvas = document.getElementById("authorMonthChart");
-            if (monthlyCanvas) {
-                const monthlyCtx = monthlyCanvas.getContext("2d");
-                new Chart(monthlyCtx, {
-                    type: "bar",
-                    data: {
-                        labels: monthlyAuthors.map(item => item.author_name),
-                        datasets: [{
-                            label: "Books Borrowed This Month",
-                            data: monthlyAuthors.map(item => item.borrow_count),
-                            backgroundColor: "#FF9800" // Orange
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y',
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Books Borrowed'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            const yearlyCanvas = document.getElementById("authorYearChart");
-            if (yearlyCanvas) {
-                const yearlyCtx = yearlyCanvas.getContext("2d");
-                new Chart(yearlyCtx, {
-                    type: "bar",
-                    data: {
-                        labels: yearlyAuthors.map(item => item.author_name),
-                        datasets: [{
-                            label: "Books Borrowed This Year",
-                            data: yearlyAuthors.map(item => item.borrow_count),
-                            backgroundColor: "#E91E63" // Pink
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y',
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Books Borrowed'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-            
-            const allTimeCanvas = document.getElementById("authorAllTimeChart");
-            if (allTimeCanvas && topAuthors.length > 0) {
-                const allTimeCtx = allTimeCanvas.getContext("2d");
-                new Chart(allTimeCtx, {
-                    type: "bar",
-                    data: {
-                        labels: topAuthors.slice(0, 10).map(author => author.author_name),
-                        datasets: [{
-                            label: "Total Books Borrowed",
-                            data: topAuthors.slice(0, 10).map(author => author.total_borrows),
-                            backgroundColor: "#3F51B5" // Indigo
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y',
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Books Borrowed'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+        });
 
-           
-            const timeSelect = document.getElementById('author-time-select');
-            
-            // Add change event handler to the select
-            timeSelect.addEventListener('change', function() {
-                const selectedValue = this.value;
-                
-                // Hide all tab panes first
-                document.querySelectorAll('#author-time-content .tab-pane').forEach(pane => {
-                    pane.classList.remove('show', 'active');
-                });
-                
-                // Show the selected tab pane
-                const selectedPane = document.getElementById(selectedValue);
-                if (selectedPane) {
-                    selectedPane.classList.add('show', 'active');
-                }
+        // Toggle table views
+        document.querySelectorAll("[data-bs-toggle='collapse']").forEach(button => {
+            button.addEventListener("click", function () {
+                const target = document.querySelector(this.getAttribute("data-bs-target"));
+                target.classList.toggle("show");
             });
         });
-    </script>
+
+        // Handle tab navigation
+        document.querySelectorAll(".nav-link").forEach(tab => {
+            tab.addEventListener("click", function () {
+                document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
+                this.classList.add("active");
+            });
+        });
+
+        // Popular Books Chart
+        const popularBooksChartCtx = document.getElementById("popularBooksChart").getContext("2d");
+        new Chart(popularBooksChartCtx, {
+            type: "bar",
+            data: {
+                labels: popularBooks.map(book => book.book_name),
+                datasets: [{
+                    label: "Times Borrowed",
+                    data: popularBooks.map(book => book.issue_count),
+                    backgroundColor: "#007bff"
+                }]
+            }
+        });
+
+        // Category Distribution Chart
+        const categoryChartCtx = document.getElementById("categoryDistributionChart").getContext("2d");
+        new Chart(categoryChartCtx, {
+            type: "doughnut",
+            data: {
+                labels: categoryStats.map(category => category.category_name),
+                datasets: [{
+                    data: categoryStats.map(category => category.book_count),
+                    backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0"]
+                }]
+            }
+        });
+
+        // User Roles Distribution Chart
+        const userRolesChartCtx = document.getElementById("userRolesChart").getContext("2d");
+        new Chart(userRolesChartCtx, {
+            type: "pie",
+            data: {
+                labels: userRoleStats.map(role => role.role_name),
+                datasets: [{
+                    data: userRoleStats.map(role => role.user_count),
+                    backgroundColor: ["#ff6384", "#36a2eb", "#ffce56"]
+                }]
+            }
+        });
+
+        // Active Borrowers Chart
+        const activeBorrowersChartCtx = document.getElementById("activeBorrowersChart").getContext("2d");
+        new Chart(activeBorrowersChartCtx, {
+            type: "bar",
+            data: {
+                labels: activeBorrowers.map(borrower => borrower.user_name),
+                datasets: [{
+                    label: "Books Borrowed",
+                    data: activeBorrowers.map(borrower => borrower.borrow_count),
+                    backgroundColor: "#28a745"
+                }]
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".filter-option").forEach(item => {
+        item.addEventListener("click", function (e) {
+            e.preventDefault();
+            let filterType = this.getAttribute("data-filter");
+            
+            fetchTransactions(filterType);
+        });
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+    const dateFilter = document.getElementById("dateFilter");
+    const rows = document.querySelectorAll("#recentTransactionsTable tbody tr");
+
+    function filterRows(dateRange) {
+        const today = new Date();
+        rows.forEach(row => {
+            const issueDate = new Date(row.getAttribute("data-issue-date"));
+            let isVisible = false;
+
+            switch (dateRange) {
+                case 'All':
+                    isVisible = true;
+                    break;
+                case 'Today':
+                    isVisible = issueDate.toDateString() === today.toDateString();
+                    break;
+                case 'ThisWeek':
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(today.getDate() - 7);
+                    isVisible = issueDate >= oneWeekAgo && issueDate <= today;
+                    break;
+                case 'ThisMonth':
+                    const oneMonthAgo = new Date();
+                    oneMonthAgo.setMonth(today.getMonth() - 1);
+                    isVisible = issueDate >= oneMonthAgo && issueDate <= today;
+                    break;
+                default:
+                    isVisible = true;
+                    break;
+            }
+
+            row.style.display = isVisible ? "" : "none";
+        });
+    }
+
+    // Event listener for the dropdown selection change
+    dateFilter.addEventListener("change", function () {
+        filterRows(this.value);
+    });
+});
+
+    });
+</script>

@@ -433,29 +433,15 @@ if (session_status() == PHP_SESSION_NONE) {
             <div class="books-of">
                 <div class="week">
                     <div class="author-title">Author of the week</div>
-					<?php 
-						// Query to get the authors of the week (most active authors based on book_author relation)
-						$authorQuery = "SELECT a.author_id, a.author_name, a.author_profile, COUNT(ba.book_id) as book_count 
-						FROM lms_author a
-						JOIN lms_book_author ba ON a.author_id = ba.author_id
-						WHERE a.author_status = 'Enable'
-						GROUP BY a.author_id
-						ORDER BY book_count DESC
-						LIMIT 5";
-						$authorStatement = $connect->prepare($authorQuery);
-						$authorStatement->execute();
-						$authors = $authorStatement->fetchAll(PDO::FETCH_ASSOC);
-
-										
-						foreach($authors as $author) {
-						$authorImg = !empty('upload/' . $author['author_profile']) ? 'asset/img/' . $author['author_profile'] : 'asset/img/author.png';
-						
-						echo '<div class="author">
-								<img src="' . $authorImg . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
-								<div class="author-name">' . htmlspecialchars($author['author_name']) . '</div>
-							</div>';
-						}
-					?>
+                    <div class="author">
+                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1400&q=80" alt="" class="author-img">
+                        <div class="author-name">Sebastian Jeremy</div>
+                    </div>
+                    <div class="author">
+                        <img src="https://images.unsplash.com/photo-1586297098710-0382a496c814?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1650&q=80" alt="" class="author-img">
+                        <div class="author-name">Jonathan Doe</div>
+                    </div>
+                    <!-- Additional author elements would follow the same pattern -->
                 </div>
 
                 <div class="week year">
