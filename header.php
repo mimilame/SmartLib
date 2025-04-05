@@ -278,12 +278,23 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
             // Add tooltip-nav class to all nav links
             link.classList.add('tooltip-nav');
         });
-        // Function to check viewport width and collapse sidebar if needed
+         // Function to check viewport width and collapse sidebar if needed
         function checkWidth() {
             if (window.innerWidth < 992) {
                 sidebar.classList.remove('collapsed');
                 sidebar.classList.add('show');
                 contentWrapper.classList.remove('expanded');
+            } else {
+                // For desktop, restore the saved state from localStorage
+                const sidebarState = localStorage.getItem('sidebarCollapsed');
+                
+                if (sidebarState === 'true') {
+                    sidebar.classList.add('collapsed');
+                    contentWrapper.classList.add('expanded');
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    contentWrapper.classList.remove('expanded');
+                }
             }
         }
         
@@ -303,6 +314,8 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
                     // Desktop behavior - expand/collapse sidebar
                     sidebar.classList.toggle('collapsed');
                     contentWrapper.classList.toggle('expanded');
+                     // Save the state to localStorage
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
                 }
             });
         }
