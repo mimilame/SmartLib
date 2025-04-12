@@ -7,9 +7,6 @@ function base_url()
 }
 
 function startUserSession($user_unique_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
 
     $_SESSION['user_unique_id'] = $user_unique_id;
     $_SESSION['role_id'] = $role_id;
@@ -44,10 +41,6 @@ function redirect_logged_in_user($roleId) {
 
 // Process login function
 function process_login($connect, $email, $password) {
-	if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-    error_log("Login attempt for email: $email");
 
     // Query to search across all user types using UNION
     $query = "
@@ -2460,25 +2453,45 @@ function getBooksBySameAuthor($connect, $book_id, $limit = 5) {
 	return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Function to get book reviews or comments (assuming there's a reviews table)
 function getBookReviews($connect, $book_id, $limit = 5) {
-	// This is a placeholder function - you'll need to adjust this based on your actual database schema
-	$query = "SELECT r.*, u.user_name 
-			FROM lms_book_reviews r
-			JOIN lms_user u ON r.user_id = u.user_id
-			WHERE r.book_id = :book_id
-			ORDER BY r.created_at DESC
-			LIMIT :limit";
-	
-	try {
-		$statement = $connect->prepare($query);
-		$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
-		$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
-		$statement->execute();
-		
-		return $statement->fetchAll(PDO::FETCH_ASSOC);
-	} catch (PDOException $e) {
-		// If the table doesn't exist or there's an error, return an empty array
-		return [];
-	}
+    // Get reviews with ratings for a specific book
+    $query = "SELECT r.*, u.user_name, r.rating 
+            FROM lms_book_review r
+            JOIN lms_user u ON r.user_id = u.user_id
+            WHERE r.book_id = :book_id AND r.rating IS NOT NULL
+            ORDER BY r.created_at DESC
+            LIMIT :limit";
+    
+    try {
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+        $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+        
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // If the table doesn't exist or there's an error, return an empty array
+        return [];
+    }
+}
+
+function getBookAverageRating($connect, $book_id) {
+    $query = "SELECT AVG(rating) as average_rating 
+              FROM lms_book_review 
+              WHERE book_id = :book_id AND rating IS NOT NULL";
+    
+    try {
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+        $statement->execute();
+        
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        return $result['average_rating'] ? round($result['average_rating'], 1) : 0;
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+function generateRandomDigits() {
+    return str_pad(mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT);
 }

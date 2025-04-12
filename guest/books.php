@@ -23,7 +23,7 @@ $all_categories = $category_statement->fetchAll(PDO::FETCH_ASSOC);
 // Handle category filter
 $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
 ?>
-<div class="custom-bg">
+
 <div class="container-fluid py-4 mt-5 px-5">
     <!-- Hero Section -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">

@@ -1,8 +1,6 @@
 <?php
 //header.php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
 
 ob_start();
 include 'head.php';
@@ -59,67 +57,73 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
     color: #fff;
     }
 </style>
-
+<body class="">
+    <div class="bg"></div>
+    <div class="bg bg2"></div>
+    <div class="bg bg3"></div>
+    <div class="bg1"></div>
+    <div class="bg1 bg2"></div>
+    <div class="bg1 bg3"></div>
+     <div class="custom-bg">
 <?php if ($role_id == 1 || $role_id == 2): ?>
     <!-- Admin & Librarian Header -->
-    <body class="">
     <?php include 'preloader.php'; ?>
     <div class="d-flex">
         <!-- Sidebar -->
         <div id="sidebar" class="bg-dark text-light">
             <div class="sidebar-header">
-                <img src="<?php echo base_url(); 'asset/img/' . $library_logo;?>" alt="Library Logo" class="sidebar-logo">
+                <img src="<?php echo base_url().'asset/img/' . $library_logo;?>" alt="Library Logo" class="sidebar-logo">
                 <span class="sidebar-header-text fw-bold"><?php echo $library_name; ?></span>
             </div>
             <nav class="nav flex-column p-2">
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Dashboard">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'category') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/category.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'category.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/category.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Category">
                     <i class="fas fa-folder"></i>
                     <span class="nav-text">Category</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'author') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/author.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'author.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/author.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Author">
                     <i class="fas fa-pen-fancy"></i>
                     <span class="nav-text">Author</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'location_rack') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/location_rack.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'location_rack.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/location_rack.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Location Rack">
                     <i class="fas fa-map-marker-alt"></i>
                     <span class="nav-text">Location Rack</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'book') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Book">
                     <i class="fas fa-book"></i>
                     <span class="nav-text">Book</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/issue_book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/issue_book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Issue Book">
                     <i class="fas fa-bookmark"></i>
                     <span class="nav-text">Issue Book</span>
                 </a>
                 <?php if ($role_id == 1): ?>
-                    <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'librarian') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/librarian.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                    <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'librarian.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/librarian.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                     data-bs-title="Librarian">
                         <i class="fas fa-user-tie"></i>
                         <span class="nav-text">Librarian</span>
                     </a>
-                    <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'user') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/user.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                    <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'user.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/user.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                     data-bs-title="Users">
                         <i class="fas fa-users"></i>
                         <span class="nav-text">Users</span>
                     </a>
                 <?php endif; ?>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'report') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/report.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'report.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/report.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Reports">
                     <i class="fas fa-chart-bar"></i>
                     <span class="nav-text">Reports</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/fines.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/fines.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Fines">
                     <i class="fas fa-dollar-sign"></i>
                     <span class="nav-text">Fines</span>
@@ -153,30 +157,29 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
                     </ul>
                 </div>
             </nav>
-            <main class="container-fluid py-4" style="min-height: 700px;">
+            <main class="wrapper py-4" >
 <?php elseif ($role_id == 3 || $role_id == 4): ?>
     <!-- Faculty & Student Header -->
-    <body class="">
     <?php include 'preloader.php'; ?>
     <div class="d-flex">
         <!-- Sidebar -->
         <div id="sidebar" class="bg-dark text-light">
             <div class="sidebar-header">
-                <img src="<?php echo base_url(); 'asset/img/' . $library_logo;?>" alt="Library Logo" class="sidebar-logo">
+                <img src="<?php echo base_url(). 'asset/img/' . $library_logo;?>" alt="Library Logo" class="sidebar-logo">
                 <span class="sidebar-header-text fw-bold"><?php echo $library_name; ?></span>
             </div>
             <nav class="nav flex-column p-2">
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Dashboard">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="nav-text">Dashboard</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'search_book') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/search_book.php" data-bs-toggle="tooltip" data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'search_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/search_book.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Search Book">
                     <i class="fas fa-search"></i>
                     <span class="nav-text">Search Book</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book_details') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/issue_book_details.php" data-bs-toggle="tooltip" data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book_details.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/issue_book_details.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Issue Book Details">
                     <i class="fas fa-book-open"></i>
                     <span class="nav-text">Issue Book Details</span>
@@ -210,7 +213,7 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
                     </ul>
                 </div>
             </nav>
-            <main class="container-fluid py-4" style="min-height: 700px;">
+            <main class="wrapper py-4" >
 <?php elseif ($role_id == 5): ?>
     <!-- Visitor Header -->
     <?php include 'preloader.php'; ?>
@@ -222,9 +225,9 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
 			</a>
 
 			<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-				<li><a href="<?php echo base_url(); ?>guest/index.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'index') ? 'active' : ''; ?>" >Home</a></li>
-				<li><a href="<?php echo base_url(); ?>guest/books.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'book') ? 'active' : ''; ?>" >Books</a></li>
-				<li><a href="<?php echo base_url(); ?>guest/reports.php" class="nav-link px-2 link-dark text-light  <?php echo (basename($_SERVER['PHP_SELF']) == 'report') ? 'active' : ''; ?>">Reports</a></li>
+				<li><a href="<?php echo base_url(); ?>guest/index.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" >Home</a></li>
+				<li><a href="<?php echo base_url(); ?>guest/books.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'books.php') ? 'active' : ''; ?>" >Books</a></li>
+				<li><a href="<?php echo base_url(); ?>guest/reports.php" class="nav-link px-2 link-dark text-light  <?php echo (basename($_SERVER['PHP_SELF']) == 'reports.php') ? 'active' : ''; ?>">Reports</a></li>
 			</ul>
 
 			<div class="dropdown">
@@ -249,9 +252,9 @@ $user_name = isset($_SESSION['user_name']) ? $_SESSION['user_name'] : 'Account';
 			</a>
 
 			<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-				<li><a href=" <?php echo base_url(); ?>index.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'home') ? 'active' : ''; ?>">Home</a></li>
-				<li><a href="<?php echo base_url(); ?>book.php" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'books') ? 'active' : ''; ?>">Books</a></li>
-				<li><a href="<?php echo base_url(); ?>about_us" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'about us') ? 'active' : ''; ?>">About Us</a></li>
+				<li><a href=" <?php echo base_url(); ?>index.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'home.php') ? 'active' : ''; ?>">Home</a></li>
+				<li><a href="<?php echo base_url(); ?>book.php" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'book.php') ? 'active' : ''; ?>">Books</a></li>
+				<li><a href="<?php echo base_url(); ?>about_us" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'about_us.php') ? 'active' : ''; ?>">About Us</a></li>
 			</ul>
 
 			<div class="col-md-3 text-end d-flex justify-content-end">

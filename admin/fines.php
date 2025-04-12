@@ -125,7 +125,7 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
         .bg-unpaid { background-color: #f44336; }
     </style>
 </head>
-<main class="container py-4" style="min-height: 700px;">
+
 
 <h1 class="my-3">Fines Management</h1>
 	<div class="row mb-4">

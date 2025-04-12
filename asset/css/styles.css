@@ -22,7 +22,16 @@
   --border-color: #b8bec3;
   --placeholder: #ccd0d2;
 }
-
+:root {
+  --primary-color: #4361ee;
+  --secondary-color: #3f37c9;
+  --success-color: #4cc9f0;
+  --danger-color: #f72585;
+  --warning-color: #f8961e;
+  --info-color: #90e0ef;
+  --light-color: #f8f9fa;
+  --dark-color: #212529;
+}
 :root {
   --bs-blue: #0d6efd;
   --bs-indigo: #6610f2;
@@ -12168,12 +12177,6 @@ table td img {
 
 
 
-footer {
-  position: fixed;
-  bottom: 0;
-  width: -webkit-fill-available;
-  font-size: small;
-}
 
 .z-index-n2 {
   z-index: -2 !important;
@@ -13105,6 +13108,7 @@ label {
   flex-grow: 1;
   padding: 0 30px 50px;
   overflow-y: auto;
+  height: 90vh;
 }
 
 .genre {
@@ -13229,12 +13233,13 @@ label {
 
 /* Responsive book cards styles */
 .book-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 1 column on mobile */
+  display: flex;
+  grid-template-columns: repeat(3, 1fr);
   grid-column-gap: 20px;
   grid-row-gap: 40px;
   padding-top: 42px;
   position: relative;
+  flex-wrap: wrap;
 }
 
 /* Small tablets (portrait) */
@@ -13273,6 +13278,7 @@ label {
 .book-card {
   margin-top: 20px;
   background-color: #fff;
+  width: 450px;
   height: 270px;
   box-shadow: -1px 3px 8px -1px rgba(0, 0, 0, 0.1);
   border-radius: 4px;
@@ -13774,4 +13780,191 @@ label {
   .content-wrapper {
     margin-left: 0;
   }
+}
+
+.wrapper {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 0;
+  width: 100%;
+  min-height: 91.7vh;
+  max-height: 150vh;
+  padding-right: calc(var(--bs-gutter-x) * 5) !important;
+  padding-left: calc(var(--bs-gutter-x) * 2) !important;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+/* Zoom controls styling */
+.zoom-controls {
+  z-index: 1000;
+}
+
+.zoom-controls .btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.zoom-controls .btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Map container styles */
+.rack-map-container {
+  overflow: hidden;
+  touch-action: none; /* Essential for mobile panning */
+}
+
+.library-map {
+  overflow: auto;
+  cursor: grab;
+}
+
+.library-map:active {
+  cursor: grabbing;
+}
+
+/* Prevent content from being selectable during drag */
+#map-content {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Fix for Bootstrap tooltip interference */
+.tooltip {
+  pointer-events: none;
+}
+
+.settings-card {
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.settings-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.nav-tabs .nav-link {
+  border-radius: 8px 8px 0 0;
+  padding: 12px 20px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.nav-tabs .nav-link i {
+  margin-right: 8px;
+}
+
+.nav-tabs .nav-link.active {
+  border-bottom: none;
+  box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tab-content {
+  padding: 1.5rem;
+}
+
+.settings-header {
+  padding: 1.5rem;
+  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+  color: white;
+  border-radius: 10px 10px 0 0;
+}
+
+.form-control, .form-select {
+  border-radius: 8px;
+  padding: 10px 15px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
+}
+
+.input-group-text {
+  border-radius: 8px 0 0 8px;
+  background-color: #f8f9fa;
+}
+
+.btn-modern {
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+}
+
+.card-header-tabs {
+  margin-top: -1px;
+}
+
+.feature-preview {
+  transition: all 0.2s;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.feature-preview:hover {
+  transform: scale(1.02);
+}
+
+.preview-container {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  background-image: 
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table th {
+  background-color: rgba(67, 97, 238, 0.05);
+  font-weight: 600;
+}
+
+.badge {
+  padding: 6px 10px;
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+/* Animated transitions */
+.tab-pane {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tooltip styling */
+.tooltip-inner {
+  background-color: var(--dark-color);
+  border-radius: 5px;
+  padding: 8px 12px;
 }

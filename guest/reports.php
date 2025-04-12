@@ -61,12 +61,6 @@
 	
 	$borrow_count = $result['borrow_count'];
 ?>
-<div class="bg"></div>
-<div class="bg bg2"></div>
-<div class="bg bg3"></div>
-<div class="bg1"></div>
-<div class="bg1 bg2"></div>
-<div class="bg1 bg3"></div>
 
 <?php
 	// Display SweetAlert messages if they exist
@@ -78,8 +72,7 @@
 		echo sweet_alert('success', $success_message);
 	}
 ?>
-
-<div class="custom-bg">
+x
 	<div class="container py-5" id="book-detail-container">
 		<div class="row">
 			<!-- Book Cover and Basic Info Card -->

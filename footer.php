@@ -8,9 +8,10 @@
         <?php if (is_logged_in('admin') || is_logged_in('librarian')) { ?>
 
         
-        </main>
+            </main>
         <?php } elseif (is_logged_in('faculty') || is_logged_in('student') || is_logged_in('visitor')) { ?>
-                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+            </main>
+                <footer class="bg-dark text-white pt-1 pb-1 mt-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
                     <div class="mb-0 d-flex gap-2 align-items-center">
                         <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
                     </div>
@@ -33,13 +34,14 @@
                         </p>
                     </address>
                 </footer>
-            </div>
+            
         <?php 
         } else { 
             // Default footer for login/registration or when no user is logged in
             
         ?>
-                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+            </main>
+                <footer class="bg-dark text-white pt-1 pb-1 mt-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
                     <div class="mb-0 d-flex gap-2 align-items-center">
                         <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
                     </div>
@@ -62,7 +64,7 @@
                         </p>
                     </address>
                 </footer>
-            </div>
+            
         <?php 
         }
         ?>

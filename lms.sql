@@ -158,7 +158,7 @@ INSERT INTO `lms_book` (`book_id`, `category_id`, `book_author`, `book_location_
 (16, 1, 'Kevin Tatroe, Laura Thomson', 'A2', 'PHP and MySQL Web Development', '753951852123', 1, 'Enable', 'book_placeholder.png', '2021-11-17 02:43:19', '2025-03-31 09:54:55'),
 (17, 1, 'Mark Myers', 'A11', 'A Smarter Way to Learn JavaScript', '852369753951', 1, 'Enable', 'book_placeholder.png', '2021-12-08 10:48:11', '2025-04-01 07:08:42'),
 (18, 1, 'Carlos Buenosvinos, Rose', 'A3', 'Happy', '64739929873', 5, 'Enable', 'book_placeholder.png', '2025-03-14 12:57:42', '2025-03-31 09:54:55'),
-(19, 6, 'Bruce Berke', '10', 'Rizal 101', '09844888484', 5, 'Enable', '\'book_placeholder.png\'', '2025-03-30 15:53:25', '2025-03-30 15:53:25');
+(19, 6, 'Bruce Berke', '10', 'Rizal 101', '09844888484', 5, 'Enable', 'book_placeholder.png', '2025-03-30 15:53:25', '2025-03-30 15:53:25');
 
 -- --------------------------------------------------------
 

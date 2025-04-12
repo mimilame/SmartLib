@@ -157,12 +157,7 @@
 	$statement->execute();
 
 ?>
-<div class="bg"></div>
-<div class="bg bg2"></div>
-<div class="bg bg3"></div>
-<div class="bg1"></div>
-<div class="bg1 bg2"></div>
-<div class="bg1 bg3"></div>
+
 <?php
 	// Display SweetAlert messages if they exist
 	if(!empty($error_message)) {
@@ -351,7 +346,7 @@
 		</section>
 	</div>
 
-    <div class="custom-bg">
+
         <div class="book-slide">
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
 			<?php
@@ -386,17 +381,25 @@
 					echo '<div class="rate">';
 					echo '<fieldset class="rating ' . $colorClass . '">';
 					
-					// Generate rating inputs with unique IDs
-					$baseId = 'star' . (($index * 5) + 1);
-					for($i = 5; $i >= 1; $i--) {
-						$starId = $baseId . $i;
-						$labelClass = 'full1';
-						echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '" />';
-						echo '<label class="' . $labelClass . '" for="' . $starId . '"></label>';
-					}
+					// Get the average rating for this book
+					$averageRating = getBookAverageRating($connect, $book['book_id']);
+
+					// Generate rating inputs with unique IDs 
+					$baseId = 'star' . (($index * 5) + 1); 
+					for($i = 5; $i >= 1; $i--) { 
+						$starId = $baseId . $i; 
+						$labelClass = 'full'; 
+						$checked = ($i <= round($averageRating)) ? 'checked="checked"' : '';
+						echo '<input type="checkbox" ' . $checked . ' id="' . $starId . '" name="rating" value="' . $i . '" />'; 
+						echo '<label class="' . $labelClass . '" for="' . $starId . '"></label>'; 
+					} 
+					// Get the number of people who rated this book
+					$bookReviews = getBookReviews($connect, $book['book_id']);
+					$reviewCount = count($bookReviews);
+					$votersText = $reviewCount . ' ' . ($reviewCount == 1 ? 'rating' : 'ratings');
 					
 					echo '</fieldset>';
-					echo '<span class="book-voters">' . $book['book_no_of_copy'] . ' copies</span>';
+					echo '<span class="book-voters card-vote">' . $votersText . ' | ' . $book['book_no_of_copy'] . ' copies</span>';
 					echo '</div>';
 					
 					// Book summary and see button
@@ -413,7 +416,7 @@
             </div>
         </div>
 
-        <div class="main-wrapper">
+        <div class="main-wrapper px-5">
             <div class="books-of">
                 <div class="week">
                     <div class="author-title">Author of the week</div>
@@ -531,16 +534,25 @@
 												<div class="rate">
 													<fieldset class="rating book-rate">';
 													
-								// Generate unique star rating inputs 
-								for($i = 5; $i >= 1; $i--) {
-									$starId = 'card-star-' . $book['book_id'] . '-' . $i;
-									echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '">
-										<label class="full" for="' . $starId . '"></label>';
-								}
-								
-								echo '</fieldset>
-									<span class="book-voters card-vote">' . $book['book_no_of_copy'] . ' copies</span>
-									</div>
+									// Get the average rating for this book
+									$averageRating = getBookAverageRating($connect, $book['book_id']);
+
+									// Generate unique star rating inputs
+									for($i = 5; $i >= 1; $i--) {
+										$starId = 'card-star-' . $book['book_id'] . '-' . $i;
+										$checked = ($i <= round($averageRating)) ? 'checked="checked"' : '';
+										echo '<input type="checkbox" ' . $checked . ' id="' . $starId . '" name="rating" value="' . $i . '">
+											<label class="full" for="' . $starId . '"></label>';
+									}
+
+									// Get the number of people who rated this book
+									$bookReviews = getBookReviews($connect, $book['book_id']);
+									$reviewCount = count($bookReviews);
+									$votersText = $reviewCount . ' ' . ($reviewCount == 1 ? 'rating' : 'ratings');
+															
+									echo '</fieldset>
+										<span class="book-voters card-vote">' . $votersText . ' | ' . $book['book_no_of_copy'] . ' copies</span>
+										</div>
 									<div class="book-sum card-sum">' . htmlspecialchars($book['category_name']) . ' | Borrowed: ' . $book['borrow_count'] . ' times</div>
 									</div>
 									</div>
@@ -643,58 +655,58 @@
 
 
 
-<script>
-const index = document.querySelector('.index');
-const toggleBox = document.querySelector('.toggle-box');
-const registerBtn = document.querySelector('.register-btn');
-const loginBtn = document.querySelector('.login-btn');
-const authModal = document.getElementById("authModal");
-const regBtn = document.querySelector(".regbtn");
-const logBtn = document.querySelector(".logbtn");
+	<script>
+		const index = document.querySelector('.index');
+		const toggleBox = document.querySelector('.toggle-box');
+		const registerBtn = document.querySelector('.register-btn');
+		const loginBtn = document.querySelector('.login-btn');
+		const authModal = document.getElementById("authModal");
+		const regBtn = document.querySelector(".regbtn");
+		const logBtn = document.querySelector(".logbtn");
 
-// Open modal
-regBtn.addEventListener("click", () => {
-    authModal.style.display = "flex";
-    document.querySelector(".index").classList.add("active");
-});
+		// Open modal
+		regBtn.addEventListener("click", () => {
+			authModal.style.display = "flex";
+			document.querySelector(".index").classList.add("active");
+		});
 
-logBtn.addEventListener("click", () => {
-    authModal.style.display = "flex";
-    document.querySelector(".index").classList.remove("active");
-});
+		logBtn.addEventListener("click", () => {
+			authModal.style.display = "flex";
+			document.querySelector(".index").classList.remove("active");
+		});
 
-// Close modal when clicking outside the form
-authModal.addEventListener("click", (e) => {
-    if (e.target === authModal) {
-        authModal.style.display = "none";
-    }
-});
+		// Close modal when clicking outside the form
+		authModal.addEventListener("click", (e) => {
+			if (e.target === authModal) {
+				authModal.style.display = "none";
+			}
+		});
 
 
-// Function to handle the transition overlay effect
-function handleTransition() {
-  toggleBox.classList.add('transitioning');
-  
-  setTimeout(function() {
-    toggleBox.classList.remove('transitioning');
-  }, 1800);
-}
+		// Function to handle the transition overlay effect
+		function handleTransition() {
+		toggleBox.classList.add('transitioning');
+		
+		setTimeout(function() {
+			toggleBox.classList.remove('transitioning');
+		}, 1800);
+		}
 
-// Register button click
-registerBtn.addEventListener('click', () => {
-  handleTransition();
-  index.classList.add('active');
-});
+		// Register button click
+		registerBtn.addEventListener('click', () => {
+		handleTransition();
+		index.classList.add('active');
+		});
 
-// Login button click
-loginBtn.addEventListener('click', () => {
-  handleTransition();
-  index.classList.remove('active');
-});
+		// Login button click
+		loginBtn.addEventListener('click', () => {
+		handleTransition();
+		index.classList.remove('active');
+		});
 
-</script>
-<script src="./asset/js/background.js"></script>
-<script src="./asset/js/background.min.js"></script>
+	</script>
+	<script src="./asset/js/background.js"></script>
+	<script src="./asset/js/background.min.js"></script>
 
 <?php
 

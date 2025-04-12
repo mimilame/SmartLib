@@ -79,7 +79,7 @@ $author_books_statement->execute();
 $author_books = $author_books_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get book reviews
-/* $reviews_query = "SELECT r.*, u.user_name
+$reviews_query = "SELECT r.*, u.user_name
                  FROM lms_book_review r
                  JOIN lms_user u ON r.user_id = u.user_id
                  WHERE r.book_id = :book_id
@@ -87,7 +87,7 @@ $author_books = $author_books_statement->fetchAll(PDO::FETCH_ASSOC);
 $reviews_statement = $connect->prepare($reviews_query);
 $reviews_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
 $reviews_statement->execute();
-$reviews = $reviews_statement->fetchAll(PDO::FETCH_ASSOC); */
+$reviews = $reviews_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get book availability status
 $query = "SELECT COUNT(*) as borrowed_copies 

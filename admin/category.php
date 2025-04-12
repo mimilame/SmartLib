@@ -117,7 +117,6 @@ $category = $statement->fetchAll(PDO::FETCH_ASSOC);
 include '../header.php';
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
 	<h1 class="my-3">Category Management</h1>
 
 	<?php if (isset($_GET["msg"])): ?>

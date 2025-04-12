@@ -391,10 +391,10 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                                     <!-- Short Dropdown Filter -->
                                     <div class="w-25 mb-3">
                                         <select class="form-select" id="author-time-select">
-                                            <option value="author-week" selected>This Week</option>
+                                            <option value="author-week">This Week</option>
                                             <option value="author-month">This Month</option>
                                             <option value="author-year">This Year</option>
-                                            <option value="author-all">All Time</option>
+                                            <option value="author-all" selected>All Time</option>
                                         </select>
                                     </div>
                                 </div>
@@ -403,7 +403,7 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                                     
                                     <div class="tab-content" id="author-time-content">
                                         <!-- This Week -->
-                                        <div class="tab-pane fade show active" id="author-week" role="tabpanel" aria-labelledby="author-week-tab">
+                                        <div class="tab-pane fade" id="author-week" role="tabpanel" aria-labelledby="author-week-tab">
                                             <div class="chart-container" style="height: 300px;">
                                                 <canvas id="authorWeekChart"></canvas>
                                             </div>
@@ -424,7 +424,7 @@ $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
                                         </div>
                                         
                                         <!-- All Time -->
-                                        <div class="tab-pane fade" id="author-all" role="tabpanel" aria-labelledby="author-all-tab">
+                                        <div class="tab-pane fade show active" id="author-all" role="tabpanel" aria-labelledby="author-all-tab">
                                             <div class="chart-container" style="height: 300px;">
                                                 <canvas id="authorAllTimeChart"></canvas>
                                             </div>
