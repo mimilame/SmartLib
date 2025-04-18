@@ -117,11 +117,6 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center my-4">
         <h1 class="">Category Management</h1>
-        <?php if (!isset($_GET['action'])): ?>
-            <a href="category.php?action=add" class="btn btn-success">
-                <i class="fas fa-plus-circle me-2"></i>Add Category
-            </a>
-        <?php endif; ?>
     </div>
 
     <?php if (isset($_GET["msg"])): ?>
@@ -351,7 +346,15 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
 		<!-- Data Table for detailed view -->
 		<div class="card shadow-sm border-0">
 			<div class="card-header bg-white py-3">
-				<h5 class="mb-0"><i class="fas fa-table me-2"></i>Category List</h5>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Category List</h5>                      
+                    <?php if (!isset($_GET['action'])): ?>            
+                        <a href="category.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add Category
+                        </a>
+                    <?php endif; ?>
+                </div>
+				
 			</div>
 			<div class="card-body">
 				<div class="table-responsive">

@@ -510,17 +510,19 @@ $author = $statement->fetchAll(PDO::FETCH_ASSOC);
                                 <td><?= date('M d, Y H:i:s', strtotime($row['author_created_on'])) ?></td>
                                 <td><?= date('M d, Y H:i:s', strtotime($row['author_updated_on'])) ?></td>
                                 <td class="text-center">
-                                    <a href="author.php?action=view&code=<?= $row['author_id'] ?>" class="btn btn-info btn-sm mb-1">
-                                        <i class="fa fa-eye"></i>
-                                    </a>
-                                    <a href="author.php?action=edit&code=<?= $row['author_id'] ?>" class="btn btn-primary btn-sm mb-1">
-                                        <i class="fa fa-edit"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-danger btn-sm mb-1 delete-btn" 
-                                            data-id="<?= $row['author_id'] ?>" 
-                                            data-status="<?= $row['author_status'] ?>">
-                                        <i class="fa fa-<?= $row['author_status'] === 'Enable' ? 'ban' : 'check-circle' ?>"></i>
-                                    </button>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="author.php?action=view&code=<?= $row['author_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a href="author.php?action=edit&code=<?= $row['author_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-danger btn-sm mb-1 delete-btn" 
+                                                data-id="<?= $row['author_id'] ?>" 
+                                                data-status="<?= $row['author_status'] ?>">
+                                            <i class="fa fa-<?= $row['author_status'] === 'Enable' ? 'ban' : 'check-circle' ?>"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

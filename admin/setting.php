@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <main class="container-fluid py-4 px-lg-5 px-3">
     <!-- Header with Breadcrumbs -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between mb-4">
         <div class="mb-3 mb-md-0">
             <h1 class="h2 fw-bold">
                 <i class="fas fa-cogs me-2 text-primary"></i>
@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </ol>
             </nav>
         </div>
-        <div class="d-flex">
+        <div class="d-flex justify-content-end">
             <span class="badge bg-primary p-2">
                 <i class="fas fa-info-circle me-1"></i>
                 Configure your library system settings here

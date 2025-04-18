@@ -35,7 +35,7 @@
 			<?php
 				// Query to fetch all books
 				$books = getPaginatedBooks($connect, 10, 0); // Use the function instead of direct query
-				
+				$base_url = base_url();
 				// Color classes for alternating styles
 				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];
 				
@@ -44,15 +44,18 @@
 					// Use modulo to cycle through colors
 					$colorClass = $colors[$index % count($colors)];
 					
-					// Get book cover image path
-					$book_img = !empty($book['book_img']) ? 'upload/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+					// Use the getBookImagePath function for dynamic image path
+					$bookImgPath = getBookImagePath($book);
+							
+					// Remove the leading "../" from the path for browser display
+					$bookImgUrl = str_replace('../', $base_url, $bookImgPath);
 					
 					// Start the book cell div
 					echo '<div class="book-cell ' . $colorClass . '">';
 					
 					// Book image div
 					echo '<div class="book-img">';
-					echo '<img src="' . $book_img . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-photo">';
+					echo '<img src="' . $bookImgUrl . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-photo">';
 					echo '</div>';
 					
 					// Book content div
@@ -106,14 +109,19 @@
 					<?php 
 						// Use the getTopAuthorsWithBooks function instead of direct query
 						$authors = getTopAuthorsWithBooks($connect, 5);
+						$base_url = base_url();
 						
 						foreach($authors as $author) {
-							$authorImg = !empty($author['author_profile']) ? 'upload/' . $author['author_profile'] : 'asset/img/author.png';
+							// Use the new function to get the profile image path
+							$authorImgPath = getAuthorImagePath($author);
+							
+							// Remove the leading "../" from the path for browser display
+							$authorImgUrl = str_replace('../', $base_url, $authorImgPath);
 							
 							echo '<div class="author">
-									<img src="' . $authorImg . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
+									<img src="' . $authorImgUrl . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
 									<div class="author-name">' . htmlspecialchars($author['author_name']) . '</div>
-								</div>';
+								  </div>';
 						}
 					?>
                 </div>
@@ -123,7 +131,8 @@
 					<?php
 						// Use the getPopularBooks function instead of direct query
 						$topBooks = getPopularBooks($connect, 5);
-						
+						$base_url = base_url();
+
 						foreach($topBooks as $book) {
 							// You'll need to fetch the book details
 							$bookQuery = "SELECT book_img, book_author FROM lms_book WHERE book_id = :book_id";
@@ -132,10 +141,17 @@
 							$bookStmt->execute();
 							$bookDetails = $bookStmt->fetch(PDO::FETCH_ASSOC);
 							
-							$bookImg = !empty($bookDetails['book_img']) ? 'upload/' . $bookDetails['book_img'] : 'asset/img/book_placeholder.png';
+							// Merge book details with the book array
+							$book = array_merge($book, $bookDetails);
+							
+							// Use the getBookImagePath function for dynamic image path
+							$bookImgPath = getBookImagePath($book);
+							
+							// Remove the leading "../" from the path for browser display
+							$bookImgUrl = str_replace('../', $base_url, $bookImgPath);
 
 							echo '<div class="year-book">
-								<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
+								<img src="' . $bookImgUrl . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
 								<div class="year-book-content">
 									<div class="year-book-name">' . htmlspecialchars($book['book_name']) . '</div>
 									<div class="year-book-author">by ' . htmlspecialchars($bookDetails['book_author']) . '</div>
@@ -206,11 +222,15 @@
 						// Display books
 						if(count($books) > 0) {
 							foreach($books as $book) {
-								$bookImg = !empty($book['book_img']) ? 'upload/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+								$base_url = base_url();
+								// Use the getBookImagePath function for dynamic image path
+								$bookImgPath = getBookImagePath($book);
+								// Remove the leading "../" from the path for browser display
+								$bookImgUrl = str_replace('../', $base_url, $bookImgPath);
 								
 								echo '<div class="book-card">
 										<div class="content-wrapper m-0 d-flex">
-											<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
+											<img src="' . $bookImgUrl . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
 											<div class="card-content">
 												<div class="book-name">' . htmlspecialchars($book['book_name']) . '</div>
 												<div class="book-by">by ' . htmlspecialchars($book['book_author']) . '</div>

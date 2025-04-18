@@ -8,6 +8,8 @@
         <meta name="generator" content="">
         <title>WMSU ESU CURUAN LIBRARY</title>
         <link rel="canonical" href="">
+
+        <!-- head.php -->
         <!-- Bootstrap CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
@@ -33,12 +35,11 @@
         
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
 
        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js" ></script>
        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-       <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
+
         
         <!-- Favicons -->
         <link rel="apple-touch-icon" href="" sizes="180x180">

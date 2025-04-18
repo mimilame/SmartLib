@@ -233,8 +233,6 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr><td colspan="11" class="text-center">No fines found!</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>

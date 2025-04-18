@@ -1,316 +1,159 @@
 <?php
-// book.php
+    // book.php
 
-include '../database_connection.php';
-include '../function.php';
-include '../header.php';
-authenticate_admin();
-$message = '';
+    include '../database_connection.php';
+    include '../function.php';
+    include '../header.php';
+    authenticate_admin();
+    $message = '';
 
-// Fetch all categories for dropdown lists
-$category_query = "SELECT * FROM lms_category ORDER BY category_name ASC";
-$category_statement = $connect->prepare($category_query);
-$category_statement->execute();
-$categories = $category_statement->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch all categories for dropdown lists
+    $category_query = "SELECT * FROM lms_category ORDER BY category_name ASC";
+    $category_statement = $connect->prepare($category_query);
+    $category_statement->execute();
+    $categories = $category_statement->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all racks for dropdown lists
-$rack_query = "SELECT DISTINCT book_location_rack FROM lms_book ORDER BY book_location_rack ASC";
-$rack_statement = $connect->prepare($rack_query);
-$rack_statement->execute();
-$racks = $rack_statement->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch all racks for dropdown lists
+    $rack_query = "SELECT DISTINCT book_location_rack FROM lms_book ORDER BY book_location_rack ASC";
+    $rack_statement = $connect->prepare($rack_query);
+    $rack_statement->execute();
+    $racks = $rack_statement->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch all authors for dropdown lists
-$author_query = "SELECT * FROM lms_author ORDER BY author_name ASC";
-$author_statement = $connect->prepare($author_query);
-$author_statement->execute();
-$authors = $author_statement->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch all authors for dropdown lists
+    $author_query = "SELECT * FROM lms_author ORDER BY author_name ASC";
+    $author_statement = $connect->prepare($author_query);
+    $author_statement->execute();
+    $authors = $author_statement->fetchAll(PDO::FETCH_ASSOC);
 
-// DELETE (Disable/Enable)
-if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
-    $book_id = $_GET["code"];
-    $status = $_GET["status"];
-    $data = [
-        ':book_status' => $status,
-        ':book_id' => $book_id
-    ];
-    $query = "UPDATE lms_book SET book_status = :book_status WHERE book_id = :book_id";
-    $statement = $connect->prepare($query);
-    $statement->execute($data);
-    header('location:book.php?msg=' . strtolower($status));
-    exit;
-}
-// First, let's create the upload directory if it doesn't exist
-$upload_dir = "../upload/";
-if (!file_exists($upload_dir)) {
-    mkdir($upload_dir, 0755, true);
-}
+    // DELETE (Disable/Enable)
+    if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
+        $book_id = $_GET["code"];
+        $status = $_GET["status"];
+        $data = [
+            ':book_status' => $status,
+            ':book_id' => $book_id
+        ];
+        $query = "UPDATE lms_book SET book_status = :book_status WHERE book_id = :book_id";
+        $statement = $connect->prepare($query);
+        $statement->execute($data);
+        header('location:book.php?msg=' . strtolower($status));
+        exit;
+    }
+    // First, let's create the upload directory if it doesn't exist
+    $upload_dir = "../upload/";
+    if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
 
-// ADD Book (Form Submit)
-if (isset($_POST['add_book'])) {
-    $name = trim($_POST['book_name']); // Clean the input
-    $category_id = trim($_POST['category_id']);
-    $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
-    $rack = trim($_POST['book_location_rack']);
-    $isbn = trim($_POST['book_isbn_number']);
-    $no_of_copies = trim($_POST['book_no_of_copy']);
-    $status = trim($_POST['book_status']);
-    $description = trim($_POST['book_description']); // New description field
-    $edition = trim($_POST['book_edition'] ?? '');
-    $publisher = trim($_POST['book_publisher'] ?? '');
-    $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
+    // ADD Book (Form Submit)
+    if (isset($_POST['add_book'])) {
+        $name = trim($_POST['book_name']); // Clean the input
+        $category_id = trim($_POST['category_id']);
+        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $rack = trim($_POST['book_location_rack']);
+        $isbn = trim($_POST['book_isbn_number']);
+        $no_of_copies = trim($_POST['book_no_of_copy']);
+        $status = trim($_POST['book_status']);
+        $description = trim($_POST['book_description']); // New description field
+        $edition = trim($_POST['book_edition'] ?? '');
+        $publisher = trim($_POST['book_publisher'] ?? '');
+        $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
 
-    // Default image path
-    $book_img = "book_placeholder.png";
+        // Default image path
+        $book_img = "book_placeholder.png";
 
-    // Handle image upload
-    if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
-        $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "png" => "image/png");
-        $filename = $_FILES['book_img']['name'];
-        $filetype = $_FILES['book_img']['type'];
-        $filesize = $_FILES['book_img']['size'];
-        
-        // Verify file extension
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        if (array_key_exists($ext, $allowed)) {
-            // Check file size - 5MB maximum
-            $maxsize = 5 * 1024 * 1024;
-            if ($filesize < $maxsize) {
-                // Generate unique filename
-                $new_filename = uniqid() . '.' . $ext;
-                $upload_path = $upload_dir . $new_filename;
-                
-                if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
-                    $book_img =  $new_filename;
+        // Handle image upload
+        if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
+            $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "png" => "image/png");
+            $filename = $_FILES['book_img']['name'];
+            $filetype = $_FILES['book_img']['type'];
+            $filesize = $_FILES['book_img']['size'];
+            
+            // Verify file extension
+            $ext = pathinfo($filename, PATHINFO_EXTENSION);
+            if (array_key_exists($ext, $allowed)) {
+                // Check file size - 5MB maximum
+                $maxsize = 5 * 1024 * 1024;
+                if ($filesize < $maxsize) {
+                    // Generate unique filename
+                    $new_filename = uniqid() . '.' . $ext;
+                    $upload_path = $upload_dir . $new_filename;
+                    
+                    if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
+                        $book_img =  $new_filename;
+                    }
                 }
             }
         }
-    }
 
-    // Check for duplicate Title or ISBN (case-insensitive comparison)
-    $check_query = "
-        SELECT COUNT(*) 
-        FROM lms_book 
-        WHERE LOWER(book_name) = LOWER(:name) OR book_isbn_number = :isbn
-    ";
-
-    $statement = $connect->prepare($check_query);
-    $statement->execute([
-        ':name' => $name,
-        ':isbn' => $isbn
-    ]);
-    $count = $statement->fetchColumn();
-
-    if ($count > 0) {
-        // Book title or ISBN already exists
-        header('location:book.php?action=add&error=exists');
-        exit;
-    }
-
-    // If not existing, insert new book
-    $date_now = get_date_time($connect); // Get the current date once
-
-    // Get author names for the book_author field
-    $author_names = [];
-    if (!empty($author_ids)) {
-        $author_names_query = "SELECT author_name FROM lms_author WHERE author_id IN (" . implode(',', array_fill(0, count($author_ids), '?')) . ")";
-        $author_names_stmt = $connect->prepare($author_names_query);
-        
-        foreach ($author_ids as $index => $id) {
-            $author_names_stmt->bindValue($index + 1, $id);
-        }
-        
-        $author_names_stmt->execute();
-        $author_names = $author_names_stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-    $author_string = implode(', ', $author_names);
-
-    $query = "
-        INSERT INTO lms_book 
-        (book_name, category_id, book_author, book_location_rack, book_isbn_number, book_no_of_copy, 
-        book_status, book_img, book_description, book_edition, book_publisher, book_published, book_added_on, book_updated_on) 
-        VALUES (:name, :category_id, :author, :rack, :isbn, :no_of_copies, :status, :book_img, :description, :edition, :publisher, :published, :added_on, 
-        :updated_on )
-    ";
-    
-    $statement = $connect->prepare($query);
-    $statement->execute([
-        ':name' => $name,
-        ':category_id' => $category_id,
-        ':author' => $author_string,
-        ':rack' => $rack,
-        ':isbn' => $isbn,
-        ':no_of_copies' => $no_of_copies,
-        ':status' => $status,        
-        ':book_img' => $book_img,
-        ':description' => $description,
-        ':edition' => $edition,
-        ':publisher' => $publisher,
-        ':published' => $published,
-        ':added_on' => $date_now,   
-        ':updated_on' => $date_now        
-    ]);
-    
-    // Get the new book's ID
-    $book_id = $connect->lastInsertId();
-    
-    // Insert author relationships
-    if (!empty($author_ids)) {
-        $insert_author_query = "
-            INSERT INTO lms_book_author (book_id, author_id) 
-            VALUES (:book_id, :author_id)
-        ";
-        
-        $author_statement = $connect->prepare($insert_author_query);
-        
-        foreach ($author_ids as $author_id) {
-            $author_statement->execute([
-                ':book_id' => $book_id,
-                ':author_id' => $author_id
-            ]);
-        }
-    }
-        
-    header('location:book.php?msg=add');
-    exit;
-} 
-
-// EDIT Book
-if (isset($_POST['edit_book'])) {
-    $id = $_POST['book_id'];
-    $name = $_POST['book_name'];
-    $category_id = $_POST['category_id'];
-    $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
-    $rack = $_POST['book_location_rack'];
-    $isbn = $_POST['book_isbn_number'];
-    $no_of_copies = $_POST['book_no_of_copy'];
-    $status = $_POST['book_status'];
-    $description = trim($_POST['book_description']);
-    $edition = trim($_POST['book_edition'] ?? '');
-    $publisher = trim($_POST['book_publisher'] ?? '');
-    $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
-    
-    // Get current book data including ISBN
-    $query = "SELECT * FROM lms_book WHERE book_id = :id";
-    $statement = $connect->prepare($query);
-    $statement->execute([':id' => $id]);
-    $current_book = $statement->fetch(PDO::FETCH_ASSOC);
-    $current_isbn = $current_book['book_isbn_number'];
-    $book_img = $current_book['book_img'];
-    
-    // Only check for ISBN conflicts if ISBN is actually changing
-    if ($isbn !== $current_isbn) {
+        // Check for duplicate Title or ISBN (case-insensitive comparison)
         $check_query = "
             SELECT COUNT(*) 
             FROM lms_book 
-            WHERE book_isbn_number = :isbn 
-            AND book_id != :id
+            WHERE LOWER(book_name) = LOWER(:name) OR book_isbn_number = :isbn
         ";
-        
+
         $statement = $connect->prepare($check_query);
         $statement->execute([
-            ':isbn' => $isbn,
-            ':id' => $id
+            ':name' => $name,
+            ':isbn' => $isbn
         ]);
         $count = $statement->fetchColumn();
-        
+
         if ($count > 0) {
-            // ISBN already exists in another book
-            header('location:book.php?action=edit&code='.$id.'&error=duplicate_isbn');
+            // Book title or ISBN already exists
+            header('location:book.php?action=add&error=exists');
             exit;
         }
-    }
-    
-    // Handle image upload
-    if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
-        $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "png" => "image/png");
-        $filename = $_FILES['book_img']['name'];
-        $filetype = $_FILES['book_img']['type'];
-        $filesize = $_FILES['book_img']['size'];
-        
-        // Verify file extension
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        if (array_key_exists($ext, $allowed)) {
-            // Check file size - 5MB maximum
-            $maxsize = 5 * 1024 * 1024;
-            if ($filesize < $maxsize) {
-                // Generate unique filename
-                $new_filename = uniqid() . '.' . $ext;
-                $upload_path = $upload_dir . $new_filename;
-                
-                if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
-                    // Delete old image if it's not the default
-                    if ($book_img != "book_placeholder.png" && file_exists($upload_dir . $book_img)) {
-                        unlink($upload_dir . $book_img);
-                    }
-                    $book_img = $new_filename;
-                }
+
+        // If not existing, insert new book
+        $date_now = get_date_time($connect); // Get the current date once
+
+        // Get author names for the book_author field
+        $author_names = [];
+        if (!empty($author_ids)) {
+            $author_names_query = "SELECT author_name FROM lms_author WHERE author_id IN (" . implode(',', array_fill(0, count($author_ids), '?')) . ")";
+            $author_names_stmt = $connect->prepare($author_names_query);
+            
+            foreach ($author_ids as $index => $id) {
+                $author_names_stmt->bindValue($index + 1, $id);
             }
+            
+            $author_names_stmt->execute();
+            $author_names = $author_names_stmt->fetchAll(PDO::FETCH_COLUMN);
         }
-    }
+        $author_string = implode(', ', $author_names);
 
-
-    // Get author names for the book_author field
-    $author_names = [];
-    // Your existing code for author names
-    $author_string = implode(', ', $author_names);
-
-    // Build update query without potentially problematic fields
-    $update_query = "
-        UPDATE lms_book 
-        SET book_name = :name,
-            category_id = :category_id,
-            book_author = :author,
-            book_location_rack = :rack, 
-            book_no_of_copy = :no_of_copies,
-            book_status = :status,            
-            book_img = :book_img,
-            book_description = :description,
-            book_edition = :edition,
-            book_publisher = :publisher,
-            book_published = :published,
-            book_updated_on = :updated_on
-    ";
-    
-    // Only include ISBN in the update if it has changed
-    if ($isbn !== $current_isbn) {
-        $update_query .= ", book_isbn_number = :isbn";
-    }
-    
-    $update_query .= " WHERE book_id = :id";
-
-    $date_now = get_date_time($connect);
-    
-    $params = [
-        ':name' => $name,
-        ':category_id' => $category_id,
-        ':author' => $author_string,
-        ':rack' => $rack,
-        ':no_of_copies' => $no_of_copies,
-        ':status' => $status,
-        ':book_img' => $book_img,        
-        ':description' => $description,
-        ':edition' => $edition,
-        ':publisher' => $publisher,
-        ':published' => $published,
-        ':updated_on' => $date_now,
-        ':id' => $id
-    ];
-    
-    // Only add ISBN parameter if ISBN is changing
-    if ($isbn !== $current_isbn) {
-        $params[':isbn'] = $isbn;
-    }
-
-    try {
-        $statement = $connect->prepare($update_query);
-        $statement->execute($params);
+        $query = "
+            INSERT INTO lms_book 
+            (book_name, category_id, book_author, book_location_rack, book_isbn_number, book_no_of_copy, 
+            book_status, book_img, book_description, book_edition, book_publisher, book_published, book_added_on, book_updated_on) 
+            VALUES (:name, :category_id, :author, :rack, :isbn, :no_of_copies, :status, :book_img, :description, :edition, :publisher, :published, :added_on, 
+            :updated_on )
+        ";
         
-        // Delete existing author relationships
-        $delete_query = "DELETE FROM lms_book_author WHERE book_id = :book_id";
-        $delete_statement = $connect->prepare($delete_query);
-        $delete_statement->execute([':book_id' => $id]);
+        $statement = $connect->prepare($query);
+        $statement->execute([
+            ':name' => $name,
+            ':category_id' => $category_id,
+            ':author' => $author_string,
+            ':rack' => $rack,
+            ':isbn' => $isbn,
+            ':no_of_copies' => $no_of_copies,
+            ':status' => $status,        
+            ':book_img' => $book_img,
+            ':description' => $description,
+            ':edition' => $edition,
+            ':publisher' => $publisher,
+            ':published' => $published,
+            ':added_on' => $date_now,   
+            ':updated_on' => $date_now        
+        ]);
         
-        // Insert new author relationships
+        // Get the new book's ID
+        $book_id = $connect->lastInsertId();
+        
+        // Insert author relationships
         if (!empty($author_ids)) {
             $insert_author_query = "
                 INSERT INTO lms_book_author (book_id, author_id) 
@@ -321,40 +164,197 @@ if (isset($_POST['edit_book'])) {
             
             foreach ($author_ids as $author_id) {
                 $author_statement->execute([
-                    ':book_id' => $id,
+                    ':book_id' => $book_id,
                     ':author_id' => $author_id
                 ]);
             }
         }
-        
-        header('location:book.php?msg=edit');
+            
+        header('location:book.php?msg=add');
         exit;
-    } catch (PDOException $e) {
-        // Log the error
-        error_log('Database error in book.php: ' . $e->getMessage());
+    } 
+
+    // EDIT Book
+    if (isset($_POST['edit_book'])) {
+        $id = $_POST['book_id'];
+        $name = $_POST['book_name'];
+        $category_id = $_POST['category_id'];
+        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $rack = $_POST['book_location_rack'];
+        $isbn = $_POST['book_isbn_number'];
+        $no_of_copies = $_POST['book_no_of_copy'];
+        $status = $_POST['book_status'];
+        $description = trim($_POST['book_description']);
+        $edition = trim($_POST['book_edition'] ?? '');
+        $publisher = trim($_POST['book_publisher'] ?? '');
+        $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
         
-        // Provide user-friendly error message
-        header('location:book.php?action=edit&code='.$id.'&error=db_error&message=' . urlencode($e->getMessage()));
-        exit;
+        // Get current book data including ISBN
+        $query = "SELECT * FROM lms_book WHERE book_id = :id";
+        $statement = $connect->prepare($query);
+        $statement->execute([':id' => $id]);
+        $current_book = $statement->fetch(PDO::FETCH_ASSOC);
+        $current_isbn = $current_book['book_isbn_number'];
+        $book_img = $current_book['book_img'];
+        
+        // Only check for ISBN conflicts if ISBN is actually changing
+        if ($isbn !== $current_isbn) {
+            $check_query = "
+                SELECT COUNT(*) 
+                FROM lms_book 
+                WHERE book_isbn_number = :isbn 
+                AND book_id != :id
+            ";
+            
+            $statement = $connect->prepare($check_query);
+            $statement->execute([
+                ':isbn' => $isbn,
+                ':id' => $id
+            ]);
+            $count = $statement->fetchColumn();
+            
+            if ($count > 0) {
+                // ISBN already exists in another book
+                header('location:book.php?action=edit&code='.$id.'&error=duplicate_isbn');
+                exit;
+            }
+        }
+        
+        // Handle image upload
+        if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
+            $allowed = array("jpg" => "image/jpg", "jpeg" => "image/jpeg", "png" => "image/png");
+            $filename = $_FILES['book_img']['name'];
+            $filetype = $_FILES['book_img']['type'];
+            $filesize = $_FILES['book_img']['size'];
+            
+            // Verify file extension
+            $ext = pathinfo($filename, PATHINFO_EXTENSION);
+            if (array_key_exists($ext, $allowed)) {
+                // Check file size - 5MB maximum
+                $maxsize = 5 * 1024 * 1024;
+                if ($filesize < $maxsize) {
+                    // Generate unique filename
+                    $new_filename = uniqid() . '.' . $ext;
+                    $upload_path = $upload_dir . $new_filename;
+                    
+                    if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
+                        // Delete old image if it's not the default
+                        if ($book_img != "book_placeholder.png" && file_exists($upload_dir . $book_img)) {
+                            unlink($upload_dir . $book_img);
+                        }
+                        $book_img = $new_filename;
+                    }
+                }
+            }
+        }
+
+
+        // Get author names for the book_author field
+        $author_names = [];
+        // Your existing code for author names
+        $author_string = implode(', ', $author_names);
+
+        // Build update query without potentially problematic fields
+        $update_query = "
+            UPDATE lms_book 
+            SET book_name = :name,
+                category_id = :category_id,
+                book_author = :author,
+                book_location_rack = :rack, 
+                book_no_of_copy = :no_of_copies,
+                book_status = :status,            
+                book_img = :book_img,
+                book_description = :description,
+                book_edition = :edition,
+                book_publisher = :publisher,
+                book_published = :published,
+                book_updated_on = :updated_on
+        ";
+        
+        // Only include ISBN in the update if it has changed
+        if ($isbn !== $current_isbn) {
+            $update_query .= ", book_isbn_number = :isbn";
+        }
+        
+        $update_query .= " WHERE book_id = :id";
+
+        $date_now = get_date_time($connect);
+        
+        $params = [
+            ':name' => $name,
+            ':category_id' => $category_id,
+            ':author' => $author_string,
+            ':rack' => $rack,
+            ':no_of_copies' => $no_of_copies,
+            ':status' => $status,
+            ':book_img' => $book_img,        
+            ':description' => $description,
+            ':edition' => $edition,
+            ':publisher' => $publisher,
+            ':published' => $published,
+            ':updated_on' => $date_now,
+            ':id' => $id
+        ];
+        
+        // Only add ISBN parameter if ISBN is changing
+        if ($isbn !== $current_isbn) {
+            $params[':isbn'] = $isbn;
+        }
+
+        try {
+            $statement = $connect->prepare($update_query);
+            $statement->execute($params);
+            
+            // Delete existing author relationships
+            $delete_query = "DELETE FROM lms_book_author WHERE book_id = :book_id";
+            $delete_statement = $connect->prepare($delete_query);
+            $delete_statement->execute([':book_id' => $id]);
+            
+            // Insert new author relationships
+            if (!empty($author_ids)) {
+                $insert_author_query = "
+                    INSERT INTO lms_book_author (book_id, author_id) 
+                    VALUES (:book_id, :author_id)
+                ";
+                
+                $author_statement = $connect->prepare($insert_author_query);
+                
+                foreach ($author_ids as $author_id) {
+                    $author_statement->execute([
+                        ':book_id' => $id,
+                        ':author_id' => $author_id
+                    ]);
+                }
+            }
+            
+            header('location:book.php?msg=edit');
+            exit;
+        } catch (PDOException $e) {
+            // Log the error
+            error_log('Database error in book.php: ' . $e->getMessage());
+            
+            // Provide user-friendly error message
+            header('location:book.php?action=edit&code='.$id.'&error=db_error&message=' . urlencode($e->getMessage()));
+            exit;
+        }
     }
-}
 
 
-// List all books with their category names
-$query = "
-    SELECT b.*, c.category_name, 
-           GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
-    FROM lms_book b
-    LEFT JOIN lms_category c ON b.category_id = c.category_id
-    LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
-    LEFT JOIN lms_author a ON ba.author_id = a.author_id
-    GROUP BY b.book_id
-    ORDER BY b.book_id ASC
-";
+    // List all books with their category names
+    $query = "
+        SELECT b.*, c.category_name, 
+            GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
+        FROM lms_book b
+        LEFT JOIN lms_category c ON b.category_id = c.category_id
+        LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+        LEFT JOIN lms_author a ON ba.author_id = a.author_id
+        GROUP BY b.book_id
+        ORDER BY b.book_id ASC
+    ";
 
-$statement = $connect->prepare($query);
-$statement->execute();
-$books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 
 
@@ -943,7 +943,7 @@ $books = $statement->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-table me-1"></i> Book Management
                     </div>
                     <div class="col col-md-6">
-                        <a href="book.php?action=add" class="btn btn-success btn-sm float-end">Add Book</a>
+                        <a href="book.php?action=add" class="btn btn-success btn-sm float-end"><i class="fas fa-plus-circle me-2"></i>Add Book</a>
                     </div>
                 </div>
             </div>
@@ -987,27 +987,29 @@ $books = $statement->fetchAll(PDO::FETCH_ASSOC);
                                         <td><?= date('M d, Y H:i:s', strtotime($row['book_updated_on'])) ?></td>
 
                                         <td class="text-center">
-                                            <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm">
-                                                <i class="fa fa-eye"></i>
-                                            </a>
-                                            <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm">
-                                                <i class="fa fa-edit"></i>
-                                            </a>
-                                            <?php if ($row['book_status'] === 'Enable'): ?>
-                                                <button type="button" class="btn btn-danger btn-sm delete-btn" 
-                                                    data-id="<?= $row['book_id'] ?>" 
-                                                    data-status="<?= $row['book_status'] ?>" 
-                                                    title="Disable">
-                                                    <i class="fa fa-ban"></i>
-                                                </button>
-                                            <?php else: ?>
-                                                <button type="button" class="btn btn-success btn-sm delete-btn" 
-                                                    data-id="<?= $row['book_id'] ?>" 
-                                                    data-status="<?= $row['book_status'] ?>" 
-                                                    title="Enable">
-                                                    <i class="fa fa-check"></i>
-                                                </button>
-                                            <?php endif; ?>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                                    <i class="fa fa-eye"></i>
+                                                </a>
+                                                <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                                    <i class="fa fa-edit"></i>
+                                                </a>
+                                                <?php if ($row['book_status'] === 'Enable'): ?>
+                                                    <button type="button" class="btn btn-danger btn-sm delete-btn mb-1" 
+                                                        data-id="<?= $row['book_id'] ?>" 
+                                                        data-status="<?= $row['book_status'] ?>" 
+                                                        title="Disable">
+                                                        <i class="fa fa-ban"></i>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-success btn-sm delete-btn mb-1" 
+                                                        data-id="<?= $row['book_id'] ?>" 
+                                                        data-status="<?= $row['book_status'] ?>" 
+                                                        title="Enable">
+                                                        <i class="fa fa-check"></i>
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

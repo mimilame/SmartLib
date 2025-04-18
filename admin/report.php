@@ -7,135 +7,19 @@ authenticate_admin();
 $message = '';
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'transactions';
 
-// Check if action is set
-if (isset($_POST['action'])) {
-    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
-        die("CSRF token validation failed");
-    }
-    $action = $_POST['action'];
-    
-    // Handle review status update
-    if ($action == 'update_review_status') {
-        if (isset($_POST['review_id']) && isset($_POST['status'])) {
-            $review_id = $_POST['review_id'];
-            $status = $_POST['status'];
-            
-            // Update review status
-            $result = updateReviewStatus($connect, $review_id, $status);
-            
-            // Set session message for feedback
-            if ($result) {
-                $_SESSION['success_message'] = "Review status updated successfully";
-            } else {
-                $_SESSION['error_message'] = "Error updating review status";
-            }
-        }
-    }
-    
-    // Handle review deletion
-    else if ($action == 'delete_review') {
-        if (isset($_POST['review_id'])) {
-            $review_id = $_POST['review_id'];
-            
-            // Delete review
-            $result = deleteReview($connect, $review_id);
-            
-            // Set session message for feedback
-            if ($result) {
-                $_SESSION['success_message'] = "Review deleted successfully";
-            } else {
-                $_SESSION['error_message'] = "Error deleting review";
-            }
-        }
-    }
-    
-    // Handle review settings update
-    else if ($action == 'update_review_settings') {
-        $settings = [
-            'moderate_reviews' => isset($_POST['moderate_reviews']) ? 1 : 0,
-            'allow_guest_reviews' => isset($_POST['allow_guest_reviews']) ? 1 : 0,
-            'reviews_per_page' => intval($_POST['reviews_per_page'])
-        ];
-        
-        // Update settings
-        $result = updateReviewSettings($connect, $settings);
-        
-        // Set session message for feedback
-        if ($result) {
-            $_SESSION['success_message'] = "Review settings updated successfully";
-        } else { /* line 69 */
-            $_SESSION['error_message'] = "Error updating review settings";
-        }
-    }
-    // Handle flag review action
-    elseif ($action === 'flag_review') {
-        // Make sure user is logged in
-        if (!isset($_SESSION['user_id'])) {
-            $_SESSION['error'] = 'You must be logged in to flag a review.';
-            header('Location: ' . $_SERVER['HTTP_REFERER'] ?? 'index.php');
-            exit;
-        }
-        
-        // Get form data
-        $review_id = $_POST['review_id'] ?? 0;
-        $user_id = $_SESSION['user_id'];
-        $reason = $_POST['flag_reason'] ?? '';
-        
-        // For admin users, add a note that this is a test flag
-        if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
-            $reason = "[ADMIN TEST] " . $reason;
-        }
-        
-        // Validate data
-        if (empty($review_id) || empty($reason)) {
-            $_SESSION['error'] = 'Invalid flag data.';
-            header('Location: ' . $_SERVER['HTTP_REFERER'] ?? 'index.php');
-            exit;
-        }
-        
-        // Ensure the flag table exists
-        ensureReviewFlagTableExists($connect);
-        
-        // Flag the review
-        if (flagReview($connect, $review_id, $user_id, $reason)) {
-            $_SESSION['success'] = 'Review has been flagged successfully. An administrator will review it.';
-        } else {
-            $_SESSION['error'] = 'You have already flagged this review or an error occurred.';
-        }
-        
-        // Redirect back
-        header('Location: ' . $_SERVER['HTTP_REFERER'] ?? 'index.php');
-        exit;
-    }
+// Delete rejected reviews older than 6 months
+$sixMonthsAgo = date('Y-m-d', strtotime('-6 months'));
 
-    elseif ($action === 'update_review_settings') {
-        // Check if user has admin rights
-        if (!isset($_SESSION['user_type']) || $_SESSION['user_type'] !== 'admin') {
-            $_SESSION['error'] = 'You do not have permission to update review settings.';
-            header('Location: index.php');
-            exit;
-        }
-        
-        // Get form data
-        $settings = [
-            'moderate_reviews' => isset($_POST['moderate_reviews']) ? 1 : 0,
-            'allow_guest_reviews' => isset($_POST['allow_guest_reviews']) ? 1 : 0,
-            'reviews_per_page' => max(1, intval($_POST['reviews_per_page'] ?? 10))
-        ];
-        
-        // Update settings
-        if (updateReviewSettings($connect, $settings)) {
-            $_SESSION['success'] = 'Review settings updated successfully.';
-        } else {
-            $_SESSION['error'] = 'An error occurred while updating review settings.';
-        }
-        
-        // Redirect back
-        header('Location: ' . $_SERVER['HTTP_REFERER'] ?? 'index.php');
-        exit;
-    }
-}
+$query = "DELETE FROM lms_book_review 
+          WHERE (status = 'rejected' AND updated_at < :date)
+          OR (review_text IS NULL OR LENGTH(review_text) < 10)";
 
+$statement = $connect->prepare($query);
+$statement->bindParam(':date', $sixMonthsAgo);
+$statement->execute();
+
+$count = $statement->rowCount();
+error_log("Cleanup complete: Deleted $count old rejected reviews.");
 
 // Fetch all required data for the dashboard
 $bookStatusStats = getBookStatusStats($connect);
@@ -163,15 +47,23 @@ $yearlyAuthors = $formattedAuthorStats['yearly'];
 $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
 
 // Get book review data
-$highestRatedBooks = getHighestRatedBooks($connect, 5);
-$lowestRatedBooks = getLowestRatedBooks($connect, 5);
-$mostReviewedBooks = getMostReviewedBooks($connect, 5);
-$mostActiveReviewers = getMostActiveReviewers($connect, 5);
-$recentReviews = getRecentReviews($connect, 20);
+$highestRatedBooks = getHighestRatedBooks($connect, 1);
+$lowestRatedBooks = getLowestRatedBooks($connect, 1);
+$mostReviewedBooks = getMostReviewedBooks($connect, 3);
+$mostActiveReviewers = getMostActiveReviewers($connect, 3);
+
+$recentReviews = getRecentReviews($connect, 10);
 $pendingReviews = getPendingReviews($connect);
 $flaggedReviews = getFlaggedReviews($connect);
 $reviewSettings = getReviewSettings($connect);
-
+$getReviews = getReviews($connect, null, null);
+// Combine all reviews to generate modals for each
+$combinedReviews = array_merge($getReviews, $pendingReviews, $flaggedReviews);
+// Remove duplicates based on review_id
+$uniqueReviews = [];
+foreach ($combinedReviews as $review) {
+    $uniqueReviews[$review['review_id']] = $review;
+}
 
 ?>
     <div class="container-fluid mt-4">
@@ -431,22 +323,6 @@ $reviewSettings = getReviewSettings($connect);
             </div>
         </div>
     </div>
-
-        <?php if (isset($_SESSION['success_message'])): ?>
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?= $_SESSION['success_message'] ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['success_message']); ?>
-        <?php endif; ?>
-
-        <?php if (isset($_SESSION['error_message'])): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?= $_SESSION['error_message'] ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <?php unset($_SESSION['error_message']); ?>
-        <?php endif; ?>
             
             <!-- Popular Books Tab -->
             <div class="tab-pane fade <?= $active_tab === 'popular' ? 'show active' : '' ?>" id="popular" role="tabpanel">
@@ -486,11 +362,12 @@ $reviewSettings = getReviewSettings($connect);
                 </div>
             </div>
 
+
             <!-- Review Book Trends Tab -->
             <div class="tab-pane fade <?= $active_tab === 'review_trends' ? 'show active' : '' ?>" id="review_trends" role="tabpanel">
                 <!-- Book Reviews Analytics Section -->
                 <div class="row">
-                    <div class="col-md-12 row">                         
+                    <div class="col-md-12 d-flex gap-2">                         
                         <!-- Monthly Review Trends -->
                         <div class="col-xl-6 col-sm-12">
                             <div class="card mb-4">
@@ -533,7 +410,7 @@ $reviewSettings = getReviewSettings($connect);
                                                 <?php foreach ($lowestRatedBooks as $book): ?>
                                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                                     <?= htmlspecialchars($book['book_name']) ?>
-                                                    <span class="badge bg-warning rounded-pill">
+                                                    <span class="badge bg-warning text-dark rounded-pill">
                                                         <?= $book['average_rating'] ?> ⭐
                                                     </span>
                                                 </li>
@@ -581,58 +458,93 @@ $reviewSettings = getReviewSettings($connect);
                                 </div>
                             </div>
                         </div>  
-                    </div>                     
-                    <!-- Recent Reviews -->
+                    </div> 
+                    <!-- Recent Reviews -->     
                     <div class="col-md-12">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card mb-4 bg-transparent">
+                            <div class="card-header d-flex justify-content-between align-items-center bg-white">
                                 <h5 class="card-title mb-0"><i class="bi bi-chat-quote"></i> Recent Book Reviews</h5>
-                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#reviewManagementModal">
+                                <!-- Manage Reviews Button -->
+                                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#reviewManagementListModal">
                                     <i class="bi bi-gear"></i> Manage Reviews
                                 </button>
                             </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <?php foreach ($recentReviews as $review): ?>
-                                        <?php 
-                                            $book = getBookById($connect, $review['book_id']);
-                                            $imagePath = getBookImagePath($book);
-                                        ?>
-                                        <div class="col-md-6 mb-3">
-                                            <div class="card h-100">
-                                                <div class="row g-0">
-                                                    <div class="col-4">
-                                                        <img src="<?= $imagePath ?>" class="img-fluid rounded-start" alt="<?= htmlspecialchars($book['book_name']) ?>">
+                            <div class="card-body p-0 border-0">
+                                <!-- Carousel Container -->
+                                <div class="reviews-carousel-container">
+                                    <div class="reviews-carousel" id="reviewsCarousel" style="    width: 99em;">
+                                        <?php foreach ($getReviews as $review): ?>
+                                            <?php 
+                                                $book = getBookById($connect, $review['book_id']);
+                                                $imagePath = getBookImagePath($book);
+                                                
+                                                // Get review status for badge
+                                                $statusClass = '';
+                                                $statusBadge = '';
+                                                
+                                                if (isset($review['status'])) {
+                                                    switch ($review['status']) {
+                                                        case 'approved':
+                                                            $statusClass = '';
+                                                            $statusBadge = '<span class="badge bg-success position-absolute top-0 end-0 m-2">Approved</span>';
+                                                            break;
+                                                        case 'rejected':
+                                                            $statusClass = 'border-danger';
+                                                            $statusBadge = '<span class="badge bg-danger position-absolute top-0 end-0 m-2">Rejected</span>';
+                                                            break;
+                                                        case 'pending':
+                                                            $statusClass = 'border-secondary';
+                                                            $statusBadge = '<span class="badge bg-secondary position-absolute top-0 end-0 m-2">Pending</span>';
+                                                            break;
+                                                        case 'flagged':
+                                                            $statusClass = 'border-warning';
+                                                            $statusBadge = '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-2">Flagged</span>';
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                }
+                                            ?>
+                                            <div class="carousel-item">
+                                                <div class="card h-100 review-card position-relative <?= $statusClass ?>">
+                                                    <div class="d-flex justify-content-end mt-1">
+                                                        <?= $statusBadge ?>
                                                     </div>
-                                                    <div class="col-8">
-                                                        <div class="card-body">
-                                                            <div class="d-flex justify-content-between">
-                                                                <h5 class="card-title"><?= htmlspecialchars($book['book_name']) ?></h5>
-                                                                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#viewReviewModal<?= $review['review_id'] ?>">View
-                                                                </button>
+                                                    <div class="row g-0">
+                                                        <div class="col-4">
+                                                            <img src="<?= htmlspecialchars($imagePath) ?>" class="img-fluid rounded-start h-100 object-fit-cover" alt="<?= htmlspecialchars($book['book_name']) ?>">
+                                                        </div>
+                                                        <div class="col-8">
+                                                            <div class="card-body">
+                                                                <div class="d-flex justify-content-between mt-3">
+                                                                    <h5 class="card-title text-truncate"><?= htmlspecialchars($review['book_name']) ?></h5>
+                                                                </div>
+                                                                <div class="mb-1">
+                                                                    <?php for($i = 1; $i <= 5; $i++): ?>
+                                                                        <?php if($i <= $review['rating']): ?>
+                                                                            <i class="bi bi-star-fill text-warning"></i>
+                                                                        <?php else: ?>
+                                                                            <i class="bi bi-star text-secondary"></i>
+                                                                        <?php endif; ?>
+                                                                    <?php endfor; ?>
+                                                                </div>
+                                                                <p class="card-text review-text"><?= htmlspecialchars(substr($review['review_text'], 0, 120)) ?><?= strlen($review['review_text']) > 120 ? '...' : '' ?></p>
+                                                                <p class="card-text">
+                                                                    <small class="text-muted">
+                                                                        By <?= htmlspecialchars($review['reviewer_name']) ?> on 
+                                                                        <?= date('M d, Y', strtotime($review['created_at'])) ?>
+                                                                    </small>
+                                                                </p>
+                                                                <div class="d-flex justify-content-end mt-1">
+                                                                    <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#reviewActionModal<?= $review['review_id'] ?>">View</button>
+                                                                </div>
                                                             </div>
-                                                            <div class="mb-1">
-                                                                <?php for($i = 1; $i <= 5; $i++): ?>
-                                                                    <?php if($i <= $review['rating']): ?>
-                                                                        <i class="bi bi-star-fill text-warning"></i>
-                                                                    <?php else: ?>
-                                                                        <i class="bi bi-star text-secondary"></i>
-                                                                    <?php endif; ?>
-                                                                <?php endfor; ?>
-                                                            </div>
-                                                            <p class="card-text"><?= htmlspecialchars($review['review_text']) ?></p>
-                                                            <p class="card-text">
-                                                                <small class="text-muted">
-                                                                    By <?= htmlspecialchars($review['user_name']) ?> on 
-                                                                    <?= date('M d, Y', strtotime($review['created_at'])) ?>
-                                                                </small>
-                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -958,52 +870,52 @@ $reviewSettings = getReviewSettings($connect);
                 </div>
             </div>
 
-    
-            <!-- Review Management Modal -->
-            <div class="modal fade" id="reviewManagementModal" tabindex="-1" aria-labelledby="reviewManagementModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-xl">
+            <!-- Review Management List -->
+            <div class="modal fade" id="reviewManagementListModal" tabindex="-1" aria-labelledby="reviewManagementModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="reviewManagementModalLabel">Review Management</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <ul class="nav nav-tabs" id="reviewManagementTabs" role="tablist">
+                            <ul class="nav nav-tabs nav-fill mb-3" id="reviewTypeTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-reviews" type="button" role="tab">
+                                    <button class="nav-link active" id="all-reviews-tab" data-bs-toggle="tab" data-bs-target="#all-reviews" type="button" role="tab">
+                                        All Reviews
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="pending-reviews-tab" data-bs-toggle="tab" data-bs-target="#pending-reviews" type="button" role="tab">
                                         Pending Reviews
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="flagged-tab" data-bs-toggle="tab" data-bs-target="#flagged-reviews" type="button" role="tab">
+                                    <button class="nav-link" id="flagged-reviews-tab" data-bs-toggle="tab" data-bs-target="#flagged-reviews" type="button" role="tab">
                                         Flagged Reviews
                                     </button>
                                 </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#review-settings" type="button" role="tab">
-                                        Settings
-                                    </button>
-                                </li>
                             </ul>
-                            <div class="tab-content p-3" id="reviewManagementTabContent">
-                                <div class="tab-pane fade show active" id="pending-reviews" role="tabpanel">
+                            
+                            <div class="tab-content" id="reviewTypeTabsContent">
+                                <!-- All Reviews Tab -->
+                                <div class="tab-pane fade show active" id="all-reviews" role="tabpanel">
                                     <div class="table-responsive">
-                                        <table id="pendingReviews" class="display nowrap">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>Book</th>
-                                                    <th>User</th>
                                                     <th>Rating</th>
-                                                    <th>Review</th>
+                                                    <th>Reviewer</th>
+                                                    <th>Status</th>
                                                     <th>Date</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($pendingReviews as $review): ?>
+                                                <?php foreach ($uniqueReviews as $review): ?>
                                                 <tr>
                                                     <td><?= htmlspecialchars($review['book_name']) ?></td>
-                                                    <td><?= htmlspecialchars($review['user_name']) ?></td>
                                                     <td>
                                                         <?php for($i = 1; $i <= 5; $i++): ?>
                                                             <?php if($i <= $review['rating']): ?>
@@ -1013,27 +925,35 @@ $reviewSettings = getReviewSettings($connect);
                                                             <?php endif; ?>
                                                         <?php endfor; ?>
                                                     </td>
-                                                    <td><?= htmlspecialchars(substr($review['review_text'], 0, 30)) ?>...</td>
+                                                    <td><?= htmlspecialchars($review['reviewer_name']) ?></td>
+                                                    <td>
+                                                        <?php
+                                                        $badgeClass = 'bg-secondary';
+                                                        switch ($review['status']) {
+                                                            case 'approved':
+                                                                $badgeClass = 'bg-success-subtle text-dark';
+                                                                break;
+                                                            case 'rejected':
+                                                                $badgeClass = 'bg-danger text-dark';
+                                                                break;
+                                                            case 'flagged':
+                                                                $badgeClass = 'bg-warning text-dark';
+                                                                break;                
+                                                            case 'pending':
+                                                                $badgeClass = 'bg-secondary text-white';
+                                                                break;
+                                                        }
+                                                        ?>
+                                                        <span class="badge <?= $badgeClass ?>"><?= ucfirst($review['status']) ?></span>
+                                                    </td>
                                                     <td><?= date('M d, Y', strtotime($review['created_at'])) ?></td>
                                                     <td>
-                                                        <form action="report.php" method="post" style="display:inline;">
-                                                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                                            <input type="hidden" name="action" value="update_review_status">
-                                                            <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
-                                                            <input type="hidden" name="status" value="approved">
-                                                            <button type="submit" class="btn btn-sm btn-success">
-                                                                <i class="bi bi-check"></i>
-                                                            </button>
-                                                        </form>
-                                                        <form action="report.php" method="post" style="display:inline;">
-                                                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                                            <input type="hidden" name="action" value="update_review_status">
-                                                            <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
-                                                            <input type="hidden" name="status" value="rejected">
-                                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                                <i class="bi bi-x"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button class="btn btn-sm btn-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#reviewActionModal<?= $review['review_id'] ?>" 
+                                                                onclick="handleReviewAction(<?= $review['review_id'] ?>)">
+                                                            <i class="bi bi-tools"></i> 
+                                                        </button>
                                                     </td>
                                                 </tr>
                                                 <?php endforeach; ?>
@@ -1041,24 +961,29 @@ $reviewSettings = getReviewSettings($connect);
                                         </table>
                                     </div>
                                 </div>
-                                <div class="tab-pane fade" id="flagged-reviews" role="tabpanel">
+                                
+                                <!-- Pending Reviews Tab -->
+                                <div class="tab-pane fade" id="pending-reviews" role="tabpanel">
                                     <div class="table-responsive">
-                                        <table id="flaggedReviews" class="display nowrap">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>Book</th>
-                                                    <th>User</th>
                                                     <th>Rating</th>
-                                                    <th>Review</th>
-                                                    <th>Flags</th>
+                                                    <th>Reviewer</th>
+                                                    <th>Date</th>
                                                     <th>Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <?php foreach ($flaggedReviews as $review): ?>
+                                                <?php 
+                                                $hasPendingReviews = false;
+                                                foreach ($pendingReviews as $review): 
+                                                    if ($review['status'] === 'pending'):
+                                                    $hasPendingReviews = true;
+                                                ?>
                                                 <tr>
                                                     <td><?= htmlspecialchars($review['book_name']) ?></td>
-                                                    <td><?= htmlspecialchars($review['user_name']) ?></td>
                                                     <td>
                                                         <?php for($i = 1; $i <= 5; $i++): ?>
                                                             <?php if($i <= $review['rating']): ?>
@@ -1068,196 +993,278 @@ $reviewSettings = getReviewSettings($connect);
                                                             <?php endif; ?>
                                                         <?php endfor; ?>
                                                     </td>
-                                                    <td><?= htmlspecialchars(substr($review['review_text'], 0, 30)) ?>...</td>
-                                                    <td><?= $review['flag_count'] ?></td>
+                                                    <td><?= htmlspecialchars($review['reviewer_name']) ?></td>
+                                                    <td><?= date('M d, Y', strtotime($review['created_at'])) ?></td>
                                                     <td>
-                                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#reviewDetailsModal<?= $review['review_id'] ?>">
-                                                            <i class="bi bi-eye"></i>
+                                                        <button class="btn btn-sm btn-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#reviewActionModal<?= $review['review_id'] ?>" 
+                                                                onclick="handleReviewAction(<?= $review['review_id'] ?>)">
+                                                            <i class="bi bi-tools"></i> 
                                                         </button>
-                                                        <form action="report.php" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this review?');">
-                                                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                                            <input type="hidden" name="action" value="delete_review">
-                                                            <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
-                                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </form>
                                                     </td>
                                                 </tr>
-                                                <?php endforeach; ?>
+                                                <?php 
+                                                    endif; 
+                                                endforeach; 
+                                                
+                                                if (!$hasPendingReviews):
+                                                ?>
+                                                <tr>
+                                                    <td colspan="5" class="text-center">No pending reviews found.</td>
+                                                </tr>
+                                                <?php endif; ?>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
-                                <div class="tab-pane fade" id="review-settings" role="tabpanel">
-                                    <form id="reviewSettingsForm" action="report.php" method="post">
-                                        <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                        <input type="hidden" name="action" value="update_review_settings">
-                                        <div class="mb-3">
-                                            <label class="form-label">Review Moderation</label>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" name="moderate_reviews" id="moderateReviews" <?= $reviewSettings['moderate_reviews'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="moderateReviews">Require approval for new reviews</label>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label">User Restrictions</label>
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" name="allow_guest_reviews" id="allowGuestReviews" <?= $reviewSettings['allow_guest_reviews'] ? 'checked' : '' ?>>
-                                                <label class="form-check-label" for="allowGuestReviews">Allow guest reviews</label>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="reviewsPerPage" class="form-label">Reviews Per Page</label>
-                                            <input type="number" class="form-control" name="reviews_per_page" id="reviewsPerPage" value="<?= $reviewSettings['reviews_per_page'] ?>">
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">Save Settings</button>
-                                    </form>
+                                
+                                <!-- Flagged Reviews Tab -->
+                                <div class="tab-pane fade" id="flagged-reviews" role="tabpanel">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Book</th>
+                                                    <th>Rating</th>
+                                                    <th>Reviewer</th>
+                                                    <th>Flagged By</th>
+                                                    <th>Date</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php 
+                                                $hasFlaggedReviews = false;
+                                                foreach ($flaggedReviews as $review): 
+                                                    if ($review['status'] === 'flagged'):
+                                                    $hasFlaggedReviews = true;
+                                                ?>
+                                                <tr>
+                                                    <td><?= htmlspecialchars($review['book_name']) ?></td>
+                                                    <td>
+                                                        <?php for($i = 1; $i <= 5; $i++): ?>
+                                                            <?php if($i <= $review['rating']): ?>
+                                                                <i class="bi bi-star-fill text-warning"></i>
+                                                            <?php else: ?>
+                                                                <i class="bi bi-star text-secondary"></i>
+                                                            <?php endif; ?>
+                                                        <?php endfor; ?>
+                                                    </td>
+                                                    <td><?= htmlspecialchars($review['reviewer_name']) ?></td>
+                                                    <td><?= htmlspecialchars($review['flagged_by_name'] ?? 'Unknown') ?></td>
+                                                    <td><?= date('M d, Y', strtotime($review['created_at'])) ?></td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-primary" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#reviewActionModal<?= $review['review_id'] ?>" 
+                                                                onclick="handleReviewAction(<?= $review['review_id'] ?>)">
+                                                            <i class="bi bi-tools"></i> 
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                <?php 
+                                                    endif; 
+                                                endforeach; 
+                                                
+                                                if (!$hasFlaggedReviews):
+                                                ?>
+                                                <tr>
+                                                    <td colspan="6" class="text-center">No flagged reviews found.</td>
+                                                </tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Review Details Modals -->
-            <?php foreach ($flaggedReviews as $review): ?>
-                <div class="modal fade" id="reviewDetailsModal<?= $review['review_id'] ?>" tabindex="-1" aria-labelledby="reviewDetailsModalLabel<?= $review['review_id'] ?>" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="reviewDetailsModalLabel<?= $review['review_id'] ?>">Review Details</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0"><?= htmlspecialchars($review['book_name']) ?></h5>
-                                        <div>
-                                            <?php for($i = 1; $i <= 5; $i++): ?>
-                                                <?php if($i <= $review['rating']): ?>
-                                                    <i class="bi bi-star-fill text-warning"></i>
-                                                <?php else: ?>
-                                                    <i class="bi bi-star text-secondary"></i>
-                                                <?php endif; ?>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="card-text"><?= htmlspecialchars($review['review_text']) ?></p>
-                                        <div class="d-flex justify-content-between mt-3">
-                                            <small class="text-muted">By: <?= htmlspecialchars($review['user_name']) ?></small>
-                                            <small class="text-muted">Posted: <?= date('M d, Y h:i A', strtotime($review['created_at'])) ?></small>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer">
-                                        <h6>Flags (<?= $review['flag_count'] ?>)</h6>
-                                        <ul class="list-group list-group-flush">
-                                            <?php
-                                            // Get flags for this review
-                                            $query = "SELECT f.*, u.user_name 
-                                                    FROM lms_review_flag f
-                                                    LEFT JOIN lms_user u ON f.user_id = u.user_id
-                                                    WHERE f.review_id = :review_id";
-                                            $statement = $connect->prepare($query);
-                                            $statement->bindParam(':review_id', $review['review_id'], PDO::PARAM_INT);
-                                            $statement->execute();
-                                            $flags = $statement->fetchAll(PDO::FETCH_ASSOC);
-                                            
-                                            if (count($flags) > 0):
-                                                foreach ($flags as $flag):
-                                            ?>
-                                                <li class="list-group-item">
-                                                    <div class="d-flex justify-content-between">
-                                                        <span><?= htmlspecialchars($flag['reason']) ?></span>
-                                                        <small class="text-muted">Reported by: <?= htmlspecialchars($flag['user_name']) ?></small>
-                                                    </div>
-                                                </li>
-                                            <?php 
-                                                endforeach;
-                                            else:
-                                            ?>
-                                                <li class="list-group-item">No flag details available</li>
+            <!-- Review Action Modal -->
+            <?php foreach ($uniqueReviews as $review): ?>
+            <div class="modal fade" id="reviewActionModal<?= $review['review_id'] ?>" tabindex="-1" aria-labelledby="reviewActionLabel<?= $review['review_id'] ?>" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="reviewManagementLabel<?= $review['review_id'] ?>">Manage Review</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <!-- Review Details -->
+                            <div class="card mb-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><?= htmlspecialchars($review['book_name']) ?></h5>
+                                    <div>
+                                        <?php for($i = 1; $i <= 5; $i++): ?>
+                                            <?php if($i <= $review['rating']): ?>
+                                                <i class="bi bi-star-fill text-warning"></i>
+                                            <?php else: ?>
+                                                <i class="bi bi-star text-secondary"></i>
                                             <?php endif; ?>
-                                        </ul>
+                                        <?php endfor; ?>
                                     </div>
                                 </div>
+                                <div class="card-body">
+                                    <p class="card-text"><?= htmlspecialchars($review['review_text']) ?></p>
+                                    <div class="d-flex justify-content-between mt-3">
+                                        <small class="text-muted">By: <?= htmlspecialchars($review['reviewer_name']) ?></small>
+                                        <small class="text-muted">Posted: <?= date('M d, Y h:i A', strtotime($review['created_at'])) ?></small>
+                                    </div>
+                                    
+                                    <?php if (!empty($review['remarks'])): ?>
+                                    <div class="alert alert-info mt-3">
+                                        <h6>Remarks:</h6>
+                                        <p><?= htmlspecialchars($review['remarks']) ?></p>
+                                        <?php if (!empty($review['flagged_by_name'])): ?>
+                                        <small>Flagged by: <?= htmlspecialchars($review['flagged_by_name']) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($review['status'] === 'rejected'): ?>
+                                    <div class="alert alert-danger mt-3">
+                                        <h6>Review Status: Rejected</h6>
+                                        <p>This review has been previously rejected. You can still approve it if the issues have been resolved.</p>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                <form action="report.php" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this review?');">
-                                    <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                    <input type="hidden" name="action" value="delete_review">
-                                    <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
-                                    <button type="submit" class="btn btn-danger">Delete Review</button>
-                                </form>
+                            
+                            <!-- Action Tabs -->
+                            <ul class="nav nav-tabs nav-fill" id="reviewActionTabs<?= $review['review_id'] ?>" role="tablist">
+                                <?php 
+                                // Allow approving for pending, flagged, and rejected reviews
+                                $allowApprove = in_array($review['status'], ['pending', 'flagged', 'rejected']);
+                                // Always allow delete
+                                $allowDelete = true;
+                                // Allow reject for pending reviews or approved reviews
+                                $allowReject = in_array($review['status'], ['pending', 'approved']);
+                                // Allow flag for approved reviews
+                                $allowFlag = $review['status'] === 'approved';
+                                ?>
+                                
+                                <?php if ($allowApprove): ?>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="approve-tab<?= $review['review_id'] ?>" data-bs-toggle="tab" data-bs-target="#approve<?= $review['review_id'] ?>" type="button" role="tab">
+                                        <i class="bi bi-check-circle"></i> Approve
+                                    </button>
+                                </li>
+                                <?php endif; ?>
+                                
+                                <?php if ($allowReject): ?>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link<?= !$allowApprove ? ' active' : '' ?>" id="reject-tab<?= $review['review_id'] ?>" data-bs-toggle="tab" data-bs-target="#reject<?= $review['review_id'] ?>" type="button" role="tab">
+                                        <i class="bi bi-x-circle"></i> Reject
+                                    </button>
+                                </li>
+                                <?php endif; ?>
+                                
+                                <?php if ($allowFlag): ?>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link<?= (!$allowApprove && !$allowReject) ? ' active' : '' ?>" id="flag-tab<?= $review['review_id'] ?>" data-bs-toggle="tab" data-bs-target="#flag<?= $review['review_id'] ?>" type="button" role="tab">
+                                        <i class="bi bi-flag"></i> Flag
+                                    </button>
+                                </li>
+                                <?php endif; ?>
+                                
+                                <?php if ($allowDelete): ?>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link<?= (!$allowApprove && !$allowReject && !$allowFlag) ? ' active' : '' ?>" id="delete-tab<?= $review['review_id'] ?>" data-bs-toggle="tab" data-bs-target="#delete<?= $review['review_id'] ?>" type="button" role="tab">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                </li>
+                                <?php endif; ?>
+                            </ul>
+                            
+                            <!-- Tab Content -->
+                            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="reviewActionTabContent<?= $review['review_id'] ?>">
+                                <!-- Approve Tab -->
+                                <?php if ($allowApprove): ?>
+                                <div class="tab-pane fade show active" id="approve<?= $review['review_id'] ?>" role="tabpanel">
+                                    <div class="alert alert-success">
+                                        <p><strong>Confirmation: </strong><br> Are you sure you want to approve this review? It will be made visible to all users.</p>
+                                    </div>
+                                    <form action="review_action.php" method="post" data-review-action="true">
+                                        <input type="hidden" name="action" value="manage_review">
+                                        <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
+                                        <input type="hidden" name="review_action" value="approve">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <button type="submit" class="btn btn-success">Approve Review</button>
+                                            <button class="btn btn-outline-secondary" data-bs-target="#reviewManagementListModal" onclick="goBackToListModal(<?= $review['review_id'] ?>)" data-bs-toggle="modal">Back to List</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <!-- Reject Tab -->
+                                <?php if ($allowReject): ?>
+                                <div class="tab-pane fade<?= !$allowApprove ? ' show active' : '' ?>" id="reject<?= $review['review_id'] ?>" role="tabpanel">
+                                    <form action="review_action.php" method="post" data-review-action="true">
+                                        <div class="mb-3">
+                                            <label for="remarks<?= $review['review_id'] ?>" class="form-label">Reason for rejection:</label>
+                                            <textarea class="form-control" id="remarks<?= $review['review_id'] ?>" name="remarks" rows="3" required></textarea>
+                                        </div>
+                                        <input type="hidden" name="action" value="manage_review">
+                                        <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
+                                        <input type="hidden" name="review_action" value="reject">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <button type="submit" class="btn btn-danger">Reject Review</button>
+                                            <button class="btn btn-outline-secondary" data-bs-target="#reviewManagementListModal" onclick="goBackToListModal(<?= $review['review_id'] ?>)" data-bs-toggle="modal">Back to List</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <!-- Flag Tab -->
+                                <?php if ($allowFlag): ?>
+                                <div class="tab-pane fade<?= (!$allowApprove && !$allowReject) ? ' show active' : '' ?>" id="flag<?= $review['review_id'] ?>" role="tabpanel">
+                                    <form action="review_action.php" method="post" data-flag-action="true">
+                                        <div class="mb-3">
+                                            <label for="flag_reason<?= $review['review_id'] ?>" class="form-label">Reason for flagging:</label>
+                                            <textarea class="form-control" id="flag_reason<?= $review['review_id'] ?>" name="flag_reason" rows="3" required></textarea>
+                                        </div>
+                                        <input type="hidden" name="action" value="flag_review">
+                                        <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <button type="submit" class="btn btn-warning">Flag Review</button>
+                                            <button class="btn btn-outline-secondary" data-bs-target="#reviewManagementListModal" onclick="goBackToListModal(<?= $review['review_id'] ?>)" data-bs-toggle="modal">Back to List</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <!-- Delete Tab -->
+                                <?php if ($allowDelete): ?>
+                                <div class="tab-pane fade<?= (!$allowApprove && !$allowReject && !$allowFlag) ? ' show active' : '' ?>" id="delete<?= $review['review_id'] ?>" role="tabpanel">
+                                    <div class="alert alert-danger">
+                                        <p><strong>Warning: </strong><br> Are you sure you want to permanently delete this review? This action cannot be undone.</p>
+                                    </div>
+                                    <form action="review_action.php" method="post" data-review-action="true">
+                                        <input type="hidden" name="action" value="manage_review">
+                                        <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
+                                        <input type="hidden" name="review_action" value="delete">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <button type="submit" class="btn btn-danger">Delete Permanently</button>
+                                            <button class="btn btn-outline-secondary" data-bs-target="#reviewManagementListModal" onclick="goBackToListModal(<?= $review['review_id'] ?>)" data-bs-toggle="modal">Back to List</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
                 </div>
-            <?php endforeach; ?>
-            <!-- Review View Modals -->
-            <?php foreach ($recentReviews as $review): ?>
-                <?php $book = getBookById($connect, $review['book_id']); ?>
-                <div class="modal fade" id="viewReviewModal<?= $review['review_id'] ?>" tabindex="-1" aria-labelledby="viewReviewModalLabel<?= $review['review_id'] ?>" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="viewReviewModalLabel<?= $review['review_id'] ?>">Book Review</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <h5 class="mb-0"><?= htmlspecialchars($book['book_name']) ?></h5>
-                                        <div>
-                                            <?php for($i = 1; $i <= 5; $i++): ?>
-                                                <?php if($i <= $review['rating']): ?>
-                                                    <i class="bi bi-star-fill text-warning"></i>
-                                                <?php else: ?>
-                                                    <i class="bi bi-star text-secondary"></i>
-                                                <?php endif; ?>
-                                            <?php endfor; ?>
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="card-text"><?= htmlspecialchars($review['review_text']) ?></p>
-                                        <div class="d-flex justify-content-between mt-3">
-                                            <small class="text-muted">By: <?= htmlspecialchars($review['user_name']) ?></small>
-                                            <small class="text-muted">Posted: <?= date('M d, Y h:i A', strtotime($review['created_at'])) ?></small>
-                                        </div>
-                                    </div>
-                                    <div class="card-footer">
-                                        <form action="report.php" method="post" class="mt-3">
-                                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                                            <input type="hidden" name="action" value="flag_review">
-                                            <input type="hidden" name="review_id" value="<?= $review['review_id'] ?>">
-                                            <div class="input-group">
-                                                <input type="text" class="form-control form-control-sm" name="flag_reason" placeholder="Reason for flagging..." required>
-                                                <button type="submit" class="btn btn-warning btn-sm">
-                                                    <i class="bi bi-flag"></i> 
-                                                    <?php if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin'): ?>
-                                                        Test Flag (Admin)
-                                                    <?php else: ?>
-                                                        Flag Review
-                                                    <?php endif; ?>
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            </div>
             <?php endforeach; ?>
 
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
     
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -1784,39 +1791,274 @@ $reviewSettings = getReviewSettings($connect);
                 }
             });
             
-            // Initialize tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl)
-            });
             
-            // Show success or error message if it exists
-            <?php if (isset($_SESSION['success'])): ?>
-                showAlert('<?= $_SESSION['success'] ?>', 'success');
-                <?php unset($_SESSION['success']); ?>
-            <?php endif; ?>
             
-            <?php if (isset($_SESSION['error'])): ?>
-                showAlert('<?= $_SESSION['error'] ?>', 'danger');
-                <?php unset($_SESSION['error']); ?>
-            <?php endif; ?>
-            
-            // Function to show alerts
-            function showAlert(message, type) {
-                const alertDiv = $(`<div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                                    ${message}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                </div>`);
-                
-                // Add to top of content
-                $('#main-content').prepend(alertDiv);
-                
-                // Auto hide after 5 seconds
-                setTimeout(function() {
-                    alertDiv.alert('close');
-                }, 5000);
-            }
+
         });
     </script>
+    <script>
+        // Enhanced Review Action Handler
+        function handleReviewAction(reviewId) {
+            // Store the current state to allow going back
+            window.currentListModal = '#reviewManagementListModal';
+            
+            // Hide the parent modal
+            $(window.currentListModal).modal('hide');
+            
+            // Show the specific review action modal after a brief delay
+            setTimeout(function() {
+                $('#reviewActionModal' + reviewId).modal('show');
+            }, 300);
+            
+            // Add event listener for when action modal is hidden
+            $('#reviewActionModal' + reviewId).on('hidden.bs.modal', function (e) {
+                // Check if we should go back to list modal
+                if (window.returnToListModal === true) {
+                    $(window.currentListModal).modal('show');
+                    window.returnToListModal = false;
+                }
+            });
+            
+            // Prevent Bootstrap's default behavior from interfering
+            return false;
+        }
+
+        // Function to go back to the list modal
+        function goBackToListModal(reviewId) {
+            window.returnToListModal = true;
+            $('#reviewActionModal' + reviewId).modal('hide');
+        }
+
+        // Replace form submissions with AJAX + SweetAlert
+        $(document).ready(function() {
+            // Handle all review management forms
+            $(document).on('submit', 'form[data-review-action="true"]', function(e) {
+                e.preventDefault();
+                
+                var form = $(this);
+                var formData = form.serialize();
+                var reviewId = form.find('input[name="review_id"]').val();
+                var action = form.find('input[name="review_action"]').val();
+                
+                // Close the modal
+                $('#reviewActionModal' + reviewId).modal('hide');
+                
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait while we process your request.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send AJAX request
+                $.ajax({
+                    url: 'review_action.php',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        try {
+                            // First check if response is already a JSON object
+                            var result = typeof response === 'object' ? response : JSON.parse(response);
+                            
+                            if (result.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: result.message,
+                                    confirmButtonText: 'OK'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        location.reload();
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: result.message || 'An error occurred while processing your request.',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        } catch (e) {
+                            console.error('JSON Parse Error:', e, 'Raw Response:', response);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An unexpected error occurred. Please try again.',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to connect to the server. Please check your internet connection and try again.',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            });
+            
+            // Handle flag review forms
+            $(document).on('submit', 'form[data-flag-action="true"]', function(e) {
+                e.preventDefault();
+                
+                var form = $(this);
+                var formData = form.serialize();
+                var reviewId = form.find('input[name="review_id"]').val();
+                
+                // Close the modal
+                $('#reviewActionModal' + reviewId).modal('hide');
+                
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait while we flag this review.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send AJAX request
+                $.ajax({
+                    url: 'review_action.php',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        try {
+                            var result = JSON.parse(response);
+                            
+                            if (result.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: result.message,
+                                    confirmButtonText: 'OK'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        location.reload(); // Reload to update the review lists
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: result.message || 'An error occurred while flagging the review.',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        } catch (e) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An unexpected error occurred. Please try again.',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to connect to the server. Please check your internet connection and try again.',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            });
+            
+            // Handle settings form
+            $(document).on('submit', 'form[data-settings-action="true"]', function(e) {
+                e.preventDefault();
+                
+                var form = $(this);
+                var formData = form.serialize();
+                
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait while we update the settings.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send AJAX request
+                $.ajax({
+                    url: 'review_action.php',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        try {
+                            var result = JSON.parse(response);
+                            
+                            if (result.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success',
+                                    text: result.message,
+                                    confirmButtonText: 'OK'
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: result.message || 'An error occurred while updating settings.',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        } catch (e) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An unexpected error occurred. Please try again.',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to connect to the server. Please check your internet connection and try again.',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            });
+
+            // Check for session messages on page load and display with SweetAlert
+            <?php if(isset($_SESSION['success_message'])): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: '<?= htmlspecialchars($_SESSION['success_message']) ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['success_message']); ?>
+            <?php endif; ?>
+            
+            <?php if(isset($_SESSION['error_message'])): ?>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '<?= htmlspecialchars($_SESSION['error_message']) ?>',
+                    confirmButtonText: 'OK'
+                });
+                <?php unset($_SESSION['error_message']); ?>
+            <?php endif; ?>
+        });
+    </script>
+    
+
 
 <?php include '../footer.php'; ?>
