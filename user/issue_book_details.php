@@ -6,7 +6,7 @@ include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
-
+authenticate_user();
 
 $query = "
 	SELECT * FROM lms_issue_book 

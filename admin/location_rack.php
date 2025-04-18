@@ -3,7 +3,8 @@
 
 include '../database_connection.php';
 include '../function.php';
-
+include '../header.php';
+authenticate_admin();
 require_once('library_map_component.php');
 
 $message = ''; 
@@ -120,11 +121,11 @@ $statement = $connect->prepare($query);
 $statement->execute();
 $library_features = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-include '../header.php';
+
 ?>
 
 <div class="container-fluid px-4">
-    <h1 class="my-4"><i class="fas fa-warehouse me-2"></i>Rack Location Management</h1>
+    <h1 class="my-4">Rack Location Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
@@ -205,7 +206,7 @@ include '../header.php';
                                 <?php 
                                 // Render the library map component in 'add' mode with all existing racks
                                 $new_rack = ['location_rack_name' => 'New Rack'];
-                                renderLibraryMap('add', $new_rack, $all_racks, 400, $library_features); 
+                                renderLibraryMap('add', $new_rack, $all_racks, 400, $library_features);
                                 ?>
                             </div>
                         </div>
@@ -279,7 +280,7 @@ include '../header.php';
                             <div class="card-body">
                                 <?php 
                                 // Render the library map component in 'edit' mode with all racks
-                                renderLibraryMap('edit', $rack, $all_racks, 400, $library_features); 
+                                renderLibraryMap('edit', $rack, $all_racks, 400, $library_features);
                                 ?>
                             </div>
                         </div>
@@ -449,61 +450,46 @@ include '../header.php';
             <div class="col-md-5">
                 <div class="card shadow-sm">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="fas fa-map me-2 text-primary"></i>Library Rack Map</h5>
+                        <h5 class="mb-0"><i class="fas fa-map me-2"></i>Library Rack Map</h5>
                     </div>
-                    <div class="card-body">
-                        <?php 
-                        // Render the library map component in 'list' mode with all racks
-                        renderLibraryMap('list', null, $all_racks, 500, $library_features); 
-                        ?>
+                    <div class="card-body">                       
                         
-                        <!-- Legend card -->
-                        <div class="card mt-3">
-                            <div class="card-body">
-                                <div class="row">
-                                    <h6 class="mb-2">Map Legend</h6>
-                                    <div class="col-md-4">                                        
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-success text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-archive"></i>
-                                            </div>
-                                            <span class="fs-6">Available Rack</span>
+                        <!-- Library Map -->
+                        <div class="mb-4">
+                            <?php renderLibraryMap('list', null, $all_racks, 500, $library_features); ?>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Map Legend:</strong>
+                                <div class="d-flex flex-wrap gap-3 mt-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
                                         </div>
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-danger text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-archive"></i>
-                                            </div>
-                                            <span class="fs-6">Full Rack</span>
-                                        </div>
+                                        <span>Active Rack</span>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-secondary text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-door-open"></i>
-                                            </div>
-                                            <span class="fs-6">Library Entrance</span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-danger text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
                                         </div>
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-warning text-dark d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-book-reader"></i>
-                                            </div>
-                                            <span class="fs-6">Reading Area</span>
-                                        </div>
+                                        <span>Disabled Rack</span>
                                     </div>
-                                    <div class="col-md-4">                                        
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-dark-subtle text-dark d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-user-tie"></i>
-                                            </div>
-                                            <span class="fs-6">Staff</span>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-info text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
                                         </div>
-                                        <div class="d-flex align-items-center mb-1">
-                                            <div class="bg-info-subtle text-dark d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
-                                                <i class="fas fa-desktop"></i>
-                                            </div>
-                                            <span class="fs-6">Computer Desks</span>
-                                        </div>
+                                        <span>Selected Rack</span>
                                     </div>
+                                    <?php foreach ($library_features as $feature): ?>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="<?= $feature['feature_icon'] ?>"></i>
+                                        </div>
+                                        <span><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
                             </div>
                         </div>
@@ -515,7 +501,7 @@ include '../header.php';
                     <div class="card-header bg-white">
                         <div class="row align-items-center">
                             <div class="col">
-                                <h5 class="mb-0"><i class="fas fa-table me-2 text-primary"></i>Rack Management</h5>
+                                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Rack List</h5>
                             </div>
                             <div class="col text-end">
                                 <a href="location_rack.php?action=add" class="btn btn-success btn-sm">
@@ -554,7 +540,7 @@ include '../header.php';
                                             <span class="badge bg-danger">Full</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= date('Y-m-d H:i', strtotime($row['rack_updated_on'])) ?></td>
+                                    <td><?= date('M d, Y H:i:s', strtotime($row['rack_updated_on'])) ?></td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <a href="location_rack.php?action=view&code=<?= $row['location_rack_id'] ?>" class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="View Details">
@@ -589,7 +575,7 @@ include '../header.php';
 <script>
 // DataTable initialization - ensure jQuery and DataTables are loaded
 $(document).ready(function() {
-    $('#dataTable').DataTable({
+    const table = $('#dataTable').DataTable({
         responsive: true,
         columnDefs: [
             { responsivePriority: 1, targets: 1 },  // Rack Name (most important)
@@ -612,19 +598,26 @@ $(document).ready(function() {
         language: {
             emptyTable: "No racks available"
         },
-        scrollY: '400px',
-        scrollX: true, // Added for horizontal responsiveness
+        scrollY: '500px',
+        scrollX: false, // Added for horizontal responsiveness
         scrollCollapse: true,
         paging: true,
         fixedHeader: true, // Optional: keeps headers visible while scrolling
-        dom: '<"top"lf>rt<"bottom"ip>', // Custom control layout
-        initComplete: function() {
-            // Initialize Bootstrap tooltips
-            $('[data-bs-toggle="tooltip"]').tooltip({
-                trigger: 'hover'
-            });
+        drawCallback: function () {
+            setTimeout(() => {
+                table.columns.adjust().responsive.recalc();
+            }, 100);
         }
     });
+    // Adjust columns on window resize
+    $(window).on('resize', function () {
+        table.columns.adjust().responsive.recalc();
+    });
+
+    // Final adjustment after full load/render
+    setTimeout(() => {
+        table.columns.adjust().responsive.recalc();
+    }, 300);
 });
 
 // Toggle status buttons

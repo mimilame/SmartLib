@@ -3,7 +3,8 @@
 
 include '../database_connection.php';
 include '../function.php';
-
+include '../header.php';
+authenticate_admin();
 $message = ''; // Feedback message
 
 // DELETE (Disable/Enable)
@@ -44,8 +45,8 @@ if (isset($_POST['add_user'])) {
         $unique_id = $prefix . substr($unique_id, 1);
     }
     
-    // Default image path
-    $profile_image = '../asset/img/user.jpg';
+    // Default image filename
+    $profile_image = ''; // Empty by default
     
     // Check if image is uploaded
     if(isset($_FILES['user_profile']) && $_FILES['user_profile']['error'] == 0) {
@@ -66,7 +67,7 @@ if (isset($_POST['add_user'])) {
             $upload_path = $upload_dir . $new_filename;
             
             if(move_uploaded_file($_FILES['user_profile']['tmp_name'], $upload_path)) {
-                $profile_image = $upload_path;
+                $profile_image = $new_filename; // Save only the filename
             }
         }
     }
@@ -153,11 +154,11 @@ if (isset($_POST['edit_user'])) {
             $upload_path = $upload_dir . $new_filename;
             
             if(move_uploaded_file($_FILES['user_profile']['tmp_name'], $upload_path)) {
-                // If this isn't the default image, delete the old one
-                if($profile_image != '../asset/img/user.jpg' && file_exists($profile_image)) {
-                    unlink($profile_image);
+                // If this isn't the default image and exists, delete the old one
+                if(!empty($profile_image) && file_exists($upload_dir . $profile_image)) {
+                    unlink($upload_dir . $profile_image);
                 }
-                $profile_image = $upload_path;
+                $profile_image = $new_filename; // Save only the filename
             }
         }
     }
@@ -205,13 +206,17 @@ if (isset($_POST['edit_user'])) {
     exit;
 }
 
-// SELECT User
-$query = "SELECT * FROM lms_user ORDER BY user_id DESC";
+// SELECT User with role name
+$query = "
+    SELECT u.*, r.role_name 
+    FROM lms_user u 
+    LEFT JOIN user_roles r ON u.role_id = r.role_id 
+    ORDER BY u.user_id DESC";
 $statement = $connect->prepare($query);
 $statement->execute();
 $user = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-include '../header.php';
+
 ?>
 
 <main class="container py-4" style="min-height: 700px;">
@@ -349,7 +354,11 @@ include '../header.php';
 
         <?php
         $id = $_GET['code'];
-        $query = "SELECT * FROM lms_user WHERE user_id = :id LIMIT 1";
+        $query = "
+            SELECT u.*, r.role_name 
+            FROM lms_user u 
+            LEFT JOIN user_roles r ON u.role_id = r.role_id 
+            WHERE u.user_id = :id LIMIT 1";
         $statement = $connect->prepare($query);
         $statement->execute([':id' => $id]);
         $user = $statement->fetch(PDO::FETCH_ASSOC);
@@ -367,7 +376,7 @@ include '../header.php';
                     <div class="row mb-4">
                         <div class="col-md-3 text-center mb-4">
                             <div class="mb-3">
-                                <img id="profile_preview" src="<?= isset($user['user_profile']) ? '../upload/'. $user['user_profile'] : '../asset/img/user.jpg' ?>" alt="Profile Image" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                                <img id="profile_preview" src="<?= !empty($user['user_profile']) ? '../upload/'. $user['user_profile'] : '../asset/img/user.jpg' ?>" alt="Profile Image" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                             </div>
                             <div class="mb-3">
                                 <label for="user_profile" class="form-label">Profile Image</label>
@@ -397,7 +406,7 @@ include '../header.php';
 								<div class="col-md-6">
 									<label for="user_unique_id" class="form-label">User Unique ID</label>
 									<div class="input-group">
-										<span class="input-group-text bg-light" id="id_prefix">S</span>
+										<span class="input-group-text bg-light" id="id_prefix"><?= substr($user['user_unique_id'], 0, 1) ?></span>
 										<input type="text" id="user_unique_id" name="user_unique_id" class="form-control" value="<?= $user['user_unique_id'] ?>" readonly>
 									</div>
 									<div class="form-text">Auto-generated based on user type</div>
@@ -436,7 +445,11 @@ include '../header.php';
     <?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
         <?php
         $id = $_GET['code'];
-        $query = "SELECT * FROM lms_user WHERE user_id = :id LIMIT 1";
+        $query = "
+            SELECT u.*, r.role_name 
+            FROM lms_user u 
+            LEFT JOIN user_roles r ON u.role_id = r.role_id 
+            WHERE u.user_id = :id LIMIT 1";
         $statement = $connect->prepare($query);
         $statement->execute([':id' => $id]);
         $user = $statement->fetch(PDO::FETCH_ASSOC);
@@ -453,7 +466,7 @@ include '../header.php';
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 text-center mb-4">
-                        <img src="<?= isset($user['user_profile']) ? '../upload/'.  htmlspecialchars($user['user_profile']) : '../asset/img/user.jpg' ?>" alt="Profile Image" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+                        <img src="<?= !empty($user['user_profile']) ? '../upload/'. htmlspecialchars($user['user_profile']) : '../asset/img/user.jpg' ?>" alt="Profile Image" class="img-thumbnail rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
                     </div>
                     <div class="col-md-9">
                         <div class="row g-3">
@@ -470,9 +483,7 @@ include '../header.php';
                                         <?= htmlspecialchars($user['user_status']) ?>
                                     </span>
                                 </p>
-                                <p><strong>User Type:</strong> 
-                                    <?= htmlspecialchars($user['role_id'] == 'S' ? 'Student' : 'Faculty') ?>
-                                </p>
+                                <p><strong>User Type:</strong> <?= htmlspecialchars($user['role_name']) ?></p>
                                 <p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_created_on'])) ?></p>
                                 <p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($user['user_updated_on'])) ?></p>
                             </div>
@@ -518,6 +529,7 @@ include '../header.php';
                             <th>Email</th>
                             <th>User Unique ID</th>
                             <th>Contact No.</th>
+                            <th>User Type</th>
                             <th>Status</th>
                             <th>Created On</th>
                             <th>Updated On</th> 
@@ -530,20 +542,21 @@ include '../header.php';
                             <tr>
                                 <td><?= $row['user_id'] ?></td>
                                 <td>
-                                    <img src="<?= isset($row['user_profile']) ? '../upload/'. $row['user_profile'] : '../asset/img/user.jpg' ?>" 
+                                    <img src="<?= !empty($row['user_profile']) ? '../upload/'. $row['user_profile'] : '../asset/img/user.jpg' ?>" 
                                          alt="Profile" class="rounded-circle" width="40" height="40" style="object-fit: cover;">
                                 </td>
                                 <td><?= $row['user_name'] ?></td>
                                 <td><?= $row['user_email'] ?></td>
                                 <td><?= $row['user_unique_id'] ?></td>
                                 <td><?= $row['user_contact_no'] ?></td>
+                                <td><?= $row['role_name'] ?></td>
                                 <td>
                                     <?= ($row['user_status'] === 'Enable') 
                                         ? '<span class="badge bg-success">Active</span>' 
                                         : '<span class="badge bg-danger">Disabled</span>' ?>
                                 </td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['user_created_on'])) ?></td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['user_updated_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['user_created_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['user_updated_on'])) ?></td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="user.php?action=view&code=<?= $row['user_id'] ?>" class="btn btn-info btn-sm">
@@ -562,7 +575,7 @@ include '../header.php';
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="10" class="text-center">No Data Found</td></tr>
+                        <tr><td colspan="11" class="text-center">No Data Found</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>
@@ -636,115 +649,98 @@ document.addEventListener('DOMContentLoaded', function() {
     // Regenerate button click handler
     if (regenerateBtn) {
         regenerateBtn.addEventListener('click', function() {
-            let prefix;
-            
-            // Set prefix based on role
-            switch(roleSelect.value) {
-                case '3':
-                    prefix = 'F';
-                    break;
-                case '4':
-                    prefix = 'S';
-                    break;
-                default:
-                    prefix = 'U';
-            }
-            
-            // Generate new random digits
-            uniqueIdField.value = prefix + generateRandomDigits();
+            const prefix = idPrefix.textContent;
+            const newDigits = generateRandomDigits();
+            uniqueIdField.value = prefix + newDigits;
         });
     }
     
-    // Form submission handling
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function() {
-            updateUniqueId();
-        });
-    }
-});
-
-// Image preview function
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('profile_preview').src = e.target.result;
-        }
-        reader.readAsDataURL(input.files[0]);
-    }
-}
-
-// Toggle password visibility
-document.addEventListener('DOMContentLoaded', function() {
+    // Password toggle functionality
     const togglePassword = document.getElementById('togglePassword');
-    if (togglePassword) {
+    const passwordField = document.getElementById('user_password');
+    
+    if (togglePassword && passwordField) {
         togglePassword.addEventListener('click', function() {
-            const passwordInput = document.getElementById('user_password');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            // Toggle icon
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
             this.querySelector('i').classList.toggle('fa-eye');
             this.querySelector('i').classList.toggle('fa-eye-slash');
         });
     }
-});
 
-// Delete confirmation with SweetAlert2
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const userId = this.getAttribute('data-id');
-            const currentStatus = this.getAttribute('data-status');
-            const action = (currentStatus === 'Enable') ? 'disable' : 'enable';
-            const actionText = (currentStatus === 'Enable') ? 'disable' : 're-enable';
-
-            Swal.fire({
-                title: `Are you sure you want to ${actionText} this user?`,
-                text: "This action can be reverted later.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: currentStatus === 'Enable' ? '#d33' : '#3085d6',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: `Yes, ${actionText} it!`
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `user.php?action=delete&status=${currentStatus === 'Enable' ? 'Disable' : 'Enable'}&code=${userId}`;
-                }
-            });
+    // Profile image preview functionality
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('profile_preview').src = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    
+    // DataTable initialization
+    const table = $('#dataTable').DataTable({
+        responsive: true,
+		scrollX: true,
+        scrollY: '500px',       // Optional: Sets vertical scroll area (adjust height as needed)
+        scrollCollapse: true,   // Collapse table height if fewer records
+        autoWidth: false,
+        info: true,
+        paging: true,  
+		columnDefs: [
+            { responsivePriority: 1, targets: [0, 2, 10] },
+            { responsivePriority: 2, targets: [1, 3] }
+        ],     
+        order: [[0, 'desc']],
+		language: {
+            emptyTable: "No data available"
+        },
+		fixedHeader: true,
+        stateSave: true,
+        // Fix alignment issues on draw and responsive changes
+        drawCallback: function() {
+            setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
+        }
+    });
+	// Handle window resize to maintain column alignment
+    $(window).on('resize', function() {
+        table.columns.adjust().responsive.recalc();
+    });
+    
+    // Force alignment after a short delay to ensure proper rendering
+    setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
+    
+    // Delete/Enable/Disable functionality
+    $('.delete-btn').on('click', function() {
+        const userId = $(this).data('id');
+        const currentStatus = $(this).data('status');
+        const newStatus = currentStatus === 'Enable' ? 'Disable' : 'Enable';
+        const actionText = currentStatus === 'Enable' ? 'disable' : 'enable';
+        
+        Swal.fire({
+            title: 'Are you sure?',
+            text: `Do you want to ${actionText} this user?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `user.php?action=delete&code=${userId}&status=${newStatus}`;
+            }
         });
     });
 });
 
-// DataTable initialization
-$(document).ready(function() {    
-  $('#dataTable').DataTable({
-    responsive: true,
-    columnDefs: [
-      { responsivePriority: 1, targets: [0, 1, 2, 6] },
-      { responsivePriority: 2, targets: [3, 9] },
-      { targets: [1], orderable: false } // Disable sorting on profile image column
-    ],
-    order: [[0, 'asc']],
-    autoWidth: false,
-    language: {
-      emptyTable: "No data available"
-    },
-    
-    // Scroll settings combined here
-    scrollY: '400px',     // Vertical scrollbar height
-    scrollX: true,        // Enable horizontal scrolling
-    scrollCollapse: true, // Collapse the table height when fewer records
-    paging: true          // Enable pagination
-  });
-});
+// Function to generate random 6-digit number for use outside event listeners
+function generateRandomDigits() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
 </script>
 
-<?php 
-	include '../footer.php';
+<?php
+// Include footer
+include '../footer.php';
 ?>

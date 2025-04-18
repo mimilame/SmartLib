@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Apr 17, 2025 at 06:33 AM
+-- Generation Time: Apr 16, 2025 at 12:48 PM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -284,9 +284,8 @@ CREATE TABLE IF NOT EXISTS `lms_book_review` (
   `review_id` int NOT NULL AUTO_INCREMENT,
   `book_id` int NOT NULL,
   `user_id` int NOT NULL,
-  `rating` int DEFAULT NULL,
-  `review_text` text CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci,
-  `status` enum('pending','approved','rejected') COLLATE utf8mb3_unicode_ci DEFAULT 'pending',
+  `rating` int NOT NULL,
+  `review_text` text CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`review_id`),
@@ -298,62 +297,62 @@ CREATE TABLE IF NOT EXISTS `lms_book_review` (
 -- Dumping data for table `lms_book_review`
 --
 
-INSERT INTO `lms_book_review` (`review_id`, `book_id`, `user_id`, `rating`, `review_text`, `status`, `created_at`, `updated_at`) VALUES
-(48, 1, 3, 4, 'Excellent introduction to PHP. The step-by-step approach really helped me understand the concepts.', 'approved', '2025-01-20 02:15:42', '2025-04-17 03:59:11'),
-(49, 1, 13, 5, 'Best PHP book I\'ve read so far. Clear explanations and practical examples.', 'approved', '2025-04-05 08:45:11', '2025-04-17 04:58:25'),
-(50, 1, 16, 3, 'Very helpful for beginners. The examples made learning PHP much easier.', 'approved', '2025-04-03 01:22:13', '2025-04-17 04:59:54'),
-(51, 1, 17, 5, 'This book made learning PHP enjoyable! The examples are relevant and easy to follow.', 'approved', '2025-04-02 06:30:22', '2025-04-17 04:58:44'),
-(52, 2, 4, 5, 'Comprehensive coverage of both PHP and MySQL. The examples are practical and well-explained.', 'pending', '2025-03-16 03:33:27', '2025-03-16 03:33:27'),
-(53, 2, 6, 3, 'Good content but some examples are outdated. Still a decent resource.', 'approved', '2025-03-27 05:52:16', '2025-04-17 04:59:23'),
-(54, 2, 11, 4, 'Great book for beginners. The Ninja theme makes learning fun!', 'pending', '2025-04-05 01:22:13', '2025-04-05 01:22:13'),
-(55, 3, 3, 5, 'The visual approach really works for me. Made complex concepts easier to understand.', 'approved', '2025-02-18 07:14:32', '2025-04-17 04:58:48'),
-(56, 3, 6, 4, 'Entertaining and educational. The unique format keeps you engaged.', 'approved', '2025-03-28 04:05:19', '2025-04-17 04:58:51'),
-(57, 4, 4, 4, 'Well-structured content. Good for beginners with some programming background.', 'pending', '2025-03-14 01:18:50', '2025-03-14 01:18:50'),
-(58, 4, 11, 3, 'Solid introduction but could use more detailed explanations for some concepts.', 'approved', '2025-04-01 02:42:36', '2025-04-17 04:58:55'),
-(59, 4, 17, 4, 'Clear explanations and helpful code examples. Recommended for newcomers to PHP.', 'pending', '2025-04-05 06:27:33', '2025-04-05 06:27:33'),
-(60, 5, 3, 5, 'Advanced but approachable. Great resource for learning object-oriented PHP.', 'pending', '2025-02-28 08:39:25', '2025-02-28 08:39:25'),
-(61, 5, 13, 5, 'Excellent coverage of design patterns in PHP. Changed how I approach PHP development.', 'pending', '2025-04-05 05:24:58', '2025-04-05 05:24:58'),
-(62, 17, 16, 5, 'Best JavaScript book for beginners. The method works brilliantly.', 'rejected', '2025-04-11 06:08:52', '2025-04-17 04:59:06'),
-(63, 19, 17, 4, 'Great introduction to Rizal studies. Well-researched and engaging.', 'approved', '2025-04-04 02:45:22', '2025-04-17 04:58:33'),
-(64, 20, 3, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(65, 20, 4, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(66, 20, 5, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(67, 20, 6, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(68, 20, 10, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(69, 20, 11, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(70, 20, 12, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(71, 20, 13, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(72, 20, 14, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(73, 20, 15, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(74, 20, 16, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(75, 20, 17, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(76, 20, 18, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
-(79, 21, 3, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(80, 21, 4, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(81, 21, 5, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(82, 21, 6, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(83, 21, 10, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(84, 21, 11, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(85, 21, 12, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(86, 21, 13, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(87, 21, 14, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(88, 21, 15, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(89, 21, 16, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(90, 21, 17, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(91, 21, 18, 0, '', 'pending', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
-(94, 22, 3, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(95, 22, 4, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(96, 22, 5, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(97, 22, 6, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(98, 22, 10, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(99, 22, 11, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(100, 22, 12, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(101, 22, 13, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(102, 22, 14, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(103, 22, 15, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(104, 22, 16, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(105, 22, 17, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(106, 22, 18, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23');
+INSERT INTO `lms_book_review` (`review_id`, `book_id`, `user_id`, `rating`, `review_text`, `created_at`, `updated_at`) VALUES
+(48, 1, 3, 4, 'Excellent introduction to PHP. The step-by-step approach really helped me understand the concepts.', '2025-01-20 02:15:42', '2025-01-20 02:15:42'),
+(49, 1, 13, 5, 'Best PHP book I\'ve read so far. Clear explanations and practical examples.', '2025-04-05 08:45:11', '2025-04-05 08:45:11'),
+(50, 1, 16, 4, 'Very helpful for beginners. The examples made learning PHP much easier.', '2025-04-03 01:22:13', '2025-04-03 01:22:13'),
+(51, 1, 17, 5, 'This book made learning PHP enjoyable! The examples are relevant and easy to follow.', '2025-04-02 06:30:22', '2025-04-02 06:30:22'),
+(52, 2, 4, 5, 'Comprehensive coverage of both PHP and MySQL. The examples are practical and well-explained.', '2025-03-16 03:33:27', '2025-03-16 03:33:27'),
+(53, 2, 6, 3, 'Good content but some examples are outdated. Still a decent resource.', '2025-03-27 05:52:16', '2025-03-27 05:52:16'),
+(54, 2, 11, 4, 'Great book for beginners. The Ninja theme makes learning fun!', '2025-04-05 01:22:13', '2025-04-05 01:22:13'),
+(55, 3, 3, 5, 'The visual approach really works for me. Made complex concepts easier to understand.', '2025-02-18 07:14:32', '2025-02-18 07:14:32'),
+(56, 3, 6, 4, 'Entertaining and educational. The unique format keeps you engaged.', '2025-03-28 04:05:19', '2025-03-28 04:05:19'),
+(57, 4, 4, 4, 'Well-structured content. Good for beginners with some programming background.', '2025-03-14 01:18:50', '2025-03-14 01:18:50'),
+(58, 4, 11, 3, 'Solid introduction but could use more detailed explanations for some concepts.', '2025-04-01 02:42:36', '2025-04-01 02:42:36'),
+(59, 4, 17, 4, 'Clear explanations and helpful code examples. Recommended for newcomers to PHP.', '2025-04-05 06:27:33', '2025-04-05 06:27:33'),
+(60, 5, 3, 5, 'Advanced but approachable. Great resource for learning object-oriented PHP.', '2025-02-28 08:39:25', '2025-02-28 08:39:25'),
+(61, 5, 13, 5, 'Excellent coverage of design patterns in PHP. Changed how I approach PHP development.', '2025-04-05 05:24:58', '2025-04-05 05:24:58'),
+(62, 17, 16, 5, 'Best JavaScript book for beginners. The method works brilliantly.', '2025-04-11 06:08:52', '2025-04-11 06:08:52'),
+(63, 19, 17, 4, 'Great introduction to Rizal studies. Well-researched and engaging.', '2025-04-04 02:45:22', '2025-04-04 02:45:22'),
+(64, 20, 3, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(65, 20, 4, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(66, 20, 5, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(67, 20, 6, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(68, 20, 10, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(69, 20, 11, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(70, 20, 12, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(71, 20, 13, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(72, 20, 14, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(73, 20, 15, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(74, 20, 16, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(75, 20, 17, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(76, 20, 18, 0, '', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(79, 21, 3, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(80, 21, 4, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(81, 21, 5, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(82, 21, 6, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(83, 21, 10, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(84, 21, 11, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(85, 21, 12, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(86, 21, 13, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(87, 21, 14, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(88, 21, 15, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(89, 21, 16, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(90, 21, 17, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(91, 21, 18, 0, '', '2025-04-12 07:04:02', '2025-04-12 07:04:02'),
+(94, 22, 3, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(95, 22, 4, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(96, 22, 5, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(97, 22, 6, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(98, 22, 10, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(99, 22, 11, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(100, 22, 12, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(101, 22, 13, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(102, 22, 14, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(103, 22, 15, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(104, 22, 16, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(105, 22, 17, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
+(106, 22, 18, 0, '', '2025-04-12 07:41:23', '2025-04-12 07:41:23');
 
 -- --------------------------------------------------------
 
@@ -565,7 +564,7 @@ CREATE TABLE IF NOT EXISTS `lms_library_features` (
   `created_on` datetime NOT NULL,
   `updated_on` datetime NOT NULL,
   PRIMARY KEY (`feature_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `lms_library_features`
@@ -613,46 +612,6 @@ INSERT INTO `lms_location_rack` (`location_rack_id`, `location_rack_name`, `loca
 (12, 'hy', 'Enable', '2025-03-14 14:21:57', '2025-04-12 13:50:48', 390, 280),
 (13, 'Row 1', 'Disable', '2025-03-14 20:23:58', '2025-04-15 06:05:14', 450, 250),
 (14, 'A51', 'Enable', '2025-04-15 00:05:32', '2025-04-15 00:05:32', 450, 100);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `lms_review_flag`
---
-
-DROP TABLE IF EXISTS `lms_review_flag`;
-CREATE TABLE IF NOT EXISTS `lms_review_flag` (
-  `flag_id` int NOT NULL AUTO_INCREMENT,
-  `review_id` int NOT NULL,
-  `user_id` int NOT NULL,
-  `reason` varchar(255) NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`flag_id`),
-  KEY `review_id` (`review_id`),
-  KEY `user_id` (`user_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `lms_review_settings`
---
-
-DROP TABLE IF EXISTS `lms_review_settings`;
-CREATE TABLE IF NOT EXISTS `lms_review_settings` (
-  `setting_id` int NOT NULL AUTO_INCREMENT,
-  `moderate_reviews` tinyint(1) NOT NULL DEFAULT '1',
-  `allow_guest_reviews` tinyint(1) NOT NULL DEFAULT '0',
-  `reviews_per_page` int NOT NULL DEFAULT '10',
-  PRIMARY KEY (`setting_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `lms_review_settings`
---
-
-INSERT INTO `lms_review_settings` (`setting_id`, `moderate_reviews`, `allow_guest_reviews`, `reviews_per_page`) VALUES
-(1, 0, 0, 10);
 
 -- --------------------------------------------------------
 
@@ -809,9 +768,7 @@ ALTER TABLE `lms_book`
 --
 ALTER TABLE `lms_book_review`
   ADD CONSTRAINT `fk_book_review_book` FOREIGN KEY (`book_id`) REFERENCES `lms_book` (`book_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_book_review_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_review_book` FOREIGN KEY (`book_id`) REFERENCES `lms_book` (`book_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `fk_review_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_book_review_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `lms_issue_book`

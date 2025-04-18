@@ -3,7 +3,8 @@
 
 include '../database_connection.php';
 include '../function.php';
-
+include '../header.php';
+authenticate_admin();
 $message = '';
 
 // Fetch all categories for dropdown lists
@@ -56,10 +57,10 @@ if (isset($_POST['add_book'])) {
     $description = trim($_POST['book_description']); // New description field
     $edition = trim($_POST['book_edition'] ?? '');
     $publisher = trim($_POST['book_publisher'] ?? '');
-    $published = $_POST['book_published'] ? trim($_POST['book_published']) : null;
+    $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
 
     // Default image path
-    $book_img = "../asset/img/book_placeholder.png";
+    $book_img = "book_placeholder.png";
 
     // Handle image upload
     if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
@@ -79,7 +80,7 @@ if (isset($_POST['add_book'])) {
                 $upload_path = $upload_dir . $new_filename;
                 
                 if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
-                    $book_img = $upload_path;
+                    $book_img =  $new_filename;
                 }
             }
         }
@@ -148,6 +149,7 @@ if (isset($_POST['add_book'])) {
         ':added_on' => $date_now,   
         ':updated_on' => $date_now        
     ]);
+    
     // Get the new book's ID
     $book_id = $connect->lastInsertId();
     
@@ -172,8 +174,6 @@ if (isset($_POST['add_book'])) {
     exit;
 } 
 
-
-
 // EDIT Book
 if (isset($_POST['edit_book'])) {
     $id = $_POST['book_id'];
@@ -184,17 +184,41 @@ if (isset($_POST['edit_book'])) {
     $isbn = $_POST['book_isbn_number'];
     $no_of_copies = $_POST['book_no_of_copy'];
     $status = $_POST['book_status'];
-    $description = trim($_POST['book_description']); // New description field
+    $description = trim($_POST['book_description']);
     $edition = trim($_POST['book_edition'] ?? '');
     $publisher = trim($_POST['book_publisher'] ?? '');
-    $published = $_POST['book_published'] ? trim($_POST['book_published']) : null;
+    $published = isset($_POST['book_published']) ? trim($_POST['book_published']) : null;
     
-    // Get current book image
-    $query = "SELECT book_img FROM lms_book WHERE book_id = :id";
+    // Get current book data including ISBN
+    $query = "SELECT * FROM lms_book WHERE book_id = :id";
     $statement = $connect->prepare($query);
     $statement->execute([':id' => $id]);
     $current_book = $statement->fetch(PDO::FETCH_ASSOC);
+    $current_isbn = $current_book['book_isbn_number'];
     $book_img = $current_book['book_img'];
+    
+    // Only check for ISBN conflicts if ISBN is actually changing
+    if ($isbn !== $current_isbn) {
+        $check_query = "
+            SELECT COUNT(*) 
+            FROM lms_book 
+            WHERE book_isbn_number = :isbn 
+            AND book_id != :id
+        ";
+        
+        $statement = $connect->prepare($check_query);
+        $statement->execute([
+            ':isbn' => $isbn,
+            ':id' => $id
+        ]);
+        $count = $statement->fetchColumn();
+        
+        if ($count > 0) {
+            // ISBN already exists in another book
+            header('location:book.php?action=edit&code='.$id.'&error=duplicate_isbn');
+            exit;
+        }
+    }
     
     // Handle image upload
     if (isset($_FILES['book_img']) && $_FILES['book_img']['error'] == 0) {
@@ -215,37 +239,28 @@ if (isset($_POST['edit_book'])) {
                 
                 if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
                     // Delete old image if it's not the default
-                    if ($book_img != "../asset/img/book_placeholder.png" && file_exists($book_img)) {
-                        unlink($book_img);
+                    if ($book_img != "book_placeholder.png" && file_exists($upload_dir . $book_img)) {
+                        unlink($upload_dir . $book_img);
                     }
-                    $book_img = $upload_path;
+                    $book_img = $new_filename;
                 }
             }
         }
     }
 
+
     // Get author names for the book_author field
     $author_names = [];
-    if (!empty($author_ids)) {
-        $author_names_query = "SELECT author_name FROM lms_author WHERE author_id IN (" . implode(',', array_fill(0, count($author_ids), '?')) . ")";
-        $author_names_stmt = $connect->prepare($author_names_query);
-        
-        foreach ($author_ids as $index => $id) {
-            $author_names_stmt->bindValue($index + 1, $id);
-        }
-        
-        $author_names_stmt->execute();
-        $author_names = $author_names_stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
+    // Your existing code for author names
     $author_string = implode(', ', $author_names);
 
+    // Build update query without potentially problematic fields
     $update_query = "
         UPDATE lms_book 
         SET book_name = :name,
             category_id = :category_id,
             book_author = :author,
-            book_location_rack = :rack,
-            book_isbn_number = :isbn,  
+            book_location_rack = :rack, 
             book_no_of_copy = :no_of_copies,
             book_status = :status,            
             book_img = :book_img,
@@ -254,8 +269,14 @@ if (isset($_POST['edit_book'])) {
             book_publisher = :publisher,
             book_published = :published,
             book_updated_on = :updated_on
-        WHERE book_id = :id
     ";
+    
+    // Only include ISBN in the update if it has changed
+    if ($isbn !== $current_isbn) {
+        $update_query .= ", book_isbn_number = :isbn";
+    }
+    
+    $update_query .= " WHERE book_id = :id";
 
     $date_now = get_date_time($connect);
     
@@ -264,7 +285,6 @@ if (isset($_POST['edit_book'])) {
         ':category_id' => $category_id,
         ':author' => $author_string,
         ':rack' => $rack,
-        ':isbn' => $isbn,
         ':no_of_copies' => $no_of_copies,
         ':status' => $status,
         ':book_img' => $book_img,        
@@ -275,35 +295,49 @@ if (isset($_POST['edit_book'])) {
         ':updated_on' => $date_now,
         ':id' => $id
     ];
-
-    $statement = $connect->prepare($update_query);
-    $statement->execute($params);
-
-    // Delete existing author relationships
-    $delete_query = "DELETE FROM lms_book_author WHERE book_id = :book_id";
-    $delete_statement = $connect->prepare($delete_query);
-    $delete_statement->execute([':book_id' => $id]);
     
-    // Insert new author relationships
-    if (!empty($author_ids)) {
-        $insert_author_query = "
-            INSERT INTO lms_book_author (book_id, author_id) 
-            VALUES (:book_id, :author_id)
-        ";
-        
-        $author_statement = $connect->prepare($insert_author_query);
-        
-        foreach ($author_ids as $author_id) {
-            $author_statement->execute([
-                ':book_id' => $id,
-                ':author_id' => $author_id
-            ]);
-        }
+    // Only add ISBN parameter if ISBN is changing
+    if ($isbn !== $current_isbn) {
+        $params[':isbn'] = $isbn;
     }
-    
-    header('location:book.php?msg=edit');
-    exit;
-} 
+
+    try {
+        $statement = $connect->prepare($update_query);
+        $statement->execute($params);
+        
+        // Delete existing author relationships
+        $delete_query = "DELETE FROM lms_book_author WHERE book_id = :book_id";
+        $delete_statement = $connect->prepare($delete_query);
+        $delete_statement->execute([':book_id' => $id]);
+        
+        // Insert new author relationships
+        if (!empty($author_ids)) {
+            $insert_author_query = "
+                INSERT INTO lms_book_author (book_id, author_id) 
+                VALUES (:book_id, :author_id)
+            ";
+            
+            $author_statement = $connect->prepare($insert_author_query);
+            
+            foreach ($author_ids as $author_id) {
+                $author_statement->execute([
+                    ':book_id' => $id,
+                    ':author_id' => $author_id
+                ]);
+            }
+        }
+        
+        header('location:book.php?msg=edit');
+        exit;
+    } catch (PDOException $e) {
+        // Log the error
+        error_log('Database error in book.php: ' . $e->getMessage());
+        
+        // Provide user-friendly error message
+        header('location:book.php?action=edit&code='.$id.'&error=db_error&message=' . urlencode($e->getMessage()));
+        exit;
+    }
+}
 
 
 // List all books with their category names
@@ -323,7 +357,7 @@ $statement->execute();
 $books = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 
-include '../header.php';
+
 ?>
 
     <h1 class="my-3">Book Management</h1>
@@ -411,7 +445,7 @@ include '../header.php';
                                                 $id = isset($rack['location_rack_id']) ? htmlspecialchars($rack['location_rack_id']) : '';
                                                 $name = isset($rack['location_rack_name']) ? htmlspecialchars($rack['location_rack_name']) : '';
                                             ?>
-                                                <option value="<?= $id ?>"><?= $name ?></option>
+                                                <option value="<?= $name ?>"><?= $name ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                         <div class="invalid-feedback">Please select a rack location</div>
@@ -492,7 +526,7 @@ include '../header.php';
                         </div>
                     </div>
 
-                    <div class="d-flex mt-4">
+                    <div class="d-flex justify-content-end mt-4">
                         <button type="submit" name="add_book" class="btn btn-success me-2">
                             <i class="bi bi-plus-circle me-1"></i> Add Book
                         </button>
@@ -515,6 +549,24 @@ include '../header.php';
             $book = $statement->fetch(PDO::FETCH_ASSOC);
             if ($book):
         ?>
+
+        <?php if (isset($_GET['error']) && $_GET['error'] == 'duplicate_isbn'): ?>
+            <div class="alert alert-danger alert-dismissible fade show" id="error-alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                The ISBN number already exists in another book. Please use a different ISBN.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+        <?php if (isset($_GET['error']) && $_GET['error'] == 'db_error'): ?>
+            <div class="alert alert-danger alert-dismissible fade show" id="error-alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                Database error occurred. 
+                <?php if (isset($_GET['message'])): ?>
+                    <br><small>Details: <?= htmlspecialchars($_GET['message']) ?></small>
+                <?php endif; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
@@ -592,7 +644,7 @@ include '../header.php';
                                                 $name = isset($rack['location_rack_name']) ? htmlspecialchars($rack['location_rack_name']) : '';
                                                 $selected = (isset($book['book_location_rack']) && isset($rack['location_rack_id']) && $rack['location_rack_id'] == $book['book_location_rack']) ? 'selected' : '';
                                             ?>
-                                                <option value="<?= $id ?>"<?= $selected ?>><?= $name ?></option>
+                                                <option value="<?= $name ?>"<?= $selected ?>><?= $name ?></option>
                                             <?php endforeach; ?>
                                             
                                         </select>
@@ -675,7 +727,7 @@ include '../header.php';
                         </div>
                     </div>
 
-                    <div class="d-flex mt-4">
+                    <div class="d-flex justify-content-end mt-4">
                         <button type="submit" name="edit_book" class="btn btn-primary me-2">
                             <i class="bi bi-save me-1"></i> Update Book
                         </button>
@@ -796,7 +848,7 @@ include '../header.php';
                                                     <div class="">
                                                         <?php 
                                                         if (!empty($book['book_published'])) {
-                                                            echo date('F j, Y', strtotime($book['book_published']));
+                                                            echo date('M d, Y', strtotime($book['book_published']));
                                                         } else {
                                                             echo 'N/A';
                                                         }
@@ -832,13 +884,13 @@ include '../header.php';
                                             <div class="col-md-6">
                                                 <p class="mb-1 small">
                                                     <span class="text-secondary">Added on:</span>
-                                                    <?= date('F j, Y', strtotime($book['book_added_on'])); ?>
+                                                    <?= date('M d, Y H:i:s', strtotime($book['book_added_on'])); ?>
                                                 </p>
                                             </div>
                                             <div class="col-md-6">
                                                 <p class="mb-1 small">
                                                     <span class="text-secondary">Last updated:</span>
-                                                    <?= date('F j, Y', strtotime($book['book_updated_on'])); ?>
+                                                    <?= date('M d, Y H:i:s', strtotime($book['book_updated_on'])); ?>
                                                 </p>
                                             </div>
                                         </div>
@@ -896,64 +948,76 @@ include '../header.php';
                 </div>
             </div>
             <div class="card-body" style="overflow-x: auto;">
-                <table id="dataTable" class="display nowrap" style="width:100%">
-                    <thead>
-                        <tr>
-                            <th>Book ID</th>
-                            <th>Book Title</th>
-                            <th>Author</th>
-                            <th>Category</th>
-							<th>Location Rack</th>
-                            <th>ISBN Number</th>
-                            <th>No of Copy</th>
-                            <th>Status</th>
-                            <th>Added On</th>
-							<th>Updated On</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($books)): ?>
-                            <?php foreach ($books as $row): ?>
-                                <tr>
-                                    <td><?= $row['book_id'] ?></td>
-                                    <td><?= htmlspecialchars($row['book_name']) ?></td>
-                                    <td><?= htmlspecialchars($row['authors']) ?></td>
-                                    <td><?= htmlspecialchars($row['category_name']) ?></td>
-									<td><?= htmlspecialchars($row['book_location_rack']) ?></td>
-                                    <td><?= htmlspecialchars($row['book_isbn_number']) ?></td>
-                                    <td><?= htmlspecialchars($row['book_no_of_copy']) ?></td>
+                <div class="table-responsive">
+                    <table id="dataTable" class="display nowrap" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Book ID</th>
+                                <th>Book Title</th>
+                                <th>Author</th>
+                                <th>Category</th>
+                                <th>Location Rack</th>
+                                <th>ISBN Number</th>
+                                <th>No of Copy</th>
+                                <th>Status</th>
+                                <th>Added On</th>
+                                <th>Updated On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($books)): ?>
+                                <?php foreach ($books as $row): ?>
+                                    <tr>
+                                        <td><?= $row['book_id'] ?></td>
+                                        <td><?= htmlspecialchars($row['book_name']) ?></td>
+                                        <td><?= htmlspecialchars($row['authors']) ?></td>
+                                        <td><?= htmlspecialchars($row['category_name']) ?></td>
+                                        <td><?= htmlspecialchars($row['book_location_rack']) ?></td>
+                                        <td><?= htmlspecialchars($row['book_isbn_number']) ?></td>
+                                        <td><?= htmlspecialchars($row['book_no_of_copy']) ?></td>
 
-									<td>
-              						  <?= ($row['book_status'] === 'Enable') 
-                 					   ? '<span class="badge bg-success">Active</span>' 
-                  					  : '<span class="badge bg-danger">Disabled</span>' ?>
-          							</td>
+                                        <td>
+                                        <?= ($row['book_status'] === 'Enable') 
+                                        ? '<span class="badge bg-success">Active</span>' 
+                                        : '<span class="badge bg-danger">Disabled</span>' ?>
+                                        </td>
 
-            						<td><?= date('Y-m-d H:i:s', strtotime($row['book_added_on'])) ?></td>
-									<td><?= date('Y-m-d H:i:s', strtotime($row['book_updated_on'])) ?></td>
+                                        <td><?= date('M d, Y H:i:s', strtotime($row['book_added_on'])) ?></td>
+                                        <td><?= date('M d, Y H:i:s', strtotime($row['book_updated_on'])) ?></td>
 
-                                    <td class="text-center">
-                                        <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm mb-1">
-                                            <i class="fa fa-eye"></i>
-                                        </a>
-                                        <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm mb-1">
-                                            <i class="fa fa-edit"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-danger btn-sm delete-btn mb-1"
-                                                data-id="<?= $row['book_id'] ?>"
-                                                data-status="<?= $row['book_status'] ?>">
-                                            <i class="fa fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr><td colspan="10" class="text-center">No books found!</td></tr>
-                        <?php endif; ?>
+                                        <td class="text-center">
+                                            <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm">
+                                                <i class="fa fa-edit"></i>
+                                            </a>
+                                            <?php if ($row['book_status'] === 'Enable'): ?>
+                                                <button type="button" class="btn btn-danger btn-sm delete-btn" 
+                                                    data-id="<?= $row['book_id'] ?>" 
+                                                    data-status="<?= $row['book_status'] ?>" 
+                                                    title="Disable">
+                                                    <i class="fa fa-ban"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <button type="button" class="btn btn-success btn-sm delete-btn" 
+                                                    data-id="<?= $row['book_id'] ?>" 
+                                                    data-status="<?= $row['book_status'] ?>" 
+                                                    title="Enable">
+                                                    <i class="fa fa-check"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="10" class="text-center">No books found!</td></tr>
+                            <?php endif; ?>
 
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -992,33 +1056,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-$(document).ready(function() {
-    $('#dataTable').DataTable({
-        responsive: true,       // Enable responsiveness
-        scrollY: '500px',       // Optional: Sets vertical scroll area (adjust height as needed)
-        scrollCollapse: true,   // Collapse table height if fewer records
+$(document).ready(function () {
+    const table = $('#dataTable').DataTable({
+        responsive: true,
+        scrollX: true,
+        scrollY: '500px',
+        scrollCollapse: true,
         autoWidth: false,
+        fixedHeader: true,
+        stateSave: true,
+        paging: true,
         info: true,
-        paging: true,           // Enable pagination
-        order: [[0, 'asc']],    // Default sort by the first column (Book ID)
-
-        columnDefs: [
-            { responsivePriority: 1, targets: 10 }, // Actions (highest priority)
-            { responsivePriority: 2, targets: 0 },  // Book ID
-            { responsivePriority: 3, targets: 1 },  // Book Title
-            { responsivePriority: 4, targets: 3 },  // Category
-            { responsivePriority: 5, targets: 4 },  // Location Rack
-            { responsivePriority: 6, targets: 6 },  // No of Copy
-            { responsivePriority: 7, targets: 7 },  // Status
-            // Author, ISBN Number, Added On, Updated On will hide first
-        ],
-
+        searching: false,
+        order: [[0, 'asc']],
         language: {
             emptyTable: "No books found in the table."
+        },
+
+        columnDefs: [
+            { responsivePriority: 1, targets: 1 }, // Book Title
+            { responsivePriority: 2, targets: 10 }, // Actions
+            { responsivePriority: 3, targets: 0 }, // Book ID
+            { responsivePriority: 4, targets: [2, 3, 4] }, // Author, Category, Rack
+            { responsivePriority: 5, targets: [5, 6, 7, 8, 9] } // ISBN, Copies, Status, Dates
+        ],
+
+        drawCallback: function () {
+            setTimeout(() => {
+                table.columns.adjust().responsive.recalc();
+            }, 100);
         }
     });
-});
 
+    // Adjust columns on window resize
+    $(window).on('resize', function () {
+        table.columns.adjust().responsive.recalc();
+    });
+
+    // Final adjustment after full load/render
+    setTimeout(() => {
+        table.columns.adjust().responsive.recalc();
+    }, 300);
+});
 
 </script>
 

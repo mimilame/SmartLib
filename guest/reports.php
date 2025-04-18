@@ -1,9 +1,9 @@
 <?php
-//books.php
+//reports.php
 	include '../database_connection.php';
 	include '../function.php';	
 	include '../header.php';
-	
+	authenticate_visitor();
 		// Get all books first
         $all_books_query = "SELECT * FROM lms_book WHERE book_status = 'Enable' ORDER BY book_id ASC";
         $all_books_stmt = $connect->prepare($all_books_query);

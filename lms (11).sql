@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Apr 17, 2025 at 06:33 AM
+-- Generation Time: Apr 18, 2025 at 01:40 AM
 -- Server version: 9.1.0
 -- PHP Version: 8.3.14
 
@@ -303,19 +303,19 @@ INSERT INTO `lms_book_review` (`review_id`, `book_id`, `user_id`, `rating`, `rev
 (49, 1, 13, 5, 'Best PHP book I\'ve read so far. Clear explanations and practical examples.', 'approved', '2025-04-05 08:45:11', '2025-04-17 04:58:25'),
 (50, 1, 16, 3, 'Very helpful for beginners. The examples made learning PHP much easier.', 'approved', '2025-04-03 01:22:13', '2025-04-17 04:59:54'),
 (51, 1, 17, 5, 'This book made learning PHP enjoyable! The examples are relevant and easy to follow.', 'approved', '2025-04-02 06:30:22', '2025-04-17 04:58:44'),
-(52, 2, 4, 5, 'Comprehensive coverage of both PHP and MySQL. The examples are practical and well-explained.', 'pending', '2025-03-16 03:33:27', '2025-03-16 03:33:27'),
+(52, 2, 4, 5, 'Comprehensive coverage of both PHP and MySQL. The examples are practical and well-explained.', 'approved', '2025-03-16 03:33:27', '2025-04-17 12:00:13'),
 (53, 2, 6, 3, 'Good content but some examples are outdated. Still a decent resource.', 'approved', '2025-03-27 05:52:16', '2025-04-17 04:59:23'),
-(54, 2, 11, 4, 'Great book for beginners. The Ninja theme makes learning fun!', 'pending', '2025-04-05 01:22:13', '2025-04-05 01:22:13'),
+(54, 2, 11, 4, 'Great book for beginners. The Ninja theme makes learning fun!', 'approved', '2025-04-05 01:22:13', '2025-04-17 12:03:21'),
 (55, 3, 3, 5, 'The visual approach really works for me. Made complex concepts easier to understand.', 'approved', '2025-02-18 07:14:32', '2025-04-17 04:58:48'),
 (56, 3, 6, 4, 'Entertaining and educational. The unique format keeps you engaged.', 'approved', '2025-03-28 04:05:19', '2025-04-17 04:58:51'),
-(57, 4, 4, 4, 'Well-structured content. Good for beginners with some programming background.', 'pending', '2025-03-14 01:18:50', '2025-03-14 01:18:50'),
+(57, 4, 4, 4, 'Well-structured content. Good for beginners with some programming background.', 'approved', '2025-03-14 01:18:50', '2025-04-17 12:02:45'),
 (58, 4, 11, 3, 'Solid introduction but could use more detailed explanations for some concepts.', 'approved', '2025-04-01 02:42:36', '2025-04-17 04:58:55'),
-(59, 4, 17, 4, 'Clear explanations and helpful code examples. Recommended for newcomers to PHP.', 'pending', '2025-04-05 06:27:33', '2025-04-05 06:27:33'),
-(60, 5, 3, 5, 'Advanced but approachable. Great resource for learning object-oriented PHP.', 'pending', '2025-02-28 08:39:25', '2025-02-28 08:39:25'),
-(61, 5, 13, 5, 'Excellent coverage of design patterns in PHP. Changed how I approach PHP development.', 'pending', '2025-04-05 05:24:58', '2025-04-05 05:24:58'),
+(59, 4, 17, 4, 'Clear explanations and helpful code examples. Recommended for newcomers to PHP.', 'approved', '2025-04-05 06:27:33', '2025-04-17 12:00:25'),
+(60, 5, 3, 5, 'Advanced but approachable. Great resource for learning object-oriented PHP.', 'approved', '2025-02-28 08:39:25', '2025-04-17 12:03:01'),
+(61, 5, 13, 5, 'Excellent coverage of design patterns in PHP. Changed how I approach PHP development.', 'approved', '2025-04-05 05:24:58', '2025-04-17 12:03:11'),
 (62, 17, 16, 5, 'Best JavaScript book for beginners. The method works brilliantly.', 'rejected', '2025-04-11 06:08:52', '2025-04-17 04:59:06'),
 (63, 19, 17, 4, 'Great introduction to Rizal studies. Well-researched and engaging.', 'approved', '2025-04-04 02:45:22', '2025-04-17 04:58:33'),
-(64, 20, 3, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
+(64, 20, 3, 0, '', 'rejected', '2025-04-12 06:55:37', '2025-04-17 12:04:43'),
 (65, 20, 4, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
 (66, 20, 5, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
 (67, 20, 6, 0, '', 'pending', '2025-04-12 06:55:37', '2025-04-12 06:55:37'),
@@ -351,9 +351,9 @@ INSERT INTO `lms_book_review` (`review_id`, `book_id`, `user_id`, `rating`, `rev
 (101, 22, 13, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
 (102, 22, 14, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
 (103, 22, 15, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(104, 22, 16, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(105, 22, 17, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23'),
-(106, 22, 18, 0, '', 'pending', '2025-04-12 07:41:23', '2025-04-12 07:41:23');
+(104, 22, 16, 0, '', 'approved', '2025-04-12 07:41:23', '2025-04-17 12:29:13'),
+(105, 22, 17, 0, '', 'rejected', '2025-04-12 07:41:23', '2025-04-17 12:04:09'),
+(106, 22, 18, 0, '', 'rejected', '2025-04-12 07:41:23', '2025-04-17 12:03:56');
 
 -- --------------------------------------------------------
 
@@ -440,44 +440,26 @@ CREATE TABLE IF NOT EXISTS `lms_issue_book` (
   `issue_date` date NOT NULL,
   `expected_return_date` date NOT NULL,
   `return_date` date NOT NULL,
-  `issue_book_status` enum('Issued','Returned','Overdue','Lost') CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
+  `issue_book_status` enum('Issued','Returned','Overdue','Lost') NOT NULL,
   `issued_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `issue_updated_on` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `book_condition` enum('Good','Damaged','Missing Pages','Water Damaged','Binding Loose') CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,
+  `book_condition` enum('Good','Damaged','Missing Pages','Water Damaged','Binding Loose') NOT NULL,
   PRIMARY KEY (`issue_book_id`),
-  KEY `fk_issue_book` (`book_id`),
-  KEY `fk_issue_user` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci;
+  KEY `book_id` (`book_id`),
+  KEY `user_id` (`user_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `lms_issue_book`
 --
 
 INSERT INTO `lms_issue_book` (`issue_book_id`, `book_id`, `user_id`, `issue_date`, `expected_return_date`, `return_date`, `issue_book_status`, `issued_on`, `issue_updated_on`, `book_condition`) VALUES
-(9, 1, 3, '2021-12-28', '2022-01-07', '2025-04-15', 'Returned', '2025-03-30 06:00:16', '2025-04-15 11:33:01', 'Good'),
-(10, 2, 4, '2025-03-14', '2025-03-24', '2025-04-15', 'Returned', '2025-03-30 06:00:16', '2025-04-15 11:32:51', 'Good'),
-(14, 1, 17, '2025-03-30', '2025-04-02', '2025-04-01', 'Returned', '2025-03-30 05:23:52', '2025-03-31 09:08:53', ''),
-(15, 1, 16, '2025-03-30', '2025-04-03', '2025-04-02', 'Returned', '2025-03-30 05:29:44', '2025-03-30 05:48:39', ''),
-(16, 2, 6, '2025-03-14', '2025-04-03', '2025-04-15', 'Returned', '2025-03-30 05:38:05', '2025-04-15 11:32:21', 'Missing Pages'),
-(17, 2, 11, '2025-03-31', '2025-04-02', '2025-04-15', 'Returned', '2025-03-30 05:50:28', '2025-04-15 11:19:36', 'Good'),
-(18, 19, 17, '2025-03-31', '2025-04-02', '2025-04-15', 'Returned', '2025-03-30 05:54:59', '2025-04-15 11:34:34', 'Good'),
-(19, 19, 17, '2025-03-31', '2025-04-02', '2025-04-03', 'Returned', '2025-03-30 05:55:04', '2025-03-30 06:10:05', ''),
-(20, 1, 13, '2025-03-31', '2025-04-02', '2025-04-04', 'Returned', '2025-03-30 06:01:21', '2025-04-01 04:36:47', ''),
-(21, 17, 16, '2025-04-01', '2025-04-03', '2025-04-11', 'Returned', '2025-04-01 04:37:44', '2025-04-01 04:38:42', ''),
-(22, 18, 16, '2025-04-15', '2025-04-18', '2025-04-15', 'Returned', '2025-04-15 03:07:15', '2025-04-15 05:59:58', 'Good'),
-(23, 3, 17, '2025-04-15', '2025-04-17', '2025-04-15', 'Returned', '2025-04-15 03:40:27', '2025-04-15 06:00:25', 'Good'),
-(24, 22, 19, '2025-04-15', '2025-04-15', '2025-04-15', 'Returned', '2025-04-15 03:42:53', '2025-04-15 11:34:42', 'Good'),
-(25, 20, 6, '2025-04-15', '2025-04-17', '2025-04-15', 'Returned', '2025-04-15 03:46:16', '2025-04-15 11:34:50', 'Good'),
-(26, 18, 4, '2025-04-15', '2025-04-18', '2025-04-15', 'Returned', '2025-04-15 06:04:10', '2025-04-15 11:35:08', 'Good'),
-(27, 17, 17, '2025-04-13', '2025-04-14', '2025-04-15', 'Returned', '2025-04-15 06:06:26', '2025-04-15 11:51:59', 'Good'),
-(28, 18, 17, '2025-04-15', '2025-04-18', '2025-04-15', 'Returned', '2025-04-15 06:25:58', '2025-04-15 11:52:09', 'Good'),
-(29, 17, 16, '2025-04-15', '2025-04-17', '2025-04-15', 'Returned', '2025-04-15 06:27:14', '2025-04-15 11:39:12', 'Good'),
-(30, 19, 13, '2025-04-13', '2025-04-14', '2025-04-15', 'Returned', '2025-04-15 06:29:03', '2025-04-15 06:29:33', ''),
-(31, 18, 13, '2025-04-15', '2025-04-17', '2025-04-15', 'Returned', '2025-04-15 11:38:24', '2025-04-15 11:49:26', 'Good'),
-(32, 19, 19, '2025-04-11', '2025-04-15', '0000-00-00', 'Issued', '2025-04-15 11:41:02', '2025-04-15 11:41:02', ''),
-(33, 8, 16, '2025-04-15', '2025-04-22', '0000-00-00', 'Lost', '2025-04-15 12:38:16', '2025-04-15 13:35:54', ''),
-(34, 11, 16, '2025-04-15', '2025-04-22', '0000-00-00', 'Issued', '2025-04-15 12:38:31', '2025-04-15 12:38:31', 'Good'),
-(35, 16, 6, '2025-04-15', '2025-04-18', '0000-00-00', 'Issued', '2025-04-15 12:41:13', '2025-04-15 12:41:13', 'Good');
+(1, 17, 4, '2025-04-17', '2025-04-20', '2025-04-17', 'Returned', '2025-04-17 13:10:08', '2025-04-17 13:39:15', 'Missing Pages'),
+(2, 18, 16, '2025-04-17', '2025-04-19', '0000-00-00', 'Issued', '2025-04-17 13:11:45', '2025-04-17 13:11:45', 'Good'),
+(3, 22, 13, '2025-04-17', '2025-04-20', '0000-00-00', 'Issued', '2025-04-17 13:14:10', '2025-04-17 13:38:29', ''),
+(4, 19, 17, '2025-04-17', '2025-04-18', '0000-00-00', 'Issued', '2025-04-17 13:37:18', '2025-04-17 13:37:18', 'Good'),
+(5, 17, 6, '2025-04-17', '2025-04-20', '0000-00-00', 'Issued', '2025-04-17 13:37:33', '2025-04-17 13:37:33', 'Good'),
+(6, 3, 13, '2025-04-17', '2025-04-19', '0000-00-00', 'Issued', '2025-04-17 13:37:47', '2025-04-17 13:37:47', 'Good');
 
 -- --------------------------------------------------------
 
@@ -812,13 +794,6 @@ ALTER TABLE `lms_book_review`
   ADD CONSTRAINT `fk_book_review_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_review_book` FOREIGN KEY (`book_id`) REFERENCES `lms_book` (`book_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_review_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE;
-
---
--- Constraints for table `lms_issue_book`
---
-ALTER TABLE `lms_issue_book`
-  ADD CONSTRAINT `fk_issue_book` FOREIGN KEY (`book_id`) REFERENCES `lms_book` (`book_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_issue_user` FOREIGN KEY (`user_id`) REFERENCES `lms_user` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `lms_librarian`

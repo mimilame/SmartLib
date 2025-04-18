@@ -1,583 +1,1659 @@
 <?php
-// Add this to your existing PHP code section where other queries are defined
-// Database connection settings
+// test.php - Modern UI design with tab layout for system settings
+
 include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
-// Fetch top authors by borrowed books (overall)
-$topAuthors = $connect->query("
-    SELECT 
-        a.author_id,
-        a.author_name,
-        GROUP_CONCAT(DISTINCT b.book_name ORDER BY b.book_name ASC) as unique_books_borrowed,  -- Concatenate unique book names
-        COUNT(ib.issue_book_id) as total_borrows,
-        SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK) THEN 1 ELSE 0 END) as week_borrows,
-        SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as month_borrows,
-        SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) THEN 1 ELSE 0 END) as year_borrows
-    FROM 
-        lms_author a
-    JOIN 
-        lms_book_author ba ON a.author_id = ba.author_id
-    JOIN 
-        lms_book b ON ba.book_id = b.book_id
-    JOIN 
-        lms_issue_book ib ON b.book_id = ib.book_id
-    WHERE 
-        a.author_status = 'Enable'
-    GROUP BY 
-        a.author_id, a.author_name
-    ORDER BY 
-        total_borrows DESC
-    LIMIT 15
-")->fetchAll(PDO::FETCH_ASSOC);
+$message = '';
+$active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'general';
 
-// This block contains the corrected version of the SQL union query
-$authorTimeStats = $connect->query("
-    (SELECT 
-        'week' as time_period,
-        a.author_id,
-        a.author_name,
-        COUNT(ib.issue_book_id) as borrow_count
-    FROM 
-        lms_author a
-    JOIN 
-        lms_book_author ba ON a.author_id = ba.author_id
-    JOIN 
-        lms_book b ON ba.book_id = b.book_id
-    JOIN 
-        lms_issue_book ib ON b.book_id = ib.book_id
-    WHERE 
-        a.author_status = 'Enable' AND
-        ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
-    GROUP BY 
-        a.author_id, a.author_name
-    ORDER BY 
-        borrow_count DESC
-    LIMIT 5)
+// General Settings Form Submit
+if (isset($_POST['edit_setting'])) {
+    $data = array(
+        ':library_name'                    => $_POST['library_name'],
+        ':library_address'                => $_POST['library_address'],
+        ':library_contact_number'        => $_POST['library_contact_number'],
+        ':library_email_address'        => $_POST['library_email_address'],
+        ':library_total_book_issue_day'    => $_POST['library_total_book_issue_day'],
+        ':library_one_day_fine'            => $_POST['library_one_day_fine'],
+        ':library_currency'                => $_POST['library_currency'],
+        ':library_timezone'                => $_POST['library_timezone'],
+        ':library_issue_total_book_per_user'    => $_POST['library_issue_total_book_per_user']
+    );
 
-    UNION ALL
+    $query = "
+    UPDATE lms_setting 
+    SET library_name = :library_name,
+        library_address = :library_address, 
+        library_contact_number = :library_contact_number, 
+        library_email_address = :library_email_address, 
+        library_total_book_issue_day = :library_total_book_issue_day, 
+        library_one_day_fine = :library_one_day_fine, 
+        library_currency = :library_currency, 
+        library_timezone = :library_timezone, 
+        library_issue_total_book_per_user = :library_issue_total_book_per_user
+    ";
 
-    (SELECT 
-        'month' as time_period,
-        a.author_id,
-        a.author_name,
-        COUNT(ib.issue_book_id) as borrow_count
-    FROM 
-        lms_author a
-    JOIN 
-        lms_book_author ba ON a.author_id = ba.author_id
-    JOIN 
-        lms_book b ON ba.book_id = b.book_id
-    JOIN 
-        lms_issue_book ib ON b.book_id = ib.book_id
-    WHERE 
-        a.author_status = 'Enable' AND
-        ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
-    GROUP BY 
-        a.author_id, a.author_name
-    ORDER BY 
-        borrow_count DESC
-    LIMIT 5)
+    $statement = $connect->prepare($query);
+    $statement->execute($data);
 
-    UNION ALL
+    $message = 'general_success';
+    $active_tab = 'general';
+}
 
-    (SELECT 
-        'year' as time_period,
-        a.author_id,
-        a.author_name,
-        COUNT(ib.issue_book_id) as borrow_count
-    FROM 
-        lms_author a
-    JOIN 
-        lms_book_author ba ON a.author_id = ba.author_id
-    JOIN 
-        lms_book b ON ba.book_id = b.book_id
-    JOIN 
-        lms_issue_book ib ON b.book_id = ib.book_id
-    WHERE 
-        a.author_status = 'Enable' AND
-        ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-    GROUP BY 
-        a.author_id, a.author_name
-    ORDER BY 
-        borrow_count DESC
-    LIMIT 5)
-")->fetchAll(PDO::FETCH_ASSOC);
+// Library Features - Add Feature
+if (isset($_POST['add_feature'])) {
+    $name = trim($_POST['feature_name']);
+    $icon = $_POST['feature_icon'];
+    $position_x = (int)$_POST['position_x'];
+    $position_y = (int)$_POST['position_y'];
+    $width = (int)$_POST['width'];
+    $height = (int)$_POST['height'];
+    $bg_color = $_POST['bg_color'];
+    $text_color = $_POST['text_color'];
+    $status = $_POST['feature_status'];
 
+    $date_now = get_date_time($connect);
 
-// Format the data for charts
-$weeklyAuthors = array_filter($authorTimeStats, function($item) { return $item['time_period'] == 'week'; });
-$monthlyAuthors = array_filter($authorTimeStats, function($item) { return $item['time_period'] == 'month'; });
-$yearlyAuthors = array_filter($authorTimeStats, function($item) { return $item['time_period'] == 'year'; });
+    $query = "
+        INSERT INTO lms_library_features 
+        (feature_name, feature_icon, position_x, position_y, width, height, bg_color, text_color, feature_status, created_on, updated_on) 
+        VALUES (:name, :icon, :position_x, :position_y, :width, :height, :bg_color, :text_color, :status, :created_on, :updated_on)
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->execute([
+        ':name' => $name,
+        ':icon' => $icon,
+        ':position_x' => $position_x,
+        ':position_y' => $position_y,
+        ':width' => $width,
+        ':height' => $height,
+        ':bg_color' => $bg_color,
+        ':text_color' => $text_color,
+        ':status' => $status,
+        ':created_on' => $date_now,
+        ':updated_on' => $date_now
+    ]);
+    
+    $message = 'feature_add';
+    $active_tab = 'features';
+}
 
-// Get the most borrowed book for each top author
-$authorTopBooks = $connect->query("
-    SELECT * FROM (
-    SELECT * FROM (
-        SELECT 
-            'week' AS time_period,
-            a.author_id,
-            a.author_name,
-            b.book_name,
-            COUNT(ib.issue_book_id) AS borrow_count
-        FROM 
-            lms_author a
-        JOIN 
-            lms_book_author ba ON a.author_id = ba.author_id
-        JOIN 
-            lms_book b ON ba.book_id = b.book_id
-        JOIN 
-            lms_issue_book ib ON b.book_id = ib.book_id
-        WHERE 
-            a.author_status = 'Enable'
-            AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
-        GROUP BY 
-            a.author_id, a.author_name, b.book_id, b.book_name
-        ORDER BY 
-            borrow_count DESC
-        LIMIT 15
-    ) AS weekly
+// Library Features - Edit Feature
+if (isset($_POST['edit_feature'])) {
+    $id = $_POST['feature_id'];
+    $name = trim($_POST['feature_name']);
+    $icon = $_POST['feature_icon'];
+    $position_x = (int)$_POST['position_x'];
+    $position_y = (int)$_POST['position_y'];
+    $width = (int)$_POST['width'];
+    $height = (int)$_POST['height'];
+    $bg_color = $_POST['bg_color'];
+    $text_color = $_POST['text_color'];
+    $status = $_POST['feature_status'];
 
-    UNION ALL
+    $update_query = "
+        UPDATE lms_library_features 
+        SET feature_name = :name,
+            feature_icon = :icon,
+            position_x = :position_x,
+            position_y = :position_y,
+            width = :width,
+            height = :height,
+            bg_color = :bg_color,
+            text_color = :text_color,
+            feature_status = :status,
+            updated_on = :updated_on
+        WHERE feature_id = :id
+    ";
 
-    SELECT * FROM (
-        SELECT 
-            'month' AS time_period,
-            a.author_id,
-            a.author_name,
-            b.book_name,
-            COUNT(ib.issue_book_id) AS borrow_count
-        FROM 
-            lms_author a
-        JOIN 
-            lms_book_author ba ON a.author_id = ba.author_id
-        JOIN 
-            lms_book b ON ba.book_id = b.book_id
-        JOIN 
-            lms_issue_book ib ON b.book_id = ib.book_id
-        WHERE 
-            a.author_status = 'Enable'
-            AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
-        GROUP BY 
-            a.author_id, a.author_name, b.book_id, b.book_name
-        ORDER BY 
-            borrow_count DESC
-        LIMIT 15
-    ) AS monthly
+    $params = [
+        ':name' => $name,
+        ':icon' => $icon,
+        ':position_x' => $position_x,
+        ':position_y' => $position_y,
+        ':width' => $width,
+        ':height' => $height,
+        ':bg_color' => $bg_color,
+        ':text_color' => $text_color,
+        ':status' => $status,
+        ':updated_on' => get_date_time($connect),
+        ':id' => $id
+    ];
 
-    UNION ALL
+    $statement = $connect->prepare($update_query);
+    $statement->execute($params);
 
-    SELECT * FROM (
-        SELECT 
-            'year' AS time_period,
-            a.author_id,
-            a.author_name,
-            b.book_name,
-            COUNT(ib.issue_book_id) AS borrow_count
-        FROM 
-            lms_author a
-        JOIN 
-            lms_book_author ba ON a.author_id = ba.author_id
-        JOIN 
-            lms_book b ON ba.book_id = b.book_id
-        JOIN 
-            lms_issue_book ib ON b.book_id = ib.book_id
-        WHERE 
-            a.author_status = 'Enable'
-            AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
-        GROUP BY 
-            a.author_id, a.author_name, b.book_id, b.book_name
-        ORDER BY 
-            borrow_count DESC
-        LIMIT 15
-    ) AS yearly
-) AS combined_data
-ORDER BY time_period, borrow_count DESC;
+    $message = 'feature_edit';
+    $active_tab = 'features';
+}
 
+// Library Features - Enable/Disable
+if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'toggle_feature') {
+    $feature_id = $_GET["code"];
+    $status = $_GET["status"];
 
-")->fetchAll(PDO::FETCH_ASSOC);
+    $data = array(
+        ':feature_status' => $status,
+        ':feature_id'     => $feature_id
+    );
 
-// Group the top books by author
-$authorBooksMap = [];
-foreach ($authorTopBooks as $book) {
-    if (!isset($authorBooksMap[$book['author_id']])) {
-        $authorBooksMap[$book['author_id']] = [];
+    $query = "
+    UPDATE lms_library_features 
+    SET feature_status = :feature_status 
+    WHERE feature_id = :feature_id";
+
+    $statement = $connect->prepare($query);
+    $statement->execute($data);
+
+    $message = 'feature_' . strtolower($status);
+    $active_tab = 'features';
+}
+
+// Get General Settings
+$query = "SELECT * FROM lms_setting LIMIT 1";
+$result = $connect->query($query);
+$settings = $result->fetch(PDO::FETCH_ASSOC);
+
+// Get Library Features
+$query = "SELECT * FROM lms_library_features ORDER BY feature_id ASC";
+$statement = $connect->prepare($query);
+$statement->execute();
+$all_features = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+// Get rack data for map preview
+$query = "SELECT * FROM lms_location_rack ORDER BY location_rack_id ASC";
+$statement = $connect->prepare($query);
+$statement->execute();
+$all_racks = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+// Load individual feature if editing
+$edit_feature = null;
+if (isset($_GET['action']) && $_GET['action'] === 'edit_feature' && isset($_GET['code'])) {
+    $id = $_GET['code'];
+    $query = "SELECT * FROM lms_library_features WHERE feature_id = :id LIMIT 1";
+    $statement = $connect->prepare($query);
+    $statement->execute([':id' => $id]);
+    $edit_feature = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    if ($edit_feature) {
+        $active_tab = 'features';
     }
-    if (count($authorBooksMap[$book['author_id']]) < 3) { // Get top 3 books per author
-        $authorBooksMap[$book['author_id']][] = $book;
+}
+
+// Handle view feature
+$view_feature = null;
+if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET['code'])) {
+    $id = $_GET['code'];
+    $query = "SELECT * FROM lms_library_features WHERE feature_id = :id LIMIT 1";
+    $statement = $connect->prepare($query);
+    $statement->execute([':id' => $id]);
+    $view_feature = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    if ($view_feature) {
+        $active_tab = 'features';
     }
 }
 ?>
-<!-- Add this to your CSS file or style section -->
-<style>
-    /* Author Tab Specific Styles */
-    #authors .card {
-        border-radius: 0.5rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        transition: all 0.3s ease;
-    }
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Management System - Settings</title>
+    <!-- Include your existing stylesheets -->
     
-    #authors .card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-    
-    #authors .card-header {
-        background-color: rgba(0, 123, 255, 0.1);
-        border-bottom: 1px solid rgba(0, 123, 255, 0.2);
-    }
-    
-    #authors .nav-pills .nav-link {
-        color: #495057;
-        border-radius: 0.25rem;
-        margin-right: 0.5rem;
-        padding: 0.5rem 1rem;
-    }
-    
-    #authors .nav-pills .nav-link.active {
-        background-color: #007bff;
-        color: white;
-    }
-    
-    #authors .chart-container {
-        position: relative;
-        height: 300px;
-        width: 100%;
-    }
-    
-    #authors .badge {
-        font-size: 0.875rem;
-    }
-    
-    /* Author spotlight styles */
-    #authors .display-6 {
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: #333;
-    }
-    
-    #authors .list-group-numbered .list-group-item {
-        position: relative;
-        padding: 0.75rem 1.25rem 0.75rem 3rem;
-    }
-    
-    #authors .list-group-numbered .list-group-item::before {
-        position: absolute;
-        left: 1rem;
-        color: #6c757d;
-    }
-</style>
-<div class="container-fluid mt-4">
-        <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Reports</h1>
+    <!-- Add modern styling enhancements -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --warning-color: #f8961e;
+            --info-color: #90e0ef;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
         
-        <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="authors-tab" data-bs-toggle="tab" data-bs-target="#authors" type="button" role="tab" aria-controls="authors" aria-selected="true">
-                    <i class="bi bi-arrow-left-right"></i> Author Analytics
-                </button>
-</li>
-        </ul>
+        .settings-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+            transition: all 0.3s ease;
+        }
         
-        <div class="tab-content" id="reportTabsContent">
-            <!-- Author Analytics -->
-            <div class="tab-pane fade show active" id="authors" role="tabpanel" aria-labelledby="authors-tab">
-                <div class="row mb-4">
-                        <!-- Time period filters -->
-                        <div class="col-md-8 mb-4">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h5 class="card-title"><i class="bi bi-filter"></i> Author Analytics by Time Period</h5>
-                                    
-                                    <!-- Short Dropdown Filter -->
-                                    <div class="w-25 mb-3">
-                                        <select class="form-select" id="author-time-select">
-                                            <option value="author-week" selected>This Week</option>
-                                            <option value="author-month">This Month</option>
-                                            <option value="author-year">This Year</option>
-                                            <option value="author-all">All Time</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                
-                                    
-                                    <div class="tab-content" id="author-time-content">
-                                        <!-- This Week -->
-                                        <div class="tab-pane fade show active" id="author-week" role="tabpanel" aria-labelledby="author-week-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorWeekChart"></canvas>
-                                            </div>
+        .settings-card:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .nav-tabs .nav-link {
+            border-radius: 8px 8px 0 0;
+            padding: 12px 20px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link i {
+            margin-right: 8px;
+        }
+        
+        .nav-tabs .nav-link.active {
+            border-bottom: none;
+            box-shadow: 0 -3px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .tab-content {
+            padding: 1.5rem;
+        }
+        
+        .settings-header {
+            padding: 1.5rem;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.2s;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
+        }
+        
+        .input-group-text {
+            border-radius: 8px 0 0 8px;
+            background-color: #f8f9fa;
+        }
+        
+        .btn-modern {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+        }
+        
+        .card-header-tabs {
+            margin-top: -1px;
+        }
+        
+        .feature-preview {
+            transition: all 0.2s;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-preview:hover {
+            transform: scale(1.02);
+        }
+        
+        .preview-container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .table th {
+            background-color: rgba(67, 97, 238, 0.05);
+            font-weight: 600;
+        }
+        
+        .badge {
+            padding: 6px 10px;
+            font-weight: 500;
+            border-radius: 6px;
+        }
+        
+        /* Animated transitions */
+        .tab-pane {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Tooltip styling */
+        .tooltip-inner {
+            background-color: var(--dark-color);
+            border-radius: 5px;
+            padding: 8px 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Alert Messages -->
+<?php if ($message): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    <?php if ($message === 'general_success'): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Settings Updated',
+            text: 'Library settings have been successfully updated.',
+            confirmButtonColor: '#4361ee',
+            confirmButtonText: 'Great!',
+            timer: 2000,
+            timerProgressBar: true
+        });
+    <?php elseif ($message === 'feature_add'): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Feature Added',
+            text: 'The library feature was added successfully!',
+            confirmButtonColor: '#4361ee',
+            confirmButtonText: 'Done',
+            timer: 2000,
+            timerProgressBar: true
+        });
+    <?php elseif ($message === 'feature_edit'): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Feature Updated',
+            text: 'The library feature was updated successfully!',
+            confirmButtonColor: '#4361ee',
+            confirmButtonText: 'Done',
+            timer: 2000,
+            timerProgressBar: true
+        });
+    <?php elseif ($message === 'feature_enable'): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Feature Enabled',
+            text: 'The library feature has been successfully enabled.',
+            confirmButtonColor: '#4361ee',
+            confirmButtonText: 'Done',
+            timer: 2000,
+            timerProgressBar: true
+        });
+    <?php elseif ($message === 'feature_disable'): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Feature Disabled',
+            text: 'The library feature has been successfully disabled.',
+            confirmButtonColor: '#4361ee',
+            confirmButtonText: 'Done',
+            timer: 2000,
+            timerProgressBar: true
+        });
+    <?php endif; ?>
+
+    // Clean URL after alert
+    if (window.history.replaceState) {
+        window.history.replaceState(null, null, 'test.php?tab=<?= $active_tab ?>');
+    }
+});
+</script>
+<?php endif; ?>
+
+<main class="container-fluid py-4 px-lg-5 px-3">
+    <!-- Header with Breadcrumbs -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div class="mb-3 mb-md-0">
+            <h1 class="h2 fw-bold">
+                <i class="fas fa-cogs me-2 text-primary"></i>
+                System Settings
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="../dashboard.php" class="text-decoration-none">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Settings</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="d-flex">
+            <span class="badge bg-primary p-2">
+                <i class="fas fa-info-circle me-1"></i>
+                Configure your library system settings here
+            </span>
+        </div>
+    </div>
+
+    <!-- Settings Tabs Card -->
+    <div class="card settings-card mb-4">
+        <div class="card-header settings-header p-0">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= $active_tab === 'general' ? 'active bg-white text-primary' : 'text-white' ?>" 
+                       href="test.php?tab=general" role="tab">
+                        <i class="fas fa-building"></i>
+                        General Settings
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= $active_tab === 'features' ? 'active bg-white text-primary' : 'text-white' ?>" 
+                       href="test.php?tab=features" role="tab">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Library Features
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= $active_tab === 'appearance' ? 'active bg-white text-primary' : 'text-white' ?>" 
+                       href="test.php?tab=appearance" role="tab">
+                        <i class="fas fa-palette"></i>
+                        Appearance
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link <?= $active_tab === 'notifications' ? 'active bg-white text-primary' : 'text-white' ?>" 
+                       href="test.php?tab=notifications" role="tab">
+                        <i class="fas fa-bell"></i>
+                        Notifications
+                    </a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="tab-content">
+                <!-- General Settings Tab -->
+                <div class="tab-pane fade <?= $active_tab === 'general' ? 'show active' : '' ?>" id="general" role="tabpanel">
+                    <div class="p-4">
+                        <form method="post" class="needs-validation" novalidate>
+                            <div class="row g-4">
+                                <!-- General Information -->
+                                <div class="col-lg-6">
+                                    <div class="card h-100 settings-card">
+                                        <div class="card-header bg-light py-3">
+                                            <h5 class="card-title mb-0 d-flex align-items-center">
+                                                <i class="fas fa-info-circle me-2 text-primary"></i>
+                                                General Information
+                                            </h5>
                                         </div>
-                                        
-                                        <!-- This Month -->
-                                        <div class="tab-pane fade" id="author-month" role="tabpanel" aria-labelledby="author-month-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorMonthChart"></canvas>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- This Year -->
-                                        <div class="tab-pane fade" id="author-year" role="tabpanel" aria-labelledby="author-year-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorYearChart"></canvas>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- All Time -->
-                                        <div class="tab-pane fade" id="author-all" role="tabpanel" aria-labelledby="author-all-tab">
-                                            <div class="chart-container" style="height: 300px;">
-                                                <canvas id="authorAllTimeChart"></canvas>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Author Spotlight -->
-                        <div class="col-xl-4 col-lg-4 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title"><i class="bi bi-award"></i> Author Spotlight</h5>
-                                </div>
-                                <div class="card-body">
-                                    <?php 
-                                    // Get the top author from the collected data
-                                    $spotlightAuthor = !empty($topAuthors) ? $topAuthors[0] : null;
-                                    
-                                    if ($spotlightAuthor):
-                                        $spotlightAuthorBooks = isset($authorBooksMap[$spotlightAuthor['author_id']]) 
-                                            ? $authorBooksMap[$spotlightAuthor['author_id']] 
-                                            : [];
-                                    ?>
-                                    <div class="text-center mb-3">
-                                        <div class="display-6"><?= htmlspecialchars($spotlightAuthor['author_name']) ?></div>
-                                        <div class="text-muted">Top Author This Month</div>
-                                        <div class="fs-4 mt-2">
-                                            <span class="badge bg-primary rounded-pill">
-                                                <?= $spotlightAuthor['total_borrows'] ?> Total Borrows
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <hr>
-                                    
-                                    <h6 class="card-subtitle mb-2 text-muted">Most Popular Books:</h6>
-                                    <?php if (!empty($spotlightAuthorBooks)): ?>
-                                        <ol class="list-group list-group-numbered">
-                                            <?php foreach ($spotlightAuthorBooks as $book): ?>
-                                            <li class="list-group-item d-flex justify-content-between align-items-start">
-                                                <div class="ms-2 me-auto">
-                                                    <div class="fw-bold"><?= htmlspecialchars($book['book_name']) ?></div>
+                                        <div class="card-body">
+                                            <div class="mb-4">
+                                                <label for="library_name" class="form-label fw-medium">Library Name</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-book-reader text-primary"></i></span>
+                                                    <input type="text" name="library_name" id="library_name" class="form-control" value="<?= htmlspecialchars($settings['library_name'] ?? '') ?>" required />
+                                                    <div class="invalid-feedback">Please provide a library name.</div>
                                                 </div>
-                                                <span class="badge bg-primary rounded-pill"><?= $book['borrow_count'] ?> borrows</span>
-                                            </li>
-                                            <?php endforeach; ?>
-                                        </ol>
-                                    <?php else: ?>
-                                        <p class="text-muted">No book data available for this author.</p>
-                                    <?php endif; ?>
-                                    <?php else: ?>
-                                        <div class="alert alert-info">
-                                            No author data available.
+                                            </div>
+                                            
+                                            <div class="mb-4">
+                                                <label for="library_address" class="form-label fw-medium">Address</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-map-marker-alt text-primary"></i></span>
+                                                    <textarea name="library_address" id="library_address" class="form-control" rows="3" required><?= htmlspecialchars($settings["library_address"] ?? '') ?></textarea>
+                                                    <div class="invalid-feedback">Please provide a library address.</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="library_contact_number" class="form-label fw-medium">Contact Number</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-phone text-primary"></i></span>
+                                                        <input type="text" name="library_contact_number" id="library_contact_number" class="form-control" value="<?= htmlspecialchars($settings['library_contact_number'] ?? '') ?>" required />
+                                                        <div class="invalid-feedback">Please provide a contact number.</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="library_email_address" class="form-label fw-medium">Email Address</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-envelope text-primary"></i></span>
+                                                        <input type="email" name="library_email_address" id="library_email_address" class="form-control" value="<?= htmlspecialchars($settings['library_email_address'] ?? '') ?>" required />
+                                                        <div class="invalid-feedback">Please provide a valid email address.</div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    <?php endif; ?>
+                                    </div>
+                                </div>
+                                
+                                <!-- Library Rules -->
+                                <div class="col-lg-6">
+                                    <div class="card h-100 settings-card">
+                                        <div class="card-header bg-light py-3">
+                                            <h5 class="card-title mb-0 d-flex align-items-center">
+                                                <i class="fas fa-gavel me-2 text-primary"></i>
+                                                Rules & Settings
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-4">
+                                                    <label for="library_total_book_issue_day" class="form-label fw-medium">Book Return Day Limit</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-calendar-day text-primary"></i></span>
+                                                        <input type="number" name="library_total_book_issue_day" id="library_total_book_issue_day" class="form-control" value="<?= htmlspecialchars($settings['library_total_book_issue_day'] ?? '7') ?>" min="1" required />
+                                                        <span class="input-group-text">days</span>
+                                                        <div class="invalid-feedback">Please specify a valid number of days.</div>
+                                                    </div>
+                                                    <div class="form-text">Maximum days allowed for borrowing books</div>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-4">
+                                                    <label for="library_one_day_fine" class="form-label fw-medium">Late Return Fine (Per Day)</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-money-bill-wave text-primary"></i></span>
+                                                        <input type="number" name="library_one_day_fine" id="library_one_day_fine" class="form-control" value="<?= htmlspecialchars($settings['library_one_day_fine'] ?? '0') ?>" step="0.01" min="0" required />
+                                                        <div class="invalid-feedback">Please specify a valid fine amount.</div>
+                                                    </div>
+                                                    <div class="form-text">Amount to charge per day for overdue books</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6 mb-4">
+                                                    <label for="library_currency" class="form-label fw-medium">Currency</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-coins text-primary"></i></span>
+                                                        <select name="library_currency" id="library_currency" class="form-select" required>
+                                                            <?php echo Currency_list(); ?>
+                                                        </select>
+                                                        <div class="invalid-feedback">Please select a currency.</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-4">
+                                                    <label for="library_timezone" class="form-label fw-medium">Timezone</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-globe text-primary"></i></span>
+                                                        <select name="library_timezone" id="library_timezone" class="form-select" required>
+                                                            <?php echo Timezone_list(); ?>
+                                                        </select>
+                                                        <div class="invalid-feedback">Please select a timezone.</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="library_issue_total_book_per_user" class="form-label fw-medium">Book Issue Limit (Per User)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-user-tag text-primary"></i></span>
+                                                    <input type="number" name="library_issue_total_book_per_user" id="library_issue_total_book_per_user" class="form-control" value="<?= htmlspecialchars($settings['library_issue_total_book_per_user'] ?? '3') ?>" min="1" required />
+                                                    <span class="input-group-text">books</span>
+                                                    <div class="invalid-feedback">Please specify a valid number of books.</div>
+                                                </div>
+                                                <div class="form-text">Maximum number of books a user can borrow at once</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Save Settings Button -->
+                                <div class="col-12 d-flex justify-content-end">
+                                    <button type="submit" name="edit_setting" class="btn btn-primary btn-modern">
+                                        <i class="fas fa-save me-2"></i>Save Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Library Features Tab -->
+                <div class="tab-pane fade <?= $active_tab === 'features' ? 'show active' : '' ?>" id="features" role="tabpanel">
+                    <?php if (isset($_GET['action']) && $_GET['action'] === 'add_feature'): ?>
+                        <!-- Add Feature Form -->
+                        <div class="p-4">
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
+                                    <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add New Library Feature</h5>
+                                    <a href="test.php?tab=features" class="btn btn-light btn-sm">
+                                        <i class="fas fa-arrow-left me-1"></i>Back to List
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <form method="post" class="row g-4 needs-validation" novalidate>
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Feature Details</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label for="feature_name" class="form-label fw-medium">Feature Name</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="fas fa-tag text-primary"></i></span>
+                                                            <input type="text" id="feature_name" name="feature_name" class="form-control" required>
+                                                            <div class="invalid-feedback">Please enter a feature name.</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="feature_icon" class="form-label fw-medium">Feature Icon (FontAwesome class)</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="fas fa-icons text-primary"></i></span>
+                                                            <input type="text" id="feature_icon" name="feature_icon" class="form-control" value="fas fa-landmark" required>
+                                                            <div class="invalid-feedback">Please specify an icon class.</div>
+                                                        </div>
+                                                        <div class="form-text">
+                                                            Example: fas fa-door-open, fas fa-book-reader, fas fa-desktop
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                        <label for="bg_color" class="form-label fw-medium">Background Color</label>
+                                                            <select id="bg_color" name="bg_color" class="form-select">
+                                                                <option value="bg-primary">Primary Blue</option>
+                                                                <option value="bg-secondary">Secondary Gray</option>
+                                                                <option value="bg-success">Success Green</option>
+                                                                <option value="bg-danger">Danger Red</option>
+                                                                <option value="bg-warning">Warning Yellow</option>
+                                                                <option value="bg-info">Info Light Blue</option>
+                                                                <option value="bg-light">Light Gray</option>
+                                                                <option value="bg-dark">Dark Gray</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="text_color" class="form-label fw-medium">Text Color</label>
+                                                            <select id="text_color" name="text_color" class="form-select">
+                                                                <option value="text-white">White</option>
+                                                                <option value="text-dark">Dark</option>
+                                                                <option value="text-light">Light</option>
+                                                                <option value="text-primary">Primary Blue</option>
+                                                                <option value="text-success">Success Green</option>
+                                                                <option value="text-danger">Danger Red</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="feature_status" class="form-label fw-medium">Status</label>
+                                                        <select id="feature_status" name="feature_status" class="form-select">
+                                                            <option value="Enable">Enable</option>
+                                                            <option value="Disable">Disable</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Position & Size</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="position_x" class="form-label fw-medium">Position X</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-arrows-alt-h text-primary"></i></span>
+                                                                <input type="number" id="position_x" name="position_x" class="form-control" value="10" min="0" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify X position.</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="position_y" class="form-label fw-medium">Position Y</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-arrows-alt-v text-primary"></i></span>
+                                                                <input type="number" id="position_y" name="position_y" class="form-control" value="10" min="0" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify Y position.</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="width" class="form-label fw-medium">Width</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-expand text-primary"></i></span>
+                                                                <input type="number" id="width" name="width" class="form-control" value="120" min="50" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify width (min 50px).</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="height" class="form-label fw-medium">Height</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-expand-alt text-primary"></i></span>
+                                                                <input type="number" id="height" name="height" class="form-control" value="120" min="50" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify height (min 50px).</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-4">
+                                                        <label class="form-label fw-medium">Feature Preview</label>
+                                                        <div class="preview-container position-relative border p-4" style="height:300px;">
+                                                            <div id="feature_preview" class="position-absolute p-3 d-flex flex-column justify-content-center align-items-center text-center bg-primary text-white" style="width:120px; height:120px; left:10px; top:10px; border-radius:5px;">
+                                                                <i class="fas fa-landmark fa-2x mb-2"></i>
+                                                                <span class="small">Feature Name</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-12 text-end">
+                                            <a href="test.php?tab=features" class="btn btn-outline-secondary btn-modern me-2">
+                                                <i class="fas fa-times me-1"></i>Cancel
+                                            </a>
+                                            <button type="submit" name="add_feature" class="btn btn-success btn-modern">
+                                                <i class="fas fa-plus-circle me-2"></i>Add Feature
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
-                        <!-- Top Authors Table -->
-                        <div class="col-xl-12 col-lg-12 mb-4">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h5 class="card-title"><i class="bi bi-list-stars"></i> Top Authors</h5>
+                    
+                    <?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit_feature' && $edit_feature): ?>
+                        <!-- Edit Feature Form -->
+                        <div class="p-4">
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                                    <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Library Feature</h5>
+                                    <a href="test.php?tab=features" class="btn btn-light btn-sm">
+                                        <i class="fas fa-arrow-left me-1"></i>Back to List
+                                    </a>
                                 </div>
                                 <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-hover">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Author</th>
-                                                    <th>Unique Books Borrowed</th>
-                                                    <th>Total Borrows</th>
-                                                    <th>This Week</th>
-                                                    <th>This Month</th>
-                                                    <th>This Year</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($topAuthors as $author): ?>
-                                                <tr>
-                                                    <td><?= htmlspecialchars($author['author_name']) ?></td>
-                                                    <td><span class="badge bg-info"><?= $author['unique_books_borrowed'] ?></span></td>
-                                                    <td><span class="badge bg-primary"><?= $author['total_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-success"><?= $author['week_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-warning"><?= $author['month_borrows'] ?></span></td>
-                                                    <td><span class="badge bg-danger"><?= $author['year_borrows'] ?></span></td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
+                                    <form method="post" class="row g-4 needs-validation" novalidate>
+                                        <input type="hidden" name="feature_id" value="<?= htmlspecialchars($edit_feature['feature_id']) ?>">
+                                        
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Feature Details</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label for="feature_name" class="form-label fw-medium">Feature Name</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="fas fa-tag text-primary"></i></span>
+                                                            <input type="text" id="feature_name" name="feature_name" class="form-control" 
+                                                                value="<?= htmlspecialchars($edit_feature['feature_name']) ?>" required>
+                                                            <div class="invalid-feedback">Please enter a feature name.</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="feature_icon" class="form-label fw-medium">Feature Icon (FontAwesome class)</label>
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="fas fa-icons text-primary"></i></span>
+                                                            <input type="text" id="feature_icon" name="feature_icon" class="form-control" 
+                                                                value="<?= htmlspecialchars($edit_feature['feature_icon']) ?>" required>
+                                                            <div class="invalid-feedback">Please specify an icon class.</div>
+                                                        </div>
+                                                        <div class="form-text">
+                                                            Example: fas fa-door-open, fas fa-book-reader, fas fa-desktop
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="bg_color" class="form-label fw-medium">Background Color</label>
+                                                            <select id="bg_color" name="bg_color" class="form-select">
+                                                                <option value="bg-primary" <?= $edit_feature['bg_color'] === 'bg-primary' ? 'selected' : '' ?>>Primary Blue</option>
+                                                                <option value="bg-secondary" <?= $edit_feature['bg_color'] === 'bg-secondary' ? 'selected' : '' ?>>Secondary Gray</option>
+                                                                <option value="bg-success" <?= $edit_feature['bg_color'] === 'bg-success' ? 'selected' : '' ?>>Success Green</option>
+                                                                <option value="bg-danger" <?= $edit_feature['bg_color'] === 'bg-danger' ? 'selected' : '' ?>>Danger Red</option>
+                                                                <option value="bg-warning" <?= $edit_feature['bg_color'] === 'bg-warning' ? 'selected' : '' ?>>Warning Yellow</option>
+                                                                <option value="bg-info" <?= $edit_feature['bg_color'] === 'bg-info' ? 'selected' : '' ?>>Info Light Blue</option>
+                                                                <option value="bg-light" <?= $edit_feature['bg_color'] === 'bg-light' ? 'selected' : '' ?>>Light Gray</option>
+                                                                <option value="bg-dark" <?= $edit_feature['bg_color'] === 'bg-dark' ? 'selected' : '' ?>>Dark Gray</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="text_color" class="form-label fw-medium">Text Color</label>
+                                                            <select id="text_color" name="text_color" class="form-select">
+                                                                <option value="text-white" <?= $edit_feature['text_color'] === 'text-white' ? 'selected' : '' ?>>White</option>
+                                                                <option value="text-dark" <?= $edit_feature['text_color'] === 'text-dark' ? 'selected' : '' ?>>Dark</option>
+                                                                <option value="text-light" <?= $edit_feature['text_color'] === 'text-light' ? 'selected' : '' ?>>Light</option>
+                                                                <option value="text-primary" <?= $edit_feature['text_color'] === 'text-primary' ? 'selected' : '' ?>>Primary Blue</option>
+                                                                <option value="text-success" <?= $edit_feature['text_color'] === 'text-success' ? 'selected' : '' ?>>Success Green</option>
+                                                                <option value="text-danger" <?= $edit_feature['text_color'] === 'text-danger' ? 'selected' : '' ?>>Danger Red</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="feature_status" class="form-label fw-medium">Status</label>
+                                                        <select id="feature_status" name="feature_status" class="form-select">
+                                                            <option value="Enable" <?= $edit_feature['feature_status'] === 'Enable' ? 'selected' : '' ?>>Enable</option>
+                                                            <option value="Disable" <?= $edit_feature['feature_status'] === 'Disable' ? 'selected' : '' ?>>Disable</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Position & Size</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="position_x" class="form-label fw-medium">Position X</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-arrows-alt-h text-primary"></i></span>
+                                                                <input type="number" id="position_x" name="position_x" class="form-control" 
+                                                                    value="<?= htmlspecialchars($edit_feature['position_x']) ?>" min="0" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify X position.</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="position_y" class="form-label fw-medium">Position Y</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-arrows-alt-v text-primary"></i></span>
+                                                                <input type="number" id="position_y" name="position_y" class="form-control" 
+                                                                    value="<?= htmlspecialchars($edit_feature['position_y']) ?>" min="0" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify Y position.</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="width" class="form-label fw-medium">Width</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-expand text-primary"></i></span>
+                                                                <input type="number" id="width" name="width" class="form-control" 
+                                                                    value="<?= htmlspecialchars($edit_feature['width']) ?>" min="50" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify width (min 50px).</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="height" class="form-label fw-medium">Height</label>
+                                                            <div class="input-group">
+                                                                <span class="input-group-text"><i class="fas fa-expand-alt text-primary"></i></span>
+                                                                <input type="number" id="height" name="height" class="form-control" 
+                                                                    value="<?= htmlspecialchars($edit_feature['height']) ?>" min="50" required>
+                                                                <span class="input-group-text">px</span>
+                                                                <div class="invalid-feedback">Please specify height (min 50px).</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="mb-4">
+                                                        <label class="form-label fw-medium">Feature Preview</label>
+                                                        <div class="preview-container position-relative border p-4" style="height:300px;">
+                                                            <div id="feature_preview" class="position-absolute p-3 d-flex flex-column justify-content-center align-items-center text-center <?= htmlspecialchars($edit_feature['bg_color']) ?> <?= htmlspecialchars($edit_feature['text_color']) ?>" 
+                                                                style="width:<?= htmlspecialchars($edit_feature['width']) ?>px; height:<?= htmlspecialchars($edit_feature['height']) ?>px; left:<?= htmlspecialchars($edit_feature['position_x']) ?>px; top:<?= htmlspecialchars($edit_feature['position_y']) ?>px; border-radius:5px;">
+                                                                <i class="<?= htmlspecialchars($edit_feature['feature_icon']) ?> fa-2x mb-2"></i>
+                                                                <span class="small"><?= htmlspecialchars($edit_feature['feature_name']) ?></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-12 text-end">
+                                            <a href="test.php?tab=features" class="btn btn-outline-secondary btn-modern me-2">
+                                                <i class="fas fa-times me-1"></i>Cancel
+                                            </a>
+                                            <button type="submit" name="edit_feature" class="btn btn-primary btn-modern">
+                                                <i class="fas fa-save me-2"></i>Update Feature
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    <?php elseif (isset($_GET['action']) && $_GET['action'] === 'view_feature' && $view_feature): ?>
+                        <!-- View Feature Details -->
+                        <div class="p-4">
+                            <div class="card border-0 shadow-sm mb-4">
+                                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-3">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Feature Details</h5>
+                                    <a href="test.php?tab=features" class="btn btn-light btn-sm">
+                                        <i class="fas fa-arrow-left me-1"></i>Back to List
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-4">
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Feature Information</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <table class="table table-borderless">
+                                                        <tr>
+                                                            <th width="40%" class="text-muted">Feature Name:</th>
+                                                            <td><?= htmlspecialchars($view_feature['feature_name']) ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Icon:</th>
+                                                            <td><i class="<?= htmlspecialchars($view_feature['feature_icon']) ?> me-2"></i> <?= htmlspecialchars($view_feature['feature_icon']) ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Colors:</th>
+                                                            <td>
+                                                                <span class="badge <?= htmlspecialchars($view_feature['bg_color']) ?> <?= htmlspecialchars($view_feature['text_color']) ?> p-2 me-2">Background</span>
+                                                                <span class="badge bg-dark <?= htmlspecialchars($view_feature['text_color']) ?> p-2">Text</span>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Position:</th>
+                                                            <td>X: <?= htmlspecialchars($view_feature['position_x']) ?>px, Y: <?= htmlspecialchars($view_feature['position_y']) ?>px</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Dimensions:</th>
+                                                            <td>Width: <?= htmlspecialchars($view_feature['width']) ?>px, Height: <?= htmlspecialchars($view_feature['height']) ?>px</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Status:</th>
+                                                            <td>
+                                                                <?php if($view_feature['feature_status'] == 'Enable'): ?>
+                                                                    <span class="badge bg-success p-2"><i class="fas fa-check-circle me-1"></i> Enabled</span>
+                                                                <?php else: ?>
+                                                                    <span class="badge bg-danger p-2"><i class="fas fa-times-circle me-1"></i> Disabled</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Created On:</th>
+                                                            <td><?= date('F j, Y g:i A', strtotime($view_feature['created_on'])) ?></td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th class="text-muted">Last Updated:</th>
+                                                            <td><?= date('F j, Y g:i A', strtotime($view_feature['updated_on'])) ?></td>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <div class="card h-100 settings-card">
+                                                <div class="card-header bg-light">
+                                                    <h6 class="mb-0">Feature Preview</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="preview-container position-relative border p-4" style="height:350px;">
+                                                        <div class="position-absolute p-3 d-flex flex-column justify-content-center align-items-center text-center <?= htmlspecialchars($view_feature['bg_color']) ?> <?= htmlspecialchars($view_feature['text_color']) ?>" 
+                                                             style="width:<?= htmlspecialchars($view_feature['width']) ?>px; height:<?= htmlspecialchars($view_feature['height']) ?>px; left:<?= htmlspecialchars($view_feature['position_x']) ?>px; top:<?= htmlspecialchars($view_feature['position_y']) ?>px; border-radius:5px;">
+                                                            <i class="<?= htmlspecialchars($view_feature['feature_icon']) ?> fa-2x mb-2"></i>
+                                                            <span class="small"><?= htmlspecialchars($view_feature['feature_name']) ?></span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="d-flex justify-content-center gap-2 mt-4">
+                                                        <a href="test.php?tab=features&action=edit_feature&code=<?= $view_feature['feature_id'] ?>" class="btn btn-primary btn-modern">
+                                                            <i class="fas fa-edit me-2"></i>Edit Feature
+                                                        </a>
+                                                        <?php if($view_feature['feature_status'] == 'Enable'): ?>
+                                                            <a href="test.php?tab=features&action=toggle_feature&status=Disable&code=<?= $view_feature['feature_id'] ?>" 
+                                                               class="btn btn-outline-danger btn-modern" 
+                                                               onclick="return confirm('Are you sure you want to disable this feature?')">
+                                                                <i class="fas fa-times-circle me-2"></i>Disable
+                                                            </a>
+                                                        <?php else: ?>
+                                                            <a href="test.php?tab=features&action=toggle_feature&status=Enable&code=<?= $view_feature['feature_id'] ?>" 
+                                                               class="btn btn-outline-success btn-modern" 
+                                                               onclick="return confirm('Are you sure you want to enable this feature?')">
+                                                                <i class="fas fa-check-circle me-2"></i>Enable
+                                                            </a>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     
-                        
-                </div>
-            </div>
+                    <?php else: ?>
+                        <!-- Features List View -->
+                        <div class="p-4">
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <h5 class="mb-3">Library Features</h5>
+                                    <p class="text-muted mb-0">
+                                        Manage physical locations and facilities within your library. Features will be displayed on the library map interface.
+                                    </p>
+                                </div>
+                                <div class="col-md-6 text-md-end">
+                                    <a href="test.php?tab=features&action=add_feature" class="btn btn-success btn-modern">
+                                        <i class="fas fa-plus-circle me-2"></i>Add New Feature
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="card shadow-sm mb-4">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0" id="feature_table">
+                                            <thead>
+                                                <tr>
+                                                    <th width="5%">#</th>
+                                                    <th width="20%">Name</th>
+                                                    <th width="10%">Icon</th>
+                                                    <th width="15%">Color</th>
+                                                    <th width="20%">Position</th>
+                                                    <th width="10%">Status</th>
+                                                    <th width="20%">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php if (count($all_features) > 0): ?>
+                                                    <?php $counter = 1; foreach ($all_features as $feature): ?>
+                                                        <tr>
+                                                            <td><?= $counter++ ?></td>
+                                                            <td><?= htmlspecialchars($feature['feature_name']) ?></td>
+                                                            <td><i class="<?= htmlspecialchars($feature['feature_icon']) ?> fa-lg"></i></td>
+                                                            <td>
+                                                                <span class="badge <?= htmlspecialchars($feature['bg_color']) ?> <?= htmlspecialchars($feature['text_color']) ?> p-2">
+                                                                    Sample Text
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                X: <?= htmlspecialchars($feature['position_x']) ?>px,<br>
+                                                                Y: <?= htmlspecialchars($feature['position_y']) ?>px
+                                                            </td>
+                                                            <td>
+                                                                <?php if($feature['feature_status'] == 'Enable'): ?>
+                                                                    <span class="badge bg-success p-2">Enabled</span>
+                                                                <?php else: ?>
+                                                                    <span class="badge bg-danger p-2">Disabled</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td>
+                                                                <div class="btn-group" role="group">
+                                                                    <a href="test.php?tab=features&action=view_feature&code=<?= $feature['feature_id'] ?>" class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="View Details">
+                                                                        <i class="fas fa-eye"></i>
+                                                                    </a>
+                                                                    <a href="test.php?tab=features&action=edit_feature&code=<?= $feature['feature_id'] ?>" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Edit Feature">
+                                                                        <i class="fas fa-edit"></i>
+                                                                    </a>
+                                                                    <?php if($feature['feature_status'] == 'Enable'): ?>
+                                                                        <a href="test.php?tab=features&action=toggle_feature&status=Disable&code=<?= $feature['feature_id'] ?>" class="btn btn-danger btn-sm" data-bs-toggle="tooltip" title="Disable">
+                                                                            <i class="fas fa-times-circle"></i>
+                                                                        </a>
+                                                                    <?php else: ?>
+                                                                        <a href="test.php?tab=features&action=toggle_feature&status=Enable&code=<?= $feature['feature_id'] ?>" class="btn btn-success btn-sm" data-bs-toggle="tooltip" title="Enable">
+                                                                           <i class="fas fa-check-circle"></i>
+                                                                       </a>
+                                                                   <?php endif; ?>
+                                                               </div>
+                                                           </td>
+                                                       </tr>
+                                                   <?php endforeach; ?>
+                                               <?php else: ?>
+                                                   <tr>
+                                                       <td colspan="7" class="text-center py-4">
+                                                           <div class="d-flex flex-column align-items-center">
+                                                               <i class="fas fa-map-marked-alt fa-3x text-muted mb-3"></i>
+                                                               <p class="lead mb-1">No library features found</p>
+                                                               <p class="text-muted mb-3">Add your first feature to begin mapping your library</p>
+                                                               <a href="test.php?tab=features&action=add_feature" class="btn btn-success btn-sm">
+                                                                   <i class="fas fa-plus-circle me-2"></i>Add New Feature
+                                                               </a>
+                                                           </div>
+                                                       </td>
+                                                   </tr>
+                                               <?php endif; ?>
+                                           </tbody>
+                                       </table>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <!-- Library Map Preview -->
+                           <div class="card shadow-sm">
+                               <div class="card-header bg-light py-3">
+                                   <h5 class="mb-0">Library Map Preview</h5>
+                               </div>
+                               <div class="card-body">
+                                   <div class="preview-container position-relative border p-4" style="height:400px; overflow: hidden;">
+                                       <!-- Display Library Features -->
+                                       <?php foreach ($all_features as $feature): ?>
+                                           <?php if($feature['feature_status'] == 'Enable'): ?>
+                                               <div class="position-absolute p-3 d-flex flex-column justify-content-center align-items-center text-center feature-preview <?= htmlspecialchars($feature['bg_color']) ?> <?= htmlspecialchars($feature['text_color']) ?>" 
+                                                    data-id="<?= $feature['feature_id'] ?>"
+                                                    style="width:<?= htmlspecialchars($feature['width']) ?>px; height:<?= htmlspecialchars($feature['height']) ?>px; left:<?= htmlspecialchars($feature['position_x']) ?>px; top:<?= htmlspecialchars($feature['position_y']) ?>px; border-radius:5px;">
+                                                   <i class="<?= htmlspecialchars($feature['feature_icon']) ?> fa-2x mb-2"></i>
+                                                   <span class="small"><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                               </div>
+                                           <?php endif; ?>
+                                       <?php endforeach; ?>
+                                       
+                                       <!-- Display Racks -->
+                                       <?php foreach ($all_racks as $rack): ?>
+                                           <div class="position-absolute p-2 d-flex flex-column justify-content-center align-items-center text-center bg-warning text-dark feature-preview" 
+                                                style="width:100px; height:60px; left:<?= 200 + ($rack['location_rack_id'] * 120) % 500 ?>px; top:<?= 150 + ($rack['location_rack_id'] * 80) % 200 ?>px; border-radius:5px;">
+                                               <i class="fas fa-book-open fa-sm mb-1"></i>
+                                               <span class="small"><?= htmlspecialchars($rack['location_rack_name']) ?></span>
+                                           </div>
+                                       <?php endforeach; ?>
+                                   </div>
+                                   <div class="text-center mt-3">
+                                       <span class="text-muted"><i class="fas fa-info-circle me-1"></i> This is a preview of how your library map will appear to users</span>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   <?php endif; ?>
+               </div>
+               
+               <!-- Appearance Tab -->
+               <div class="tab-pane fade <?= $active_tab === 'appearance' ? 'show active' : '' ?>" id="appearance" role="tabpanel">
+                   <div class="p-4">
+                       <div class="row mb-4">
+                           <div class="col-md-8 mb-3 mb-md-0">
+                               <h5 class="mb-2">System Appearance</h5>
+                               <p class="text-muted mb-0">
+                                   Customize the visual appearance of your library management system.
+                               </p>
+                           </div>
+                       </div>
+                       
+                       <div class="row g-4">
+                           <!-- Theme Settings -->
+                           <div class="col-md-6">
+                               <div class="card settings-card h-100">
+                                   <div class="card-header bg-light py-3">
+                                       <h5 class="mb-0"><i class="fas fa-palette me-2 text-primary"></i>Theme Settings</h5>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">Color Theme</label>
+                                           <div class="row g-3">
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_blue" checked>
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_blue">
+                                                       <span class="d-inline-block rounded-circle bg-primary" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Blue</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_green">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_green">
+                                                       <span class="d-inline-block rounded-circle bg-success" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Green</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_purple">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_purple">
+                                                       <span class="d-inline-block rounded-circle bg-secondary" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Purple</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_red">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_red">
+                                                       <span class="d-inline-block rounded-circle bg-danger" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Red</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_teal">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_teal">
+                                                       <span class="d-inline-block rounded-circle bg-info" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Teal</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6 col-xl-4">
+                                                   <input type="radio" class="btn-check" name="theme_color" id="theme_dark">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="theme_dark">
+                                                       <span class="d-inline-block rounded-circle bg-dark" style="width:25px; height:25px;"></span>
+                                                       <span class="mt-2">Dark</span>
+                                                   </label>
+                                               </div>
+                                           </div>
+                                       </div>
+                                       
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">UI Mode</label>
+                                           <div class="row g-3">
+                                               <div class="col-6">
+                                                   <input type="radio" class="btn-check" name="theme_mode" id="mode_light" checked>
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="mode_light">
+                                                       <i class="fas fa-sun fa-lg text-warning mb-2"></i>
+                                                       <span>Light Mode</span>
+                                                   </label>
+                                               </div>
+                                               <div class="col-6">
+                                                   <input type="radio" class="btn-check" name="theme_mode" id="mode_dark">
+                                                   <label class="btn w-100 border p-3 d-flex flex-column align-items-center" for="mode_dark">
+                                                       <i class="fas fa-moon fa-lg text-primary mb-2"></i>
+                                                       <span>Dark Mode</span>
+                                                   </label>
+                                               </div>
+                                           </div>
+                                       </div>
+                                       
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">Layout Style</label>
+                                           <div class="form-check form-switch mb-2">
+                                               <input class="form-check-input" type="checkbox" id="compact_sidebar">
+                                               <label class="form-check-label" for="compact_sidebar">Compact Sidebar</label>
+                                           </div>
+                                           <div class="form-check form-switch mb-2">
+                                               <input class="form-check-input" type="checkbox" id="show_breadcrumbs" checked>
+                                               <label class="form-check-label" for="show_breadcrumbs">Show Breadcrumbs</label>
+                                           </div>
+                                           <div class="form-check form-switch">
+                                               <input class="form-check-input" type="checkbox" id="fluid_container">
+                                               <label class="form-check-label" for="fluid_container">Full Width Layout</label>
+                                           </div>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save Theme Settings
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <!-- Login Page Settings -->
+                           <div class="col-md-6">
+                               <div class="card settings-card h-100">
+                                   <div class="card-header bg-light py-3">
+                                       <h5 class="mb-0"><i class="fas fa-sign-in-alt me-2 text-primary"></i>Login Page</h5>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">Login Page Logo</label>
+                                           <div class="input-group mb-3">
+                                               <input type="file" class="form-control" id="login_logo">
+                                               <label class="input-group-text" for="login_logo">Upload</label>
+                                           </div>
+                                           <div class="form-text">Recommended size: 200x60px</div>
+                                       </div>
+                                       
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">Login Background Image</label>
+                                           <div class="input-group mb-3">
+                                               <input type="file" class="form-control" id="login_bg">
+                                               <label class="input-group-text" for="login_bg">Upload</label>
+                                           </div>
+                                       </div>
+                                       
+                                       <div class="mb-4">
+                                           <label for="login_welcome_text" class="form-label fw-medium">Welcome Text</label>
+                                           <textarea class="form-control" id="login_welcome_text" rows="3">Welcome to our Library Management System. Please log in to continue.</textarea>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save Login Settings
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <!-- Custom CSS -->
+                           <div class="col-12">
+                               <div class="card settings-card">
+                                   <div class="card-header bg-light py-3">
+                                       <h5 class="mb-0"><i class="fas fa-code me-2 text-primary"></i>Custom CSS</h5>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-4">
+                                           <label for="custom_css" class="form-label fw-medium">Custom CSS Code</label>
+                                           <textarea class="form-control font-monospace" id="custom_css" rows="6" placeholder="/* Add your custom CSS here */"></textarea>
+                                           <div class="form-text">
+                                               Add custom CSS to override the default styles. Changes will apply to all pages.
+                                           </div>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save Custom CSS
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+               
+               <!-- Notifications Tab -->
+               <div class="tab-pane fade <?= $active_tab === 'notifications' ? 'show active' : '' ?>" id="notifications" role="tabpanel">
+                   <div class="p-4">
+                       <div class="row mb-4">
+                           <div class="col-md-8 mb-3 mb-md-0">
+                               <h5 class="mb-2">Notification Settings</h5>
+                               <p class="text-muted mb-0">
+                                   Configure how and when the system should send notifications to users and administrators.
+                               </p>
+                           </div>
+                       </div>
+                       
+                       <div class="row g-4">
+                           <!-- Email Notifications -->
+                           <div class="col-md-6">
+                               <div class="card settings-card h-100">
+                                   <div class="card-header bg-light py-3">
+                                       <h5 class="mb-0"><i class="fas fa-envelope me-2 text-primary"></i>Email Notifications</h5>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-4">
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="email_due_date" checked>
+                                               <label class="form-check-label" for="email_due_date">Book Due Date Reminders</label>
+                                               <div class="form-text">Send reminders before books are due</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="email_overdue" checked>
+                                               <label class="form-check-label" for="email_overdue">Overdue Book Notifications</label>
+                                               <div class="form-text">Send notifications when books are overdue</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="email_book_reserved" checked>
+                                               <label class="form-check-label" for="email_book_reserved">Book Reservation Notifications</label>
+                                               <div class="form-text">Notify users when reserved books become available</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="email_new_books">
+                                               <label class="form-check-label" for="email_new_books">New Book Additions</label>
+                                               <div class="form-text">Notify users about newly added books</div>
+                                           </div>
+                                       </div>
+                                       
+                                       <div class="mb-3">
+                                           <label for="reminder_days" class="form-label fw-medium">Send Due Date Reminder</label>
+                                           <select id="reminder_days" class="form-select">
+                                               <option value="1">1 day before due date</option>
+                                               <option value="2" selected>2 days before due date</option>
+                                               <option value="3">3 days before due date</option>
+                                               <option value="5">5 days before due date</option>
+                                               <option value="7">1 week before due date</option>
+                                           </select>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save Email Settings
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <!-- System Notifications -->
+                           <div class="col-md-6">
+                               <div class="card settings-card h-100">
+                                   <div class="card-header bg-light py-3">
+                                       <h5 class="mb-0"><i class="fas fa-bell me-2 text-primary"></i>System Notifications</h5>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-4">
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="notify_new_user" checked>
+                                               <label class="form-check-label" for="notify_new_user">New User Registration</label>
+                                               <div class="form-text">Notify administrators when new users register</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="notify_book_issue" checked>
+                                               <label class="form-check-label" for="notify_book_issue">Book Issue/Return</label>
+                                               <div class="form-text">Show notifications for book issue and return actions</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="notify_fine_payment">
+                                               <label class="form-check-label" for="notify_fine_payment">Fine Payments</label>
+                                               <div class="form-text">Notify administrators about fine payments</div>
+                                           </div>
+                                           
+                                           <div class="form-check form-switch mb-3">
+                                               <input class="form-check-input" type="checkbox" id="notify_low_inventory">
+                                               <label class="form-check-label" for="notify_low_inventory">Low Book Inventory</label>
+                                               <div class="form-text">Alert when book copies are running low</div>
+                                           </div>
+                                       </div>
+                                       
+                                       <div class="mb-3">
+                                           <label for="notification_display_time" class="form-label fw-medium">Notification Display Duration</label>
+                                           <select id="notification_display_time" class="form-select">
+                                               <option value="3000">3 seconds</option>
+                                               <option value="5000" selected>5 seconds</option>
+                                               <option value="7000">7 seconds</option>
+                                               <option value="10000">10 seconds</option>
+                                           </select>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save System Notifications
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <!-- Email Templates -->
+                           <div class="col-12">
+                               <div class="card settings-card">
+                                   <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+                                       <h5 class="mb-0"><i class="fas fa-file-alt me-2 text-primary"></i>Email Templates</h5>
+                                       <div class="dropdown">
+                                           <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="templateDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                               Select Template
+                                           </button>
+                                           <ul class="dropdown-menu" aria-labelledby="templateDropdown">
+                                               <li><a class="dropdown-item" href="#">Due Date Reminder</a></li>
+                                               <li><a class="dropdown-item" href="#">Overdue Notice</a></li>
+                                               <li><a class="dropdown-item" href="#">Book Reservation</a></li>
+                                               <li><a class="dropdown-item" href="#">Welcome Email</a></li>
+                                               <li><a class="dropdown-item" href="#">Password Reset</a></li>
+                                           </ul>
+                                       </div>
+                                   </div>
+                                   <div class="card-body">
+                                       <div class="mb-3">
+                                           <label for="email_subject" class="form-label fw-medium">Email Subject</label>
+                                           <input type="text" class="form-control" id="email_subject" value="Your Library Book is Due Soon">
+                                       </div>
+                                       
+                                       <div class="mb-3">
+                                           <label for="email_template" class="form-label fw-medium">Email Body</label>
+                                           <textarea class="form-control" id="email_template" rows="8">
+Dear [User Name],
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    
-            <script>
-                // Add this to your existing JavaScript code section
+This is a friendly reminder that the following book(s) are due to be returned soon:
 
-document.addEventListener("DOMContentLoaded", function() {
-    // Convert PHP arrays to JavaScript for author charts
-    const weeklyAuthors = <?php echo json_encode(array_values($weeklyAuthors)); ?>;
-    const monthlyAuthors = <?php echo json_encode(array_values($monthlyAuthors)); ?>;
-    const yearlyAuthors = <?php echo json_encode(array_values($yearlyAuthors)); ?>;
-    const topAuthors = <?php echo json_encode($topAuthors); ?>;
-    
-    // Chart initialization code (unchanged)
-    const weeklyCanvas = document.getElementById("authorWeekChart");
-    if (weeklyCanvas) {
-        const weeklyCtx = weeklyCanvas.getContext("2d");
-        new Chart(weeklyCtx, {
-            // Chart configuration remains the same
-            type: "bar",
-            data: {
-                labels: weeklyAuthors.map(item => item.author_name),
-                datasets: [{
-                    label: "Books Borrowed This Week",
-                    data: weeklyAuthors.map(item => item.borrow_count),
-                    backgroundColor: "#4CAF50" // Green
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y', // Horizontal bar chart
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Books Borrowed'
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    // Other chart initializations remain the same
-    const monthlyCanvas = document.getElementById("authorMonthChart");
-    if (monthlyCanvas) {
-        const monthlyCtx = monthlyCanvas.getContext("2d");
-        new Chart(monthlyCtx, {
-            type: "bar",
-            data: {
-                labels: monthlyAuthors.map(item => item.author_name),
-                datasets: [{
-                    label: "Books Borrowed This Month",
-                    data: monthlyAuthors.map(item => item.borrow_count),
-                    backgroundColor: "#FF9800" // Orange
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Books Borrowed'
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    const yearlyCanvas = document.getElementById("authorYearChart");
-    if (yearlyCanvas) {
-        const yearlyCtx = yearlyCanvas.getContext("2d");
-        new Chart(yearlyCtx, {
-            type: "bar",
-            data: {
-                labels: yearlyAuthors.map(item => item.author_name),
-                datasets: [{
-                    label: "Books Borrowed This Year",
-                    data: yearlyAuthors.map(item => item.borrow_count),
-                    backgroundColor: "#E91E63" // Pink
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Books Borrowed'
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    const allTimeCanvas = document.getElementById("authorAllTimeChart");
-    if (allTimeCanvas && topAuthors.length > 0) {
-        const allTimeCtx = allTimeCanvas.getContext("2d");
-        new Chart(allTimeCtx, {
-            type: "bar",
-            data: {
-                labels: topAuthors.slice(0, 10).map(author => author.author_name),
-                datasets: [{
-                    label: "Total Books Borrowed",
-                    data: topAuthors.slice(0, 10).map(author => author.total_borrows),
-                    backgroundColor: "#3F51B5" // Indigo
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Number of Books Borrowed'
-                        }
-                    }
-                }
-            }
-        });
-    }
+Book Title: [Book Title]
+Due Date: [Due Date]
 
-    // FIX: This is the section that needs to be corrected
-    const timeSelect = document.getElementById('author-time-select');
-    
-    // Add change event handler to the select
-    timeSelect.addEventListener('change', function() {
-        const selectedValue = this.value;
-        
-        // Hide all tab panes first
-        document.querySelectorAll('#author-time-content .tab-pane').forEach(pane => {
-            pane.classList.remove('show', 'active');
-        });
-        
-        // Show the selected tab pane
-        const selectedPane = document.getElementById(selectedValue);
-        if (selectedPane) {
-            selectedPane.classList.add('show', 'active');
-        }
-    });
+Please return the book(s) to the library on or before the due date to avoid any late fees.
+
+Thank you for using our library services!
+
+Best regards,
+[Library Name]
+                                           </textarea>
+                                       </div>
+                                       
+                                       <div class="mb-4">
+                                           <label class="form-label fw-medium">Available Variables</label>
+                                           <div class="d-flex flex-wrap gap-2">
+                                               <span class="badge bg-light text-dark">[User Name]</span>
+                                               <span class="badge bg-light text-dark">[Book Title]</span>
+                                               <span class="badge bg-light text-dark">[Due Date]</span>
+                                               <span class="badge bg-light text-dark">[Issue Date]</span>
+                                               <span class="badge bg-light text-dark">[Library Name]</span>
+                                               <span class="badge bg-light text-dark">[Fine Amount]</span>
+                                           </div>
+                                       </div>
+                                       
+                                       <button type="button" class="btn btn-primary btn-modern" disabled>
+                                           <i class="fas fa-save me-2"></i>Save Template
+                                       </button>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+   </div>
+</main>
+
+<!-- JavaScript for Settings Functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+   // Form Validation
+   const forms = document.querySelectorAll('.needs-validation');
+   
+   Array.from(forms).forEach(function(form) {
+       form.addEventListener('submit', function(event) {
+           if (!form.checkValidity()) {
+               event.preventDefault();
+               event.stopPropagation();
+           }
+           
+           form.classList.add('was-validated');
+       }, false);
+   });
+   
+   // Initialize tooltips
+   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+   const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+       return new bootstrap.Tooltip(tooltipTriggerEl);
+   });
+   
+   // DataTable initialization for features table
+   if (document.getElementById('feature_table')) {
+       $('#feature_table').DataTable({
+           paging: true,
+           pageLength: 10,
+           responsive: true,
+           language: {
+               search: "<i class='fas fa-search'></i> Search:",
+               lengthMenu: "Show _MENU_ entries",
+               info: "Showing _START_ to _END_ of _TOTAL_ features"
+           }
+       });
+   }
+   
+   // Library timezone select - set current value
+   const timezoneSelect = document.getElementById('library_timezone');
+   if (timezoneSelect) {
+       const currentTimezone = '<?= htmlspecialchars($settings["library_timezone"] ?? "UTC") ?>';
+       for (let i = 0; i < timezoneSelect.options.length; i++) {
+           if (timezoneSelect.options[i].value === currentTimezone) {
+               timezoneSelect.options[i].selected = true;
+               break;
+           }
+       }
+   }
+   
+   // Library currency select - set current value
+   const currencySelect = document.getElementById('library_currency');
+   if (currencySelect) {
+       const currentCurrency = '<?= htmlspecialchars($settings["library_currency"] ?? "USD") ?>';
+       for (let i = 0; i < currencySelect.options.length; i++) {
+           if (currencySelect.options[i].value === currentCurrency) {
+               currencySelect.options[i].selected = true;
+               break;
+           }
+       }
+   }
+   
+   // Feature form preview updates
+   function updateFeaturePreview() {
+       const nameInput = document.getElementById('feature_name');
+       const iconInput = document.getElementById('feature_icon');
+       const bgColorSelect = document.getElementById('bg_color');
+       const textColorSelect = document.getElementById('text_color');
+       const posXInput = document.getElementById('position_x');
+       const posYInput = document.getElementById('position_y');
+       const widthInput = document.getElementById('width');
+       const heightInput = document.getElementById('height');
+       const preview = document.getElementById('feature_preview');
+       
+       if (!preview || !nameInput || !iconInput || !bgColorSelect || !textColorSelect || !posXInput || !posYInput || !widthInput || !heightInput) {
+           return;
+       }
+       
+       // Update preview text
+       const nameNode = preview.querySelector('span');
+       if (nameNode) {
+           nameNode.textContent = nameInput.value || 'Feature Name';
+       }
+       
+       // Update icon
+       const iconNode = preview.querySelector('i');
+       if (iconNode) {
+           iconNode.className = iconInput.value || 'fas fa-landmark fa-2x mb-2';
+       }
+       
+       // Update colors
+       preview.className = 'position-absolute p-3 d-flex flex-column justify-content-center align-items-center text-center ' + 
+                         bgColorSelect.value + ' ' + textColorSelect.value;
+       
+       // Update position and size
+       preview.style.left = posXInput.value + 'px';
+       preview.style.top = posYInput.value + 'px';
+       preview.style.width = widthInput.value + 'px';
+       preview.style.height = heightInput.value + 'px';
+   }
+   
+   // Add event listeners to form inputs for live preview
+   const featureFormInputs = [
+       'feature_name', 'feature_icon', 'bg_color', 'text_color', 
+       'position_x', 'position_y', 'width', 'height'
+   ];
+   
+   featureFormInputs.forEach(inputId => {
+       const input = document.getElementById(inputId);
+       if (input) {
+           input.addEventListener('input', updateFeaturePreview);
+           input.addEventListener('change', updateFeaturePreview);
+       }
+   });
+   
+   // Initialize preview on load
+   updateFeaturePreview();
+   
+   // Feature map preview hover effect
+   const features = document.querySelectorAll('.feature-preview');
+   features.forEach(feature => {
+       feature.addEventListener('mouseenter', function() {
+           this.style.zIndex = '100';
+           this.style.transform = 'scale(1.05)';
+           this.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
+       });
+       
+       feature.addEventListener('mouseleave', function() {
+           this.style.zIndex = '1';
+           this.style.transform = 'scale(1)';
+           this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+       });
+   });
 });
-            </script>
+</script>
+
+<?php
+include '../footer.php';
+?>

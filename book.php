@@ -4,24 +4,23 @@ include 'database_connection.php';
 include 'function.php';
 include 'header.php';
 
-// Get all books
-$query = "SELECT b.*, c.category_name 
-          FROM lms_book b 
-          LEFT JOIN lms_category c ON b.category_id = c.category_id 
-          WHERE b.book_status = 'Enable' 
-          ORDER BY b.book_id DESC";
-$statement = $connect->prepare($query);
-$statement->execute();
-$all_books = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-// Get all categories for filter
-$category_query = "SELECT * FROM lms_category WHERE category_status = 'Enable' ORDER BY category_name ASC";
-$category_statement = $connect->prepare($category_query);
-$category_statement->execute();
-$all_categories = $category_statement->fetchAll(PDO::FETCH_ASSOC);
+// Use the improved function to get categories
+$all_categories = getAllCategories($connect);
 
 // Handle category filter
 $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
+
+// Get pagination parameters
+$limit = 20; // Number of books per page
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $limit;
+
+// Use the improved function for paginated books
+$all_books = getPaginatedBooks($connect, $limit, $offset, $selected_category ?: null);
+
+// Get total books for pagination
+$total_books = countTotalBooks($connect, $selected_category ?: null);
+$total_pages = ceil($total_books / $limit);
 ?>
 
 <div class="container-fluid py-4 mt-5 px-5">
@@ -73,39 +72,20 @@ $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
     <!-- Book Grid -->
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 gap-5" id="book-grid">
         <?php foreach ($all_books as $book): 
-            // Skip books not in selected category if filter is active
-            if (!empty($selected_category) && $book['category_id'] != $selected_category) continue;
-            
-            // Get book cover image
-            $book_img = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+            // Get book cover image using the utility function
+            $book_img = getBookImagePath($book);
             
             // Get authors
-            $author_query = "SELECT a.author_name FROM lms_author a 
-                            JOIN lms_book_author ba ON a.author_id = ba.author_id 
-                            WHERE ba.book_id = :book_id";
-            $author_statement = $connect->prepare($author_query);
-            $author_statement->bindParam(':book_id', $book['book_id'], PDO::PARAM_INT);
-            $author_statement->execute();
-            $authors = $author_statement->fetchAll(PDO::FETCH_ASSOC);
-            
+            $authors = getBookAuthors($connect, $book['book_id']);
             $author_names = array_column($authors, 'author_name');
             $author_string = implode(', ', $author_names);
             
-            // Check availability
-            $query = "SELECT COUNT(*) as borrowed_copies 
-                    FROM lms_issue_book 
-                    WHERE book_id = :book_id 
-                    AND (issue_book_status = 'Issue' OR issue_book_status = 'Not Return')";
-            $statement = $connect->prepare($query);
-            $statement->bindParam(':book_id', $book['book_id'], PDO::PARAM_INT);
-            $statement->execute();
-            $result = $statement->fetch(PDO::FETCH_ASSOC);
-            
-            $borrowed_copies = $result['borrowed_copies'];
-            $available_copies = $book['book_no_of_copy'] - $borrowed_copies;
-            $is_available = $available_copies > 0;
+            // Check availability using the utility function
+            $availability = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
+            $is_available = $availability['is_available'];
+            $available_copies = $availability['available_copies'];
         ?>
-        <div class="col book-card" data-id="<?php echo $book['book_id']; ?>">
+        <div class="col book-card" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
             <div class="card h-100 book-item shadow-sm">
                 <div class="position-relative">
                     <img src="<?php echo $book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
@@ -134,6 +114,34 @@ $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
         </div>
         <?php endforeach; ?>
     </div>
+    
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="d-flex justify-content-center mt-5">
+        <nav aria-label="Book pagination">
+            <ul class="pagination">
+                <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                    <a class="page-link" href="book.php?page=<?php echo $page - 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?>" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                        <a class="page-link" href="book.php?page=<?php echo $i; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    </li>
+                <?php endfor; ?>
+                <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                    <a class="page-link" href="book.php?page=<?php echo $page + 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?>" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
+    
     <div class="p-5 mt-5 mb-5"></div>
 </div>
 
@@ -155,67 +163,6 @@ $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
         </div>
     </div>
 </div>
-
-<!-- Custom Styling -->
-<style>
-    .book-item {
-        transition: all 0.3s ease;
-        border: none;
-    }
-    
-    .book-item:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-    }
-    
-    .book-card {
-        cursor: pointer;
-        height: auto !important;
-    }
-    
-    .btn-primary {
-        background-color: #4361ee;
-        border-color: #4361ee;
-    }
-    
-    .btn-outline-primary {
-        color: #4361ee;
-        border-color: #4361ee;
-    }
-    
-    .btn-outline-primary:hover {
-        background-color: #4361ee;
-        border-color: #4361ee;
-    }
-    
-    .badge.bg-success {
-        background-color: #2ecc71 !important;
-    }
-    
-    .badge.bg-danger {
-        background-color: #e74c3c !important;
-    }
-    
-    .modal-xl {
-        max-width: 1200px;
-    }
-    
-    /* Fix for tabs */
-    .nav-tabs .nav-link.active {
-        font-weight: 600;
-        color: #4361ee;
-        border-bottom: 2px solid #4361ee;
-        border-top: none;
-        border-left: none;
-        border-right: none;
-        background: transparent;
-    }
-    
-    .nav-tabs .nav-link {
-        border: none;
-        border-bottom: 2px solid transparent;
-    }
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -246,7 +193,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     reviewForm.addEventListener('submit', function(e) {
                         e.preventDefault();
                         // Handle form submission via AJAX
-                        // ...
+                        const formData = new FormData(this);
+                        
+                        fetch('submit_review.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Review submitted successfully!');
+                                // Refresh reviews section
+                                loadBookDetails(bookId);
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error submitting review:', error);
+                            alert('Error submitting review. Please try again.');
+                        });
                     });
                 }
             })
@@ -279,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Search functionality
+    // Search functionality - improved to also search by ISBN
     const searchInput = document.getElementById('search-books');
     searchInput.addEventListener('keyup', function() {
         const searchTerm = this.value.toLowerCase().trim();
@@ -288,8 +254,11 @@ document.addEventListener('DOMContentLoaded', function() {
         bookCards.forEach(card => {
             const bookTitle = card.querySelector('.card-title').textContent.toLowerCase();
             const bookAuthor = card.querySelector('.card-text').textContent.toLowerCase();
+            const bookIsbn = card.dataset.isbn.toLowerCase();
             
-            if (bookTitle.includes(searchTerm) || bookAuthor.includes(searchTerm)) {
+            if (bookTitle.includes(searchTerm) || 
+                bookAuthor.includes(searchTerm) || 
+                bookIsbn.includes(searchTerm)) {
                 card.style.display = '';
             } else {
                 card.style.display = 'none';
@@ -308,6 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
         bookCards.sort((a, b) => {
             const titleA = a.querySelector('.card-title').textContent;
             const titleB = b.querySelector('.card-title').textContent;
+            const idA = parseInt(a.dataset.id);
+            const idB = parseInt(b.dataset.id);
             
             switch (sortValue) {
                 case 'title-asc':
@@ -315,9 +286,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'title-desc':
                     return titleB.localeCompare(titleA);
                 case 'newest':
-                    return parseInt(b.dataset.id) - parseInt(a.dataset.id);
+                    return idB - idA;
                 case 'oldest':
-                    return parseInt(a.dataset.id) - parseInt(b.dataset.id);
+                    return idA - idB;
                 // Add other sort options as needed
                 default:
                     return 0;

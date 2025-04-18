@@ -3,6 +3,9 @@
 	include '../function.php';	
 	include '../header.php';
 	
+    // Check if user is logged in
+    authenticate_visitor();
+
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
 	$statement = $connect->prepare($query);

@@ -1,187 +1,187 @@
 <style>
-#preloader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
+  #preloader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgb(0 0 0 / 90%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-content: center;
+  }
+  svg{
+    
+    height:200px;
+    
+    width:100%;
+    
+  }
+
+  .main{
+    
+    position:relative;
+    
+    display:flex;
+    
+    flex-wrap:wrap;
+    
+    justify-content:center;
+    
+    width:100%;
+    
     height: 100%;
-    background: rgb(0 0 0 / 90%);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    align-content: center;
-}
-svg{
-  
-  height:200px;
-  
-  width:100%;
-  
-}
-
-.main{
-  
-  position:relative;
-  
-  display:flex;
-  
-  flex-wrap:wrap;
-  
-  justify-content:center;
-  
-  width:100%;
-  
-  height: 100%;
-  
-  margin-bottom: 4%;
-  
-}
-
-.circle {
-  
-  width:20px;
-  
-  height: 20px;
-  
-  border-radius: 20px;
-  
-  margin-right: 14px;
-  
-  margin-top:20px;
-  
-  background-color:#9290FA;
-  
-}
-
-.animate-cursor{
-  
-  fill: #0f1244;
-  
-  margin-right:3px;
-  
-  animation: cursor-animation 6s infinite;
-  
-  animation-timing-function: ease;
-  
-}
-
-.circle1 {
-  
-  animation: circle1-animation 1.5s infinite;
-  
-  animation-timing-function: ease-in-out;
-
-  
-}
-
-.circle2 {
-  
-  animation: circle2-animation 1.5s infinite;
-  
-  animation-timing-function: ease-in-out;
-  
-}
-
-.circle3 {
-  
-  animation: circle3-animation 1.5s infinite;
-  
-  animation-timing-function: ease-in-out;
-  
-}
-
-.circle4 {
-  
-  animation: circle4-animation 1.5s infinite;
-  
-  animation-timing-function: ease-in-out;
-  
-}
-
-@keyframes circle1-animation{
-  
-  0%{transform: translateY(0px);}
-  20%{
-    transform: translateY(-30px);
-    background-color: #FFDC64;
+    
+    margin-bottom: 4%;
+    
   }
-  40%{
-    transform: translateY(0px);
-  }
-  60%{transform: translateY(0px);}
-  80%{transform: translateY(0px);}
-  100%{transform: translateY(0px);}
 
-}
+  .circle {
+    
+    width:20px;
+    
+    height: 20px;
+    
+    border-radius: 20px;
+    
+    margin-right: 14px;
+    
+    margin-top:20px;
+    
+    background-color:#9290FA;
+    
+  }
 
-@keyframes circle2-animation{
-  
-  0%{transform: translateY(0px);}
-  20%{transform: translateY(0px);}
-  40%{
-    transform: translateY(-30px);
-    background-color: #FF5050;
+  .animate-cursor{
+    
+    fill: #0f1244;
+    
+    margin-right:3px;
+    
+    animation: cursor-animation 6s infinite;
+    
+    animation-timing-function: ease;
+    
   }
-  60%{
-    transform: translateY(0px);;
-  }
-  80%{transform: translateY(0px);}
-  100%{transform: translateY(0px);}
-}
 
-@keyframes circle3-animation{
-  
-  0%{transform: translateY(0px);}
-  20%{transform: translateY(0px);}
-  40%{transform: translateY(0px);}
-  60%{
-    transform: translateY(-30px);
-    background-color: #7DF5A5;
-  }
-  80%{transform: translateY(0px);}
-  100%{transform: translateY(0px);}
-}
+  .circle1 {
+    
+    animation: circle1-animation 1.5s infinite;
+    
+    animation-timing-function: ease-in-out;
 
-@keyframes circle4-animation{
-  
-  0%{transform: translateY(0px);}
-  20%{transform: translateY(0px);}
-  40%{transform: translateY(0px);}
-  60%{transform: translateY(0px);}
-  80%{
-    transform: translateY(-30px);
-    background-color: #785353;
+    
   }
-  100%{
-    transform: translateY(0px);
-  }
-  
-}
 
-@keyframes cursor-animation{
-  
-  0%{ transform: translateY(-180px);
-      }
-  20%{
-    transform: translateY(-180px);
-    transform: translateX(-100px);
+  .circle2 {
+    
+    animation: circle2-animation 1.5s infinite;
+    
+    animation-timing-function: ease-in-out;
+    
   }
-  40%{
-    transform: translateY(-100px);
-    transform: translateX(180px);
+
+  .circle3 {
+    
+    animation: circle3-animation 1.5s infinite;
+    
+    animation-timing-function: ease-in-out;
+    
   }
-  60%{
-    transform: translateY(-130px);
-    transform: translateX(-130px);
+
+  .circle4 {
+    
+    animation: circle4-animation 1.5s infinite;
+    
+    animation-timing-function: ease-in-out;
+    
   }
-  80%{
-    transform: translateY(-70px);
-    transform: translateX(200px);
+
+  @keyframes circle1-animation{
+    
+    0%{transform: translateY(0px);}
+    20%{
+      transform: translateY(-30px);
+      background-color: #FFDC64;
+    }
+    40%{
+      transform: translateY(0px);
+    }
+    60%{transform: translateY(0px);}
+    80%{transform: translateY(0px);}
+    100%{transform: translateY(0px);}
+
   }
-  100%{transform: translateY(-180px);}
-  
-}
+
+  @keyframes circle2-animation{
+    
+    0%{transform: translateY(0px);}
+    20%{transform: translateY(0px);}
+    40%{
+      transform: translateY(-30px);
+      background-color: #FF5050;
+    }
+    60%{
+      transform: translateY(0px);;
+    }
+    80%{transform: translateY(0px);}
+    100%{transform: translateY(0px);}
+  }
+
+  @keyframes circle3-animation{
+    
+    0%{transform: translateY(0px);}
+    20%{transform: translateY(0px);}
+    40%{transform: translateY(0px);}
+    60%{
+      transform: translateY(-30px);
+      background-color: #7DF5A5;
+    }
+    80%{transform: translateY(0px);}
+    100%{transform: translateY(0px);}
+  }
+
+  @keyframes circle4-animation{
+    
+    0%{transform: translateY(0px);}
+    20%{transform: translateY(0px);}
+    40%{transform: translateY(0px);}
+    60%{transform: translateY(0px);}
+    80%{
+      transform: translateY(-30px);
+      background-color: #785353;
+    }
+    100%{
+      transform: translateY(0px);
+    }
+    
+  }
+
+  @keyframes cursor-animation{
+    
+    0%{ transform: translateY(-180px);
+        }
+    20%{
+      transform: translateY(-180px);
+      transform: translateX(-100px);
+    }
+    40%{
+      transform: translateY(-100px);
+      transform: translateX(180px);
+    }
+    60%{
+      transform: translateY(-130px);
+      transform: translateX(-130px);
+    }
+    80%{
+      transform: translateY(-70px);
+      transform: translateX(200px);
+    }
+    100%{transform: translateY(-180px);}
+    
+  }
 </style>
 
 

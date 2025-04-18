@@ -5,6 +5,9 @@ include '../database_connection.php';
 include '../function.php';
 include '../header.php';
 
+// Check if user is logged in
+authenticate_user();
+
 $user_unique_id = $_SESSION['user_unique_id'] ?? null;
 
 if (!$user_unique_id) {

@@ -4,12 +4,15 @@
     $statement = $connect->prepare($query);
     $statement->execute();
     $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+
 ?>
-        <?php if (is_logged_in('admin') || is_logged_in('librarian')) { ?>
+        <?php if ($role_id == 1 || $role_id == 2): ?>
 
         
             </main>
-        <?php } elseif (is_logged_in('faculty') || is_logged_in('student') || is_logged_in('visitor')) { ?>
+        <?php elseif ($role_id == 3 || $role_id == 4 || $role_id == 5): ?>
+            
             </main>
                 <footer class="bg-dark text-white pt-1 pb-1 mt-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
                     <div class="mb-0 d-flex gap-2 align-items-center">
@@ -36,7 +39,7 @@
                 </footer>
             
         <?php 
-        } else { 
+        else: 
             // Default footer for login/registration or when no user is logged in
             
         ?>
@@ -65,9 +68,8 @@
                     </address>
                 </footer>
             
-        <?php 
-        }
-        ?>
+        <?php endif; ?>
+
 
         <!-- footer.php -->
 

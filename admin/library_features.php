@@ -1,829 +1,805 @@
-<?php
-// library_features.php
-
-include '../database_connection.php';
-include '../function.php';
-
-$message = ''; 
-
-// DELETE (Disable/Enable)
-if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
-    $feature_id = $_GET["code"];
-    $status = $_GET["status"];
-
-    $data = array(
-        ':feature_status' => $status,
-        ':feature_id'     => $feature_id
-    );
-
-    $query = "
-    UPDATE lms_library_features 
-    SET feature_status = :feature_status 
-    WHERE feature_id = :feature_id";
-
-    $statement = $connect->prepare($query);
-    $statement->execute($data);
-
-    header('location:library_features.php?msg=' . strtolower($status) . '');
-    exit;
-}
-
-// ADD feature (Form Submit)
-if (isset($_POST['add_feature'])) {
-    $name = trim($_POST['feature_name']);
-    $icon = $_POST['feature_icon'];
-    $position_x = (int)$_POST['position_x'];
-    $position_y = (int)$_POST['position_y'];
-    $width = (int)$_POST['width'];
-    $height = (int)$_POST['height'];
-    $bg_color = $_POST['bg_color'];
-    $text_color = $_POST['text_color'];
-    $status = $_POST['feature_status'];
-
-    $date_now = get_date_time($connect);
-
-    $query = "
-        INSERT INTO lms_library_features 
-        (feature_name, feature_icon, position_x, position_y, width, height, bg_color, text_color, feature_status, created_on, updated_on) 
-        VALUES (:name, :icon, :position_x, :position_y, :width, :height, :bg_color, :text_color, :status, :created_on, :updated_on)
-    ";
-    
-    $statement = $connect->prepare($query);
-    $statement->execute([
-        ':name' => $name,
-        ':icon' => $icon,
-        ':position_x' => $position_x,
-        ':position_y' => $position_y,
-        ':width' => $width,
-        ':height' => $height,
-        ':bg_color' => $bg_color,
-        ':text_color' => $text_color,
-        ':status' => $status,
-        ':created_on' => $date_now,
-        ':updated_on' => $date_now
-    ]);
-    
-    header('location:library_features.php?msg=add');
-    exit;
-}
-
-// EDIT feature (Form Submit)
-if (isset($_POST['edit_feature'])) {
-    $id = $_POST['feature_id'];
-    $name = trim($_POST['feature_name']);
-    $icon = $_POST['feature_icon'];
-    $position_x = (int)$_POST['position_x'];
-    $position_y = (int)$_POST['position_y'];
-    $width = (int)$_POST['width'];
-    $height = (int)$_POST['height'];
-    $bg_color = $_POST['bg_color'];
-    $text_color = $_POST['text_color'];
-    $status = $_POST['feature_status'];
-
-    $update_query = "
-        UPDATE lms_library_features 
-        SET feature_name = :name,
-            feature_icon = :icon,
-            position_x = :position_x,
-            position_y = :position_y,
-            width = :width,
-            height = :height,
-            bg_color = :bg_color,
-            text_color = :text_color,
-            feature_status = :status,
-            updated_on = :updated_on
-        WHERE feature_id = :id
-    ";
-
-    $params = [
-        ':name' => $name,
-        ':icon' => $icon,
-        ':position_x' => $position_x,
-        ':position_y' => $position_y,
-        ':width' => $width,
-        ':height' => $height,
-        ':bg_color' => $bg_color,
-        ':text_color' => $text_color,
-        ':status' => $status,
-        ':updated_on' => get_date_time($connect),
-        ':id' => $id
+<?php 
+/**
+ * Library Features Component
+ * Displays a consistent map with library features and existing racks
+ * 
+ * @param string $mode View mode ('view', 'edit', 'add', or 'list')
+ * @param array $feature Optional feature data for edit/view modes
+ * @param array $allRacks Optional array of all racks to display on the map
+ * @param array $allFeatures Optional array of all features for list mode
+ * @param string $mapSize Optional map size ('very_small', 'small', 'medium', 'large')
+ * @param bool $showControls Optional parameter to show control buttons
+ */
+function renderLibraryFeatures($mode = 'list', $feature = null, $allRacks = [], $allFeatures = [], $mapSize = 'medium', $showControls = true) {
+    // Map size configurations in pixels (based on standard ratios)
+    $mapSizes = [
+        'very_small' => [
+            'width' => 305,
+            'height' => 275,
+            'units' => ['3.05m × 2.75m', '10\' × 9\'']
+        ],
+        'small' => [
+            'width' => 366,
+            'height' => 335,
+            'units' => ['3.66m × 3.35m', '12\' × 11\'']
+        ],
+        'medium' => [
+            'width' => 671,
+            'height' => 610,
+            'units' => ['6.71m × 6.10m', '22\' × 20\'']
+        ],
+        'large' => [
+            'width' => 910,
+            'height' => 830,
+            'units' => ['9.10m × 8.30m', '30\' × 27\'']
+        ]
     ];
-
-    $statement = $connect->prepare($update_query);
-    $statement->execute($params);
-
-    header('location:library_features.php?msg=edit');
-    exit;
-}
-
-// SELECT all features
-$query = "SELECT * FROM lms_library_features ORDER BY feature_id ASC";
-$statement = $connect->prepare($query);
-$statement->execute();
-$all_features = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-// Get rack data for map preview
-$query = "SELECT * FROM lms_location_rack ORDER BY location_rack_id ASC";
-$statement = $connect->prepare($query);
-$statement->execute();
-$all_racks = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-include '../header.php';
+   
+    // Default to medium if size is not recognized
+    if (is_numeric($mapSize)) {
+        // Handle numeric input as height (backward compatibility)
+        $mapHeight = intval($mapSize);
+        $mapWidth = intval($mapSize * 1.2); // Approximate aspect ratio
+        $sizeKey = 'custom';
+        $sizeUnits = ['Custom', 'Custom'];
+    } else {
+        $sizeKey = isset($mapSizes[$mapSize]) ? $mapSize : 'medium';
+        $mapWidth = $mapSizes[$sizeKey]['width'];
+        $mapHeight = $mapSizes[$sizeKey]['height'];
+        $sizeUnits = $mapSizes[$sizeKey]['units'];
+    }
+    
+    // Default positions if not provided
+    $position_x = isset($feature['position_x']) ? $feature['position_x'] : 100;
+    $position_y = isset($feature['position_y']) ? $feature['position_y'] : 100;
+    $width = isset($feature['width']) ? $feature['width'] : 100;
+    $height = isset($feature['height']) ? $feature['height'] : 60;
+    
+    // Determine feature colors and styles based on available data
+    $bgColor = isset($feature['bg_color']) ? $feature['bg_color'] : 'bg-primary';
+    $textColor = isset($feature['text_color']) ? $feature['text_color'] : 'text-white';
+    $icon = isset($feature['feature_icon']) ? $feature['feature_icon'] : 'fas fa-bookmark';
+    $featureName = isset($feature['feature_name']) ? $feature['feature_name'] : '';
+    
+    // Determine if feature is draggable
+    $isDraggable = ($mode === 'add' || $mode === 'edit');
+    $cursor = $isDraggable ? 'move' : 'default';
+    $dragBorder = $isDraggable ? 'border: 2px dashed #007bff;' : '';
+    $zIndex = $isDraggable ? 'z-index: 100;' : '';
+    
+    // Create unique ID for map container
+    $mapId = 'library-features-' . uniqid();
 ?>
-
-<div class="container-fluid px-4">
-    <h1 class="my-4"><i class="fas fa-map-marked-alt me-2"></i>Library Features Management</h1>
-
-    <?php if (isset($_GET["msg"])): ?>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Feature Disabled',
-                text: 'The library feature has been successfully disabled.',
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Done',
-                timer: 2000,
-                timerProgressBar: true
-            });
-        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Feature Enabled',
-                text: 'The library feature has been successfully enabled.',
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Done',
-                timer: 2000,
-                timerProgressBar: true
-            });
-        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Feature Added',
-                text: 'The library feature was added successfully!',
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Done',
-                timer: 2000,
-                timerProgressBar: true
-            });
-        <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Feature Updated',
-                text: 'The library feature was updated successfully!',
-                confirmButtonColor: '#3085d6',
-                confirmButtonText: 'Done',
-                timer: 2000,
-                timerProgressBar: true
-            });
+<div class="card shadow-sm mb-3">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="m-0 d-flex align-items-center">
+                <i class="fas fa-layer-group me-2 text-primary"></i>
+                Library Features Map
+                <span class="badge bg-secondary ms-2">
+                    <?= $sizeUnits[0] ?> / <?= $sizeUnits[1] ?>
+                </span>
+            </h6>
+        </div>
+        <?php if ($isDraggable): ?>
+        <div>
+            <small class="text-muted fst-italic">
+                <i class="fas fa-hand-pointer me-1"></i>
+                Drag to position | 
+                <i class="fas fa-arrows-alt me-1"></i>
+                Pan & zoom available
+                <?php if ($mode === 'edit'): ?>
+                | <i class="fas fa-expand-arrows-alt me-1"></i>
+                Resize handles available
+                <?php endif; ?>
+            </small>
+        </div>
         <?php endif; ?>
-
-        // Remove ?msg=... from the URL without reloading the page
-        if (window.history.replaceState) {
-            const url = new URL(window.location);
-            url.searchParams.delete('msg');
-            window.history.replaceState({}, document.title, url.pathname + url.search);
-        }
-    });
-    </script>
-    <?php endif; ?>
-
-    <?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
-        <!-- Add Feature Form -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Library Feature</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Feature Details</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="feature_name" class="form-label">Feature Name</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-tag"></i></span>
-                                        <input type="text" id="feature_name" name="feature_name" class="form-control" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="feature_icon" class="form-label">Feature Icon (FontAwesome class)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-icons"></i></span>
-                                        <input type="text" id="feature_icon" name="feature_icon" class="form-control" value="fas fa-landmark" required>
-                                    </div>
-                                    <div class="form-text">
-                                        Example: fas fa-door-open, fas fa-book-reader, fas fa-desktop
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="bg_color" class="form-label">Background Color</label>
-                                        <select id="bg_color" name="bg_color" class="form-select">
-                                            <option value="primary">Primary (Blue)</option>
-                                            <option value="secondary" selected>Secondary (Gray)</option>
-                                            <option value="success">Success (Green)</option>
-                                            <option value="danger">Danger (Red)</option>
-                                            <option value="warning">Warning (Yellow)</option>
-                                            <option value="info">Info (Light Blue)</option>
-                                            <option value="dark">Dark (Black)</option>
-                                            <option value="light">Light (White)</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="text_color" class="form-label">Text Color</label>
-                                        <select id="text_color" name="text_color" class="form-select">
-                                            <option value="white" selected>White</option>
-                                            <option value="dark">Dark</option>
-                                            <option value="light">Light</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="feature_status" class="form-label">Status</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
-                                        <select name="feature_status" id="feature_status" class="form-select">
-                                            <option value="Enable" selected>Enable</option>
-                                            <option value="Disable">Disable</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Position & Size</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="position_x" class="form-label">X Position (px)</label>
-                                        <input type="number" id="position_x" name="position_x" class="form-control" value="5" min="0" required>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="position_y" class="form-label">Y Position (px)</label>
-                                        <input type="number" id="position_y" name="position_y" class="form-control" value="5" min="0" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="width" class="form-label">Width (px)</label>
-                                        <input type="number" id="width" name="width" class="form-control" value="150" min="20" required>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="height" class="form-label">Height (px)</label>
-                                        <input type="number" id="height" name="height" class="form-control" value="40" min="20" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h6 class="card-title mb-3">Preview</h6>
-                                            <div class="position-relative" style="height: 200px; border: 1px solid #ccc; background-color: #f5f5f5; overflow: hidden;">
-                                                <div id="preview-feature" class="position-absolute d-flex justify-content-center align-items-center bg-secondary text-white" 
-                                                     style="width: 150px; height: 40px; top: 5px; left: 5px; font-size: 0.8rem; border-radius: 4px;">
-                                                    <i class="fas fa-landmark me-2"></i>
-                                                    <span id="preview-name">Feature Name</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-12 mt-4 d-flex justify-content-end">
-                        <button type="submit" name="add_feature" class="btn btn-success me-2">
-                            <i class="fas fa-save me-2"></i>Add Feature
-                        </button>
-                        <a href="library_features.php" class="btn btn-secondary">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>
-        <?php
-        $id = $_GET['code'];
-        $query = "SELECT * FROM lms_library_features WHERE feature_id = :id LIMIT 1";
-        $statement = $connect->prepare($query);
-        $statement->execute([':id' => $id]);
-        $feature = $statement->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$feature) {
-            header('location:library_features.php');
-            exit;
-        }
-        ?>
-
-        <!-- Edit Feature Form -->
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Library Feature</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" class="row g-3">
-                    <input type="hidden" name="feature_id" value="<?= $feature['feature_id'] ?>">
-                    
-                    <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Feature Details</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="feature_name" class="form-label">Feature Name</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-tag"></i></span>
-                                        <input type="text" id="feature_name" name="feature_name" class="form-control" value="<?= htmlspecialchars($feature['feature_name']) ?>" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="feature_icon" class="form-label">Feature Icon (FontAwesome class)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-icons"></i></span>
-                                        <input type="text" id="feature_icon" name="feature_icon" class="form-control" value="<?= htmlspecialchars($feature['feature_icon']) ?>" required>
-                                    </div>
-                                    <div class="form-text">
-                                        Example: fas fa-door-open, fas fa-book-reader, fas fa-desktop
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="bg_color" class="form-label">Background Color</label>
-                                        <select id="bg_color" name="bg_color" class="form-select">
-                                            <option value="primary" <?= $feature['bg_color'] == 'primary' ? 'selected' : '' ?>>Primary (Blue)</option>
-                                            <option value="secondary" <?= $feature['bg_color'] == 'secondary' ? 'selected' : '' ?>>Secondary (Gray)</option>
-                                            <option value="success" <?= $feature['bg_color'] == 'success' ? 'selected' : '' ?>>Success (Green)</option>
-                                            <option value="danger" <?= $feature['bg_color'] == 'danger' ? 'selected' : '' ?>>Danger (Red)</option>
-                                            <option value="warning" <?= $feature['bg_color'] == 'warning' ? 'selected' : '' ?>>Warning (Yellow)</option>
-                                            <option value="info" <?= $feature['bg_color'] == 'info' ? 'selected' : '' ?>>Info (Light Blue)</option>
-                                            <option value="dark" <?= $feature['bg_color'] == 'dark' ? 'selected' : '' ?>>Dark (Black)</option>
-                                            <option value="light" <?= $feature['bg_color'] == 'light' ? 'selected' : '' ?>>Light (White)</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="text_color" class="form-label">Text Color</label>
-                                        <select id="text_color" name="text_color" class="form-select">
-                                            <option value="white" <?= $feature['text_color'] == 'white' ? 'selected' : '' ?>>White</option>
-                                            <option value="dark" <?= $feature['text_color'] == 'dark' ? 'selected' : '' ?>>Dark</option>
-                                            <option value="light" <?= $feature['text_color'] == 'light' ? 'selected' : '' ?>>Light</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div class="mb-3">
-                                    <label for="feature_status" class="form-label">Status</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
-                                        <select name="feature_status" id="feature_status" class="form-select">
-                                            <option value="Enable" <?= $feature['feature_status'] == 'Enable' ? 'selected' : '' ?>>Enable</option>
-                                            <option value="Disable" <?= $feature['feature_status'] == 'Disable' ? 'selected' : '' ?>>Disable</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0">Position & Size</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="position_x" class="form-label">X Position (px)</label>
-                                        <input type="number" id="position_x" name="position_x" class="form-control" value="<?= $feature['position_x'] ?>" min="0" required>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="position_y" class="form-label">Y Position (px)</label>
-                                        <input type="number" id="position_y" name="position_y" class="form-control" value="<?= $feature['position_y'] ?>" min="0" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="width" class="form-label">Width (px)</label>
-                                        <input type="number" id="width" name="width" class="form-control" value="<?= $feature['width'] ?>" min="20" required>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label for="height" class="form-label">Height (px)</label>
-                                        <input type="number" id="height" name="height" class="form-control" value="<?= $feature['height'] ?>" min="20" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h6 class="card-title mb-3">Preview</h6>
-                                            <div class="position-relative" style="height: 200px; border: 1px solid #ccc; background-color: #f5f5f5; overflow: hidden;">
-                                                <div id="preview-feature" class="position-absolute d-flex justify-content-center align-items-center bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?>" 
-                                                     style="width: <?= $feature['width'] ?>px; height: <?= $feature['height'] ?>px; top: <?= $feature['position_y'] ?>px; left: <?= $feature['position_x'] ?>px; font-size: 0.8rem; border-radius: 4px;">
-                                                    <i class="<?= $feature['feature_icon'] ?> me-2"></i>
-                                                    <span id="preview-name"><?= htmlspecialchars($feature['feature_name']) ?></span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-12 mt-4 d-flex justify-content-end">
-                        <button type="submit" name="edit_feature" class="btn btn-primary me-2">
-                            <i class="fas fa-save me-2"></i>Update Feature
-                        </button>
-                        <a href="library_features.php" class="btn btn-secondary">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-    <?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
-        <?php
-        $id = $_GET['code'];
-        $query = "SELECT * FROM lms_library_features WHERE feature_id = :id LIMIT 1";
-        $statement = $connect->prepare($query);
-        $statement->execute([':id' => $id]);
-        $feature = $statement->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$feature) {
-            header('location:library_features.php');
-            exit;
-        }
-        ?>
-
-        <!-- View Feature Details -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Feature Details</h5>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-hover">
-                            <tbody>
-                                <tr>
-                                    <th width="30%"><i class="fas fa-hashtag me-2"></i>ID</th>
-                                    <td><?= htmlspecialchars($feature['feature_id']) ?></td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-tag me-2"></i>Feature Name</th>
-                                    <td><?= htmlspecialchars($feature['feature_name']) ?></td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-icons me-2"></i>Icon</th>
-                                    <td>
-                                        <i class="<?= htmlspecialchars($feature['feature_icon']) ?> me-2"></i>
-                                        <?= htmlspecialchars($feature['feature_icon']) ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-palette me-2"></i>Colors</th>
-                                    <td>
-                                        <span class="badge bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> me-2">
-                                            Background: <?= ucfirst($feature['bg_color']) ?>
-                                        </span>
-                                        <span class="badge bg-dark">
-                                            Text: <?= ucfirst($feature['text_color']) ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-map-marker-alt me-2"></i>Position</th>
-                                    <td>X: <?= $feature['position_x'] ?>px, Y: <?= $feature['position_y'] ?>px</td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-expand me-2"></i>Size</th>
-                                    <td>Width: <?= $feature['width'] ?>px, Height: <?= $feature['height'] ?>px</td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-toggle-on me-2"></i>Status</th>
-                                    <td>
-                                        <?php if($feature['feature_status'] === 'Enable'): ?>
-                                            <span class="badge bg-success">Enabled</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-danger">Disabled</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-calendar me-2"></i>Created On</th>
-                                    <td><?= date('M d, Y h:i A', strtotime($feature['created_on'])) ?></td>
-                                </tr>
-                                <tr>
-                                    <th><i class="fas fa-calendar-check me-2"></i>Updated On</th>
-                                    <td><?= date('M d, Y h:i A', strtotime($feature['updated_on'])) ?></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="mt-3 d-flex justify-content-end">
-                            <a href="library_features.php?action=edit&code=<?= $feature['feature_id'] ?>" class="btn btn-primary me-2">
-                                <i class="fas fa-edit me-2"></i>Edit
-                            </a>
-                            <a href="library_features.php" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Back
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-map me-2"></i>Preview on Library Map</h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- Preview on Map -->
-                        <div class="position-relative bg-light" style="height: 400px; border: 1px solid #ccc; border-radius: 4px; overflow: hidden;">
-                            <!-- Grid Background -->
-                            <div style="width: 100%; height: 100%; background-image: linear-gradient(#e9ecef 1px, transparent 1px), linear-gradient(90deg, #e9ecef 1px, transparent 1px); background-size: 50px 50px;">
-                                <!-- Feature Preview -->
-                                <div class="position-absolute d-flex justify-content-center align-items-center bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?>" 
-                                    style="width: <?= $feature['width'] ?>px; height: <?= $feature['height'] ?>px; top: <?= $feature['position_y'] ?>px; left: <?= $feature['position_x'] ?>px; font-size: 0.8rem; border-radius: 4px; z-index: 80;">
-                                    <i class="<?= $feature['feature_icon'] ?> me-2"></i>
-                                    <span><?= htmlspecialchars($feature['feature_name']) ?></span>
-                                </div>
-                                
-                                <!-- Example Rack -->
-                                <div class="position-absolute d-flex justify-content-center align-items-center bg-secondary text-white opacity-75" 
-                                    style="width: 50px; height: 50px; top: 200px; left: 200px; border-radius: 4px; z-index: 70;">
-                                    <i class="fas fa-archive"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <?php else: ?>
-        <div class="row">            
-            <div class="col-md-4">
-                <!-- Library Map Preview with Features -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-map me-2"></i>Library Map Preview with Features</h5>
-                    </div>
-                    <div class="card-body">
+    </div>
+    <div class="card-body p-0">
+        <div id="<?= $mapId ?>" class="feature-map-container position-relative overflow-hidden" style="height: <?= $mapHeight ?>px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 0;">
+            <!-- Map Container with Fixed Dimensions -->
+            <div class="library-map" style="width: 100%; height: 100%; overflow: hidden; position: relative;">
+                <div id="map-content-<?= $mapId ?>" class="map-content position-absolute" style="width: <?= $mapWidth ?>px; height: <?= $mapHeight ?>px; transform-origin: 0 0; background-image: linear-gradient(#e9ecef 1px, transparent 1px), linear-gradient(90deg, #e9ecef 1px, transparent 1px); background-size: 50px 50px; transition: transform 0.2s ease;">
+                    <?php if ($mode === 'list'): ?>
+                    <!-- List Mode: Show all features -->
+                    <?php foreach ($allFeatures as $listFeature): ?>
                         <?php
-                        // Include library map component
-                        include 'library_map_component.php';
-                        // Render the map in list mode with all active features
-                        renderLibraryMap('list', null, $all_racks, 500, null, 
-                            array_filter($all_features, function($f) {
-                                return $f['feature_status'] === 'Enable';
-                            })
-                        );
+                            $listBgColor = isset($listFeature['bg_color']) ? $listFeature['bg_color'] : 'bg-primary';
+                            $listTextColor = isset($listFeature['text_color']) ? $listFeature['text_color'] : 'text-white';
+                            $listIcon = isset($listFeature['feature_icon']) ? $listFeature['feature_icon'] : 'fas fa-bookmark';
+                            $listPositionX = isset($listFeature['position_x']) ? $listFeature['position_x'] : 0;
+                            $listPositionY = isset($listFeature['position_y']) ? $listFeature['position_y'] : 0;
+                            $listWidth = isset($listFeature['width']) ? $listFeature['width'] : 100;
+                            $listHeight = isset($listFeature['height']) ? $listFeature['height'] : 60;
+                            $featureId = isset($listFeature['feature_id']) ? $listFeature['feature_id'] : null;
+                            $listFeatureName = isset($listFeature['feature_name']) ? $listFeature['feature_name'] : '';
+                            
+                            // Skip disabled features unless viewing specific one
+                            if (isset($listFeature['feature_status']) && $listFeature['feature_status'] !== 'Enable' && 
+                                !(isset($feature['feature_id']) && $feature['feature_id'] == $featureId)) {
+                                continue;
+                            }
                         ?>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-8">
-                <!-- Default Features List View -->
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Library Features</h5>
-                        <div>
-                            <a href="library_features.php?action=add" class="btn btn-light btn-sm">
-                                <i class="fas fa-plus-circle me-1"></i>Add New Feature
-                            </a>
+                        <a href="<?= $featureId ? "setting.php?tab=features&action=view_feature&code={$featureId}" : "#" ?>" class="text-decoration-none">
+                            <div class="position-absolute d-flex justify-content-center align-items-center <?= $listBgColor ?> <?= $listTextColor ?>" 
+                                style="width: <?= $listWidth ?>px; height: <?= $listHeight ?>px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                <i class="<?= $listIcon ?> me-2"></i>
+                                <?= htmlspecialchars($listFeatureName) ?>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                    <!-- Show All Racks (As Context) -->
+                    <?php foreach ($allRacks as $listRack): ?>
+                        <?php
+                            // Skip disabled racks
+                            if (isset($listRack['location_rack_status']) && $listRack['location_rack_status'] !== 'Enable') {
+                                continue;
+                            }
+                            
+                            $listPositionX = isset($listRack['position_x']) ? $listRack['position_x'] : 0;
+                            $listPositionY = isset($listRack['position_y']) ? $listRack['position_y'] : 0;
+                            $rackName = isset($listRack['location_rack_name']) ? $listRack['location_rack_name'] : '';
+                        ?>
+                        <div class="position-absolute d-flex justify-content-center align-items-center bg-secondary text-white opacity-75" 
+                            style="width: 40px; height: 40px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <i class="fas fa-archive"></i>
                         </div>
-                    </div>
-                    <div class="card-body">                
-                        <table id="dataTable" class="display nowrap" style="width:100%">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Icon</th>
-                                    <th>Feature Name</th>
-                                    <th>Position</th>
-                                    <th>Size</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($all_features as $feature): ?>
-                                <tr>
-                                    <td><?= $feature['feature_id'] ?></td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> p-2 rounded me-2">
-                                                <i class="<?= $feature['feature_icon'] ?>"></i>
-                                            </div>
-                                            <small class="text-muted"><?= $feature['feature_icon'] ?></small>
-                                        </div>
-                                    </td>
-                                    <td><?= htmlspecialchars($feature['feature_name']) ?></td>
-                                    <td>X: <?= $feature['position_x'] ?>, Y: <?= $feature['position_y'] ?></td>
-                                    <td>W: <?= $feature['width'] ?>, H: <?= $feature['height'] ?></td>
-                                    <td>
-                                        <?php if($feature['feature_status'] === 'Enable'): ?>
-                                            <span class="badge bg-success">Enabled</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-danger">Disabled</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <a href="library_features.php?action=view&code=<?= $feature['feature_id'] ?>" class="btn btn-info btn-sm me-1" title="View">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="library_features.php?action=edit&code=<?= $feature['feature_id'] ?>" class="btn btn-primary btn-sm me-1" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <?php if($feature['feature_status'] === 'Enable'): ?>
-                                                <a href="library_features.php?action=delete&status=Disable&code=<?= $feature['feature_id'] ?>" class="btn btn-danger btn-sm disable-button" title="Disable">
-                                                    <i class="fas fa-toggle-off"></i>
-                                                </a>
-                                            <?php else: ?>
-                                                <a href="library_features.php?action=delete&status=Enable&code=<?= $feature['feature_id'] ?>" class="btn btn-success btn-sm enable-button" title="Enable">
-                                                    <i class="fas fa-toggle-on"></i>
-                                                </a>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                        
+                        <!-- Rack labels -->
+                        <?php if ($rackName): ?>
+                        <div class="position-absolute bg-dark text-white px-2 py-1 rounded rack-label opacity-75" 
+                            style="top: <?= $listPositionY + 45 ?>px; left: <?= $listPositionX ?>px; transform: translateX(-25%); font-size: 0.75rem; z-index: 89; white-space: nowrap;">
+                            <?= htmlspecialchars($rackName) ?>
+                        </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                     
+                    <?php elseif ($mode === 'add' || $mode === 'edit'): ?>
+                    <!-- Add/Edit Mode: Show draggable feature and other features/racks -->
+                    
+                    <!-- Show Other Features (Secondary) -->
+                    <?php foreach ($allFeatures as $listFeature): ?>  
+                        <?php
+                            // Skip the current feature being edited
+                            if ($mode === 'edit' && isset($feature['feature_id']) && isset($listFeature['feature_id']) && $listFeature['feature_id'] == $feature['feature_id']) {
+                                continue;
+                            }
+                            
+                            // Skip disabled features
+                            if (isset($listFeature['feature_status']) && $listFeature['feature_status'] !== 'Enable') {
+                                continue;
+                            }
+                            
+                            $listBgColor = isset($listFeature['bg_color']) ? $listFeature['bg_color'] : 'bg-primary';
+                            $listTextColor = isset($listFeature['text_color']) ? $listFeature['text_color'] : 'text-white';
+                            $listIcon = isset($listFeature['feature_icon']) ? $listFeature['feature_icon'] : 'fas fa-bookmark';
+                            $listPositionX = isset($listFeature['position_x']) ? $listFeature['position_x'] : 0;
+                            $listPositionY = isset($listFeature['position_y']) ? $listFeature['position_y'] : 0;
+                            $listWidth = isset($listFeature['width']) ? $listFeature['width'] : 100;
+                            $listHeight = isset($listFeature['height']) ? $listFeature['height'] : 60;
+                            $listFeatureName = isset($listFeature['feature_name']) ? $listFeature['feature_name'] : '';
+                        ?>
+                        <div class="position-absolute d-flex justify-content-center align-items-center <?= $listBgColor ?> <?= $listTextColor ?> opacity-75" 
+                            style="width: <?= $listWidth ?>px; height: <?= $listHeight ?>px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <i class="<?= $listIcon ?> me-2"></i>
+                            <?= htmlspecialchars($listFeatureName) ?>
+                        </div>
+                    <?php endforeach; ?>
+                    
+                    <!-- Show All Racks (As Context) -->
+                    <?php foreach ($allRacks as $listRack): ?>
+                        <?php
+                            // Skip disabled racks
+                            if (isset($listRack['location_rack_status']) && $listRack['location_rack_status'] !== 'Enable') {
+                                continue;
+                            }
+                            
+                            $listPositionX = isset($listRack['position_x']) ? $listRack['position_x'] : 0;
+                            $listPositionY = isset($listRack['position_y']) ? $listRack['position_y'] : 0;
+                            $rackName = isset($listRack['location_rack_name']) ? $listRack['location_rack_name'] : '';
+                        ?>
+                        <div class="position-absolute d-flex justify-content-center align-items-center bg-secondary text-white opacity-75" 
+                            style="width: 40px; height: 40px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        
+                        <!-- Rack labels -->
+                        <?php if ($rackName): ?>
+                        <div class="position-absolute bg-dark text-white px-2 py-1 rounded rack-label opacity-75" 
+                            style="top: <?= $listPositionY + 45 ?>px; left: <?= $listPositionX ?>px; transform: translateX(-25%); font-size: 0.75rem; z-index: 89; white-space: nowrap;">
+                            <?= htmlspecialchars($rackName) ?>
+                        </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                    
+                    <!-- Draggable Feature Element (Emphasized) -->
+                    <div id="feature-position-marker-<?= $mapId ?>" 
+                        class="position-absolute d-flex justify-content-center align-items-center <?= $bgColor ?> <?= $textColor ?> fw-bold feature-draggable" 
+                        style="width: <?= $width ?>px; height: <?= $height ?>px; cursor: <?= $cursor ?>; border-radius: 4px; top: <?= $position_y ?>px; left: <?= $position_x ?>px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); <?= $dragBorder ?> <?= $zIndex ?>">
+                        <i class="<?= $icon ?> me-2"></i>
+                        <?= htmlspecialchars($featureName) ?>
+                        
+                        <?php if ($mode === 'edit'): ?>
+                        <!-- Resize handles -->
+                        <div class="resize-handle resize-handle-se position-absolute" style="width: 10px; height: 10px; background-color: #fff; border: 1px solid #007bff; bottom: -5px; right: -5px; cursor: se-resize; border-radius: 50%;"></div>
+                        <div class="resize-handle resize-handle-sw position-absolute" style="width: 10px; height: 10px; background-color: #fff; border: 1px solid #007bff; bottom: -5px; left: -5px; cursor: sw-resize; border-radius: 50%;"></div>
+                        <div class="resize-handle resize-handle-ne position-absolute" style="width: 10px; height: 10px; background-color: #fff; border: 1px solid #007bff; top: -5px; right: -5px; cursor: ne-resize; border-radius: 50%;"></div>
+                        <div class="resize-handle resize-handle-nw position-absolute" style="width: 10px; height: 10px; background-color: #fff; border: 1px solid #007bff; top: -5px; left: -5px; cursor: nw-resize; border-radius: 50%;"></div>
+                        <?php endif; ?>
                     </div>
+                    
+                    <?php elseif ($mode === 'view'): ?>
+                    <!-- View Mode: Show single feature in primary while other features and racks with secondary styling -->
+                    
+                    <!-- Show all racks -->
+                    <?php foreach ($allRacks as $listRack): ?>
+                        <?php
+                            // Skip disabled racks
+                            if (isset($listRack['location_rack_status']) && $listRack['location_rack_status'] !== 'Enable') {
+                                continue;
+                            }
+                            
+                            $listPositionX = isset($listRack['position_x']) ? $listRack['position_x'] : 0;
+                            $listPositionY = isset($listRack['position_y']) ? $listRack['position_y'] : 0;
+                            $rackId = isset($listRack['location_rack_id']) ? $listRack['location_rack_id'] : null;
+                            $rackName = isset($listRack['location_rack_name']) ? $listRack['location_rack_name'] : '';
+                        ?>
+                        <a href="<?= $rackId ? "location_rack.php?action=view&code={$rackId}" : "#" ?>" class="text-decoration-none">
+                            <div class="position-absolute d-flex justify-content-center align-items-center bg-secondary text-white opacity-75" 
+                                style="width: 40px; height: 40px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                <i class="fas fa-archive"></i>
+                            </div>
+                            
+                            <!-- Rack labels -->
+                            <?php if ($rackName): ?>
+                            <div class="position-absolute bg-dark text-white px-2 py-1 rounded rack-label opacity-75" 
+                                style="top: <?= $listPositionY + 45 ?>px; left: <?= $listPositionX ?>px; transform: translateX(-25%); font-size: 0.75rem; z-index: 89; white-space: nowrap;">
+                                <?= htmlspecialchars($rackName) ?>
+                            </div>
+                            <?php endif; ?>
+                        </a>
+                    <?php endforeach; ?>
+                    
+                    <!-- Show other features -->
+                    <?php foreach ($allFeatures as $listFeature): ?>
+                        <?php
+                            // Skip the current feature being viewed
+                            if (isset($feature['feature_id']) && isset($listFeature['feature_id']) && $listFeature['feature_id'] == $feature['feature_id']) {
+                                continue;
+                            }
+                            
+                            // Skip disabled features
+                            if (isset($listFeature['feature_status']) && $listFeature['feature_status'] !== 'Enable') {
+                                continue;
+                            }
+                            
+                            $listBgColor = isset($listFeature['bg_color']) ? $listFeature['bg_color'] : 'bg-primary';
+                            $listTextColor = isset($listFeature['text_color']) ? $listFeature['text_color'] : 'text-white';
+                            $listIcon = isset($listFeature['feature_icon']) ? $listFeature['feature_icon'] : 'fas fa-bookmark';
+                            $listPositionX = isset($listFeature['position_x']) ? $listFeature['position_x'] : 0;
+                            $listPositionY = isset($listFeature['position_y']) ? $listFeature['position_y'] : 0;
+                            $listWidth = isset($listFeature['width']) ? $listFeature['width'] : 100;
+                            $listHeight = isset($listFeature['height']) ? $listFeature['height'] : 60;
+                            $featureId = isset($listFeature['feature_id']) ? $listFeature['feature_id'] : null;
+                            $listFeatureName = isset($listFeature['feature_name']) ? $listFeature['feature_name'] : '';
+                        ?>
+                        <a href="<?= $featureId ? "setting.php?tab=features&action=view_feature&code={$featureId}" : "#" ?>" class="text-decoration-none">
+                            <div class="position-absolute d-flex justify-content-center align-items-center <?= $listBgColor ?> <?= $listTextColor ?> opacity-75" 
+                                style="width: <?= $listWidth ?>px; height: <?= $listHeight ?>px; border-radius: 4px; top: <?= $listPositionY ?>px; left: <?= $listPositionX ?>px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                <i class="<?= $listIcon ?> me-2"></i>
+                                <?= htmlspecialchars($listFeatureName) ?>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                    
+                    <!-- Current feature being viewed (highlighted) -->
+                    <div id="static-feature-<?= $mapId ?>" 
+                        class="position-absolute d-flex justify-content-center align-items-center <?= $bgColor ?> <?= $textColor ?>" 
+                        style="width: <?= $width ?>px; height: <?= $height ?>px; cursor: <?= $cursor ?>; border-radius: 4px; top: <?= $position_y ?>px; left: <?= $position_x ?>px; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 91;">
+                        <i class="<?= $icon ?> me-2"></i>
+                        <?= htmlspecialchars($featureName) ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
+            
+            <?php if ($showControls): ?>
+            <!-- Zoom and Pan Controls -->
+            <div class="zoom-controls position-absolute end-0 bottom-0 m-2 d-flex flex-column gap-2">
+                <button id="zoom-in-<?= $mapId ?>" class="btn btn-sm btn-light rounded-circle shadow-sm" 
+                        data-bs-toggle="tooltip" title="Zoom In" type="button">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button id="zoom-out-<?= $mapId ?>" class="btn btn-sm btn-light rounded-circle shadow-sm" 
+                        data-bs-toggle="tooltip" title="Zoom Out" type="button">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <button id="reset-zoom-<?= $mapId ?>" class="btn btn-sm btn-secondary rounded-circle shadow-sm" 
+                        data-bs-toggle="tooltip" title="Reset View" type="button">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+            <?php endif; ?>
+            
+            <?php if ($isDraggable): ?>
+            <!-- Position and Size Display -->
+            <div class="position-absolute start-0 bottom-0 m-2 p-1 bg-white rounded shadow-sm">
+                <small class="text-muted">
+                    Position: <span id="position-display-<?= $mapId ?>">X: <?= $position_x ?>, Y: <?= $position_y ?></span>
+                    <?php if ($mode === 'edit'): ?>
+                    | Size: <span id="size-display-<?= $mapId ?>">W: <?= $width ?>, H: <?= $height ?></span>
+                    <?php endif; ?>
+                </small>
+            </div>
+            <?php endif; ?>
         </div>
+    </div>
+    
+    <?php if ($isDraggable): ?>
+    <!-- Hidden inputs for position and dimensions (only in editable modes) -->
+    <input type="hidden" name="position_x" id="position_x-<?= $mapId ?>" value="<?= $position_x ?>">
+    <input type="hidden" name="position_y" id="position_y-<?= $mapId ?>" value="<?= $position_y ?>">
+    <input type="hidden" name="width" id="width-<?= $mapId ?>" value="<?= $width ?>">
+    <input type="hidden" name="height" id="height-<?= $mapId ?>" value="<?= $height ?>">
     <?php endif; ?>
 </div>
 
 <script>
-// Preview script for add/edit feature
 document.addEventListener('DOMContentLoaded', function() {
-    // Get form elements for preview
-    const featureName = document.getElementById('feature_name');
-    const featureIcon = document.getElementById('feature_icon');
-    const positionX = document.getElementById('position_x');
-    const positionY = document.getElementById('position_y');
-    const width = document.getElementById('width');
-    const height = document.getElementById('height');
-    const bgColor = document.getElementById('bg_color');
-    const textColor = document.getElementById('text_color');
+    // Function to initialize all library feature maps on the page
+    initializeAllFeatureMaps();
+});
+
+function initializeAllFeatureMaps() {
+    // Find all feature map containers on the page
+    const featureMapContainers = document.querySelectorAll('[id^="library-features-"]');
     
-    // Preview elements
-    const previewFeature = document.getElementById('preview-feature');
-    const previewName = document.getElementById('preview-name');
+    featureMapContainers.forEach(container => {
+        const mapId = container.id;
+        initializeFeatureMap(mapId);
+    });
+}
+
+function initializeFeatureMap(mapId) {
+    const mapContainer = document.querySelector('#' + mapId + ' .library-map');
+    const mapContent = document.getElementById('map-content-' + mapId);
+    const zoomInBtn = document.getElementById('zoom-in-' + mapId);
+    const zoomOutBtn = document.getElementById('zoom-out-' + mapId);
+    const resetZoomBtn = document.getElementById('reset-zoom-' + mapId);
     
-    // Check if we're on add/edit page
-    if (featureName && previewFeature) {
-        // Update preview on input change
-        [featureName, featureIcon, positionX, positionY, width, height, bgColor, textColor].forEach(elem => {
-            if (elem) {
-                elem.addEventListener('input', updatePreview);
-            }
-        });
+    // Only initialize if elements exist
+    if (!mapContainer || !mapContent) return;
+    
+    // Pan and Zoom Variables
+    let zoomLevel = 1;
+    const zoomStep = 0.1;
+    const minZoom = 0.5;
+    const maxZoom = 3;
+    let isPanning = false;
+    let startX, startY, lastX, lastY;
+    let translateX = 0;
+    let translateY = 0;
+    
+    // Update transform
+    function updateTransform() {
+        mapContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+    }
+    
+    // Smooth zoom function
+    function smoothZoom(targetZoom, centerX = null, centerY = null) {
+        const duration = 200;
+        const startZoom = zoomLevel;
+        const change = targetZoom - startZoom;
+        const startTime = performance.now();
         
-        function updatePreview() {
-            if (previewName) previewName.textContent = featureName.value;
+        // If center points are provided, adjust transform to zoom towards that point
+        let startTranslateX = translateX;
+        let startTranslateY = translateY;
+        
+        if (centerX !== null && centerY !== null) {
+            const containerRect = mapContainer.getBoundingClientRect();
+            const centerPosX = centerX - containerRect.left - translateX;
+            const centerPosY = centerY - containerRect.top - translateY;
             
-            if (previewFeature) {
-                // Update icon if it exists as first child
-                const iconElem = previewFeature.querySelector('i');
-                if (iconElem && featureIcon) {
-                    iconElem.className = featureIcon.value + ' me-2';
-                }
+            // Calculate new translation to keep the point under cursor
+            const endTranslateX = translateX - (centerPosX * (targetZoom - zoomLevel)) / startZoom;
+            const endTranslateY = translateY - (centerPosY * (targetZoom - zoomLevel)) / startZoom;
+            
+            function animateZoomWithPan(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
                 
-                // Update position and size
-                if (positionX) previewFeature.style.left = positionX.value + 'px';
-                if (positionY) previewFeature.style.top = positionY.value + 'px';
-                if (width) previewFeature.style.width = width.value + 'px';
-                if (height) previewFeature.style.height = height.value + 'px';
+                zoomLevel = startZoom + (change * easeProgress);
+                translateX = startTranslateX + (endTranslateX - startTranslateX) * easeProgress;
+                translateY = startTranslateY + (endTranslateY - startTranslateY) * easeProgress;
                 
-                // Update colors
-                if (bgColor && textColor) {
-                    // Remove existing color classes
-                    previewFeature.className = previewFeature.className
-                        .replace(/bg-\w+/g, '')
-                        .replace(/text-\w+/g, '')
-                        .trim();
-                    
-                    // Add new color classes
-                    previewFeature.classList.add('bg-' + bgColor.value);
-                    previewFeature.classList.add('text-' + textColor.value);
+                updateTransform();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateZoomWithPan);
                 }
             }
+            
+            requestAnimationFrame(animateZoomWithPan);
+        } else {
+            function animateZoom(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+                
+                zoomLevel = startZoom + (change * easeProgress);
+                updateTransform();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateZoom);
+                }
+            }
+            
+            requestAnimationFrame(animateZoom);
         }
     }
     
-    // Initialize DataTable if available
-    $(document).ready(function() {
-        $('#dataTable').DataTable({
-            responsive: true,
-            columnDefs: [
-                { responsivePriority: 1, targets: 0 }, // ID
-                { responsivePriority: 2, targets: 2 }, // Feature Name
-                { responsivePriority: 3, targets: 6 }, // Action
-                { 
-                    targets: 6, // Action column (now correct index)
-                    orderable: false,
-                    searchable: false,
-                    className: 'no-wrap' // Prevent line breaks
-                },
-                { 
-                    targets: [1, 3, 4, 5], // Less important columns
-                    responsivePriority: 4 
-                }
-            ],
-            order: [[0, 'asc']],
-            language: {
-                emptyTable: "No features available"
-            },
-            scrollY: '400px',
-            scrollX: true, // Added for horizontal scrolling
-            scrollCollapse: true,
-            paging: true,
-            fixedHeader: true, // Optional: keeps headers visible
-            dom: '<"top"lf>rt<"bottom"ip>', // Custom layout
-            initComplete: function() {
-                // Initialize Bootstrap tooltips
-                $('[data-bs-toggle="tooltip"]').tooltip();
-            }
-        });
+    // Button event handlers (if buttons exist)
+    zoomInBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (zoomLevel < maxZoom) {
+            smoothZoom(Math.min(zoomLevel + zoomStep, maxZoom));
+        }
     });
     
-    // SweetAlert confirmation for disable/enable actions
-    document.querySelectorAll('.disable-button').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const url = this.getAttribute('href');
-            
-            Swal.fire({
-                title: 'Disable Feature?',
-                text: "This feature will be hidden from the library map.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, disable it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = url;
-                }
-            });
-        });
+    zoomOutBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (zoomLevel > minZoom) {
+            smoothZoom(Math.max(zoomLevel - zoomStep, minZoom));
+        }
     });
     
-    document.querySelectorAll('.enable-button').forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const url = this.getAttribute('href');
-            
-            Swal.fire({
-                title: 'Enable Feature?',
-                text: "This feature will be visible on the library map.",
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Yes, enable it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = url;
-                }
-            });
-        });
+    resetZoomBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        translateX = 0;
+        translateY = 0;
+        smoothZoom(1);
     });
-});
-</script>
+    
+    // Mouse wheel zoom
+    mapContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        
+        const delta = e.deltaY < 0 ? zoomStep : -zoomStep;
+        const newZoom = Math.min(Math.max(zoomLevel + delta, minZoom), maxZoom);
+        
+        if (newZoom !== zoomLevel) {
+            smoothZoom(newZoom, e.clientX, e.clientY);
+        }
+    }, { passive: false });
+    
+    // Pan start
+    mapContainer.addEventListener('mousedown', (e) => {
+        // Check if clicked on draggable element or resize handle
+        const isDraggableElement = e.target.closest('.feature-draggable') || e.target.closest('.resize-handle');
+        
+        // Only initiate pan if not clicking on a draggable element
+        if (!isDraggableElement) {
+            e.preventDefault();
+            isPanning = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            lastX = startX;
+            lastY = startY;
+            mapContainer.style.cursor = 'grabbing';
+        }
+    });
+    
+    // Pan move
+    document.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        
+        lastX = e.clientX;
+        lastY = e.clientY;
+        
+        translateX += dx;
+        translateY += dy;
+        
+        updateTransform();
+    });
+    
+    // Pan end
+    document.addEventListener('mouseup', () => {
+        if (isPanning) {
+            isPanning = false;
+            mapContainer.style.cursor = 'grab';
+        }
+    });
+    
+    // Touch events for mobile
+    let initialTouchDistance = null;
+    
+    mapContainer.addEventListener('touchstart', (e) => {
+        const isDraggableElement = e.target.closest('.feature-draggable') || e.target.closest('.resize-handle');
+        
+        if (e.touches.length === 2) {
+            // Zoom with two fingers
+            e.preventDefault();
+            initialTouchDistance = getTouchDistance(e.touches);
+        } else if (e.touches.length === 1 && !isDraggableElement) {
+            // Pan with one finger if not touching a draggable element
+            isPanning = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            lastX = startX;
+            lastY = startY;
+        }
+    }, { passive: false });
+    
+    mapContainer.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && initialTouchDistance !== null) {
+            // Zoom gesture
+            e.preventDefault();
+            const currentDistance = getTouchDistance(e.touches);
+            const scale = currentDistance / initialTouchDistance;
+            
+            // Calculate center point between the two touches
+            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            
+            const newZoom = Math.min(Math.max(zoomLevel * scale, minZoom), maxZoom);
+            initialTouchDistance = currentDistance;
+            
+            // Apply smooth zoom centered on the midpoint between touches
+            smoothZoom(newZoom, centerX, centerY);
+        } else if (e.touches.length === 1 && isPanning) {
+            // Pan gesture
+            const dx = e.touches[0].clientX - lastX;
+            const dy = e.touches[0].clientY - lastY;
+            
+            lastX = e.touches[0].clientX;
+            lastY = e.touches[0].clientY;
+            
+            translateX += dx;
+            translateY += dy;
+            
+            updateTransform();
+        }
+    }, { passive: false });
+    
+    mapContainer.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            initialTouchDistance = null;
+        }
+        
+        if (e.touches.length === 0) {
+            isPanning = false;
+        }
+    });
+    
+    function getTouchDistance(touches) {
+        return Math.hypot(
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
+        );
+    }
+    
+    // Set initial cursor style
+    mapContainer.style.cursor = 'grab';
+    
+    // Initialize draggable feature (if exists)
+    const featureElement = document.getElementById('feature-position-marker-' + mapId);
+    if (featureElement) {
+        initializeDraggableFeature(featureElement, mapId);
+    }
+}
 
+function initializeDraggableFeature(element, mapId) {
+    const posXInput = document.getElementById('position_x-' + mapId);
+    const posYInput = document.getElementById('position_y-' + mapId);
+    const widthInput = document.getElementById('width-' + mapId);
+    const heightInput = document.getElementById('height-' + mapId);
+    const positionDisplay = document.getElementById('position-display-' + mapId);
+    const sizeDisplay = document.getElementById('size-display-' + mapId);
+    
+    // Initial values
+    let pos = { x: parseInt(posXInput.value), y: parseInt(posYInput.value) };
+    let size = { 
+        width: widthInput ? parseInt(widthInput.value) : parseInt(element.style.width),
+        height: heightInput ? parseInt(heightInput.value) : parseInt(element.style.height)
+    };
+    
+    let isDragging = false;
+    let isResizing = false;
+    let resizeDirection = '';
+    let startPos = { x: 0, y: 0 };
+    let startSize = { width: 0, height: 0 };
+    let startCursor = { x: 0, y: 0 };
+    
+    // Mouse events for dragging
+    element.addEventListener('mousedown', function(e) {
+        // Check if clicked on a resize handle
+        const resizeHandle = e.target.closest('.resize-handle');
+        
+        if (resizeHandle) {
+            // Start resizing
+            e.preventDefault();
+            isResizing = true;
+            
+            // Determine which handle was clicked
+            if (resizeHandle.classList.contains('resize-handle-se')) {
+                resizeDirection = 'se';
+            } else if (resizeHandle.classList.contains('resize-handle-sw')) {
+                resizeDirection = 'sw';
+            } else if (resizeHandle.classList.contains('resize-handle-ne')) {
+                resizeDirection = 'ne';
+            } else if (resizeHandle.classList.contains('resize-handle-nw')) {
+                resizeDirection = 'nw';
+            }
+            
+            startCursor = { x: e.clientX, y: e.clientY };
+            startSize = { width: size.width, height: size.height };
+            startPos = { x: pos.x, y: pos.y };
+        } else {
+            // Start dragging (if not clicked on a resize handle)
+            e.preventDefault();
+            isDragging = true;
+            startCursor = { x: e.clientX, y: e.clientY };
+            startPos = { x: pos.x, y: pos.y };
+        }
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            // Calculate the change
+            const dx = e.clientX - startCursor.x;
+            const dy = e.clientY - startCursor.y;
+            
+            // Apply the transformation based on the current zoom level
+            const mapContent = document.getElementById('map-content-' + mapId);
+            const transform = window.getComputedStyle(mapContent).transform;
+            const matrix = new DOMMatrix(transform);
+            const scale = matrix.a; // Current scale factor
+            
+            // Update position (accounting for zoom)
+            pos.x = Math.max(0, startPos.x + Math.round(dx / scale));
+            pos.y = Math.max(0, startPos.y + Math.round(dy / scale));
+            
+            // Update element style
+            element.style.left = pos.x + 'px';
+            element.style.top = pos.y + 'px';
+            
+            // Update form inputs
+            if (posXInput) posXInput.value = pos.x;
+            if (posYInput) posYInput.value = pos.y;
+            
+            // Update display
+            if (positionDisplay) {
+                positionDisplay.textContent = `X: ${pos.x}, Y: ${pos.y}`;
+            }
+        } else if (isResizing) {
+            // Calculate the change
+            const dx = e.clientX - startCursor.x;
+            const dy = e.clientY - startCursor.y;
+            
+            // Apply the transformation based on the current zoom level
+            const mapContent = document.getElementById('map-content-' + mapId);
+            const transform = window.getComputedStyle(mapContent).transform;
+            const matrix = new DOMMatrix(transform);
+            const scale = matrix.a; // Current scale factor
+            
+            // Handle different resize directions
+            const scaledDx = Math.round(dx / scale);
+            const scaledDy = Math.round(dy / scale);
+            
+            // Minimum size constraints
+            const minWidth = 60;
+            const minHeight = 40;
+            
+            switch (resizeDirection) {
+                case 'se':
+                    // Southeast - resize width and height
+                    size.width = Math.max(minWidth, startSize.width + scaledDx);
+                    size.height = Math.max(minHeight, startSize.height + scaledDy);
+                    break;
+                case 'sw':
+                    // Southwest - resize width (left side) and height
+                    const newWidthSw = Math.max(minWidth, startSize.width - scaledDx);
+                    pos.x = startPos.x - (newWidthSw - startSize.width);
+                    size.width = newWidthSw;
+                    size.height = Math.max(minHeight, startSize.height + scaledDy);
+                    break;
+                case 'ne':
+                    // Northeast - resize width and height (top side)
+                    size.width = Math.max(minWidth, startSize.width + scaledDx);
+                    const newHeightNe = Math.max(minHeight, startSize.height - scaledDy);
+                    pos.y = startPos.y - (newHeightNe - startSize.height);
+                    size.height = newHeightNe;
+                    break;
+                case 'nw':
+                    // Northwest - resize width (left side) and height (top side)
+                    const newWidthNw = Math.max(minWidth, startSize.width - scaledDx);
+                    pos.x = startPos.x - (newWidthNw - startSize.width);
+                    size.width = newWidthNw;
+                    const newHeightNw = Math.max(minHeight, startSize.height - scaledDy);
+                    pos.y = startPos.y - (newHeightNw - startSize.height);
+                    size.height = newHeightNw;
+                    break;
+            }
+            
+            // Update element style
+            element.style.width = size.width + 'px';
+            element.style.height = size.height + 'px';
+            element.style.left = pos.x + 'px';
+            element.style.top = pos.y + 'px';
+            
+            // Update form inputs
+            if (widthInput) widthInput.value = size.width;
+            if (heightInput) heightInput.value = size.height;
+            if (posXInput) posXInput.value = pos.x;
+            if (posYInput) posYInput.value = pos.y;
+            
+            // Update displays
+            if (sizeDisplay) {
+                sizeDisplay.textContent = `W: ${size.width}, H: ${size.height}`;
+            }
+            if (positionDisplay) {
+                positionDisplay.textContent = `X: ${pos.x}, Y: ${pos.y}`;
+            }
+        }
+    });
+    
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+        isResizing = false;
+    });
+    
+    // Touch events for mobile
+    element.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 1) {
+            e.preventDefault();
+            isDragging = true;
+            startCursor = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            startPos = { x: pos.x, y: pos.y };
+        }
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (isDragging && e.touches.length === 1) {
+            // Calculate the change
+            const dx = e.touches[0].clientX - startCursor.x;
+            const dy = e.touches[0].clientY - startCursor.y;
+            
+            // Apply the transformation based on the current zoom level
+            const mapContent = document.getElementById('map-content-' + mapId);
+            const transform = window.getComputedStyle(mapContent).transform;
+            const matrix = new DOMMatrix(transform);
+            const scale = matrix.a; // Current scale factor
+            
+            // Update position (accounting for zoom)
+            pos.x = Math.max(0, startPos.x + Math.round(dx / scale));
+            pos.y = Math.max(0, startPos.y + Math.round(dy / scale));
+            
+            // Update element style
+            element.style.left = pos.x + 'px';
+            element.style.top = pos.y + 'px';
+            
+            // Update form inputs
+            if (posXInput) posXInput.value = pos.x;
+            if (posYInput) posYInput.value = pos.y;
+            
+            // Update display
+            if (positionDisplay) {
+                positionDisplay.textContent = `X: ${pos.x}, Y: ${pos.y}`;
+            }
+        }
+    }, { passive: false });
+    
+    document.addEventListener('touchend', function() {
+        isDragging = false;
+    });
+}
+</script>
 <?php
-include '../footer.php';
+}
 ?>

@@ -3,7 +3,8 @@
 
 include '../database_connection.php';
 include '../function.php';
-
+include '../header.php';
+authenticate_admin();
 $message = ''; // Feedback message
 
 // DELETE (Disable/Enable)
@@ -45,7 +46,7 @@ if (isset($_POST['add_author'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Generate unique filename
-            $new_filename = 'author_' . time() . '.' . $ext;
+            $new_filename = time() . '.' . $ext;
             $upload_path = '../upload/' . $new_filename;
             
             // Create directory if it doesn't exist
@@ -175,7 +176,7 @@ $statement = $connect->prepare($query);
 $statement->execute();
 $author = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-include '../header.php';
+
 ?>
 
 <h1 class="my-3">Author Management</h1>
@@ -277,7 +278,7 @@ include '../header.php';
                     </div>
                 </div>
                 
-                <div class="mt-4">
+                <div class="d-flex justify-content-end mt-4">
                     <input type="submit" name="add_author" class="btn btn-success" value="Add Author">
                     <a href="author.php" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
@@ -351,7 +352,7 @@ include '../header.php';
                     </div>
                 </div>
                 
-                <div class="mt-4">
+                <div class="d-flex justify-content-end mt-4">
                     <input type="submit" name="edit_author" class="btn btn-primary" value="Update Author">
                     <a href="author.php" class="btn btn-secondary ms-2">Cancel</a>
                 </div>
@@ -417,11 +418,11 @@ include '../header.php';
                             </div>
                             <div class="row mb-2">
                                 <div class="col-md-4 fw-bold">Created On:</div>
-                                <div class="col-md-8"><?= date('M d, Y h:i A', strtotime($author['author_created_on'])) ?></div>
+                                <div class="col-md-8"><?= date('M d, Y H:i:s', strtotime($author['author_created_on'])) ?></div>
                             </div>
                             <div class="row mb-2">
                                 <div class="col-md-4 fw-bold">Last Updated:</div>
-                                <div class="col-md-8"><?= date('M d, Y h:i A', strtotime($author['author_updated_on'])) ?></div>
+                                <div class="col-md-8"><?= date('M d, Y H:i:s', strtotime($author['author_updated_on'])) ?></div>
                             </div>
                         </div>
                     </div>
@@ -439,7 +440,7 @@ include '../header.php';
                 </div>
             </div>
             
-            <div class="mt-4">
+            <div class="d-flex justify-content-end mt-4">
                 <a href="author.php" class="btn btn-secondary">Back to List</a>
                 <a href="author.php?action=edit&code=<?= $author['author_id'] ?>" class="btn btn-primary ms-2">
                     <i class="fas fa-edit me-1"></i> Edit Author
@@ -463,7 +464,7 @@ include '../header.php';
         <div class="card-header">
             <div class="row">
                 <div class="col col-md-6">
-                    <i class="fas fa-table me-1"></i> Author Management
+                    <i class="fas fa-table me-1"></i> Author List
                 </div>
                 <div class="col col-md-6">
                     <a href="author.php?action=add" class="btn btn-success btn-sm float-end">
@@ -506,8 +507,8 @@ include '../header.php';
                                         ? '<span class="badge bg-success">Active</span>' 
                                         : '<span class="badge bg-danger">Inactive</span>' ?>
                                 </td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['author_created_on'])) ?></td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['author_updated_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['author_created_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['author_updated_on'])) ?></td>
                                 <td class="text-center">
                                     <a href="author.php?action=view&code=<?= $row['author_id'] ?>" class="btn btn-info btn-sm mb-1">
                                         <i class="fa fa-eye"></i>
@@ -566,7 +567,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // DataTable initialization
-    $('#dataTable').DataTable({
+    const table = $('#dataTable').DataTable({
         responsive: true,
         columnDefs: [
             { responsivePriority: 1, targets: [0, 2, 6] },
@@ -579,12 +580,24 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         
         // Scroll and pagination settings
-        scrollY: '400px',
+        scrollY: '500px',
         scrollX: true,
         scrollCollapse: true,
-        paging: true
+        paging: true, 
+		fixedHeader: true,
+        stateSave: true,
+        // Fix alignment issues on draw and responsive changes
+        drawCallback: function() {
+            setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
+        }
+    });
+    // Handle window resize to maintain column alignment
+    $(window).on('resize', function() {
+        table.columns.adjust().responsive.recalc();
     });
     
+    // Force alignment after a short delay to ensure proper rendering
+    setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
     // Delete button functionality
     const deleteButtons = document.querySelectorAll('.delete-btn');
     deleteButtons.forEach(button => {

@@ -3,9 +3,10 @@
 
 include '../database_connection.php';
 include '../function.php';
-
+include '../header.php';
+authenticate_admin();
 // Create the uploads directory if it doesn't exist
-$uploadDir = '../upload/librarian_profiles/';
+$uploadDir = '../upload/';
 if (!file_exists($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
@@ -44,19 +45,20 @@ if (isset($_POST['add_librarian'])) {
     $status = $_POST['librarian_status'];
     
     // Handle profile image upload
-    $profile_image = $defaultImage;
+    $profile_image = 'librarian.jpg';
     
     if(!empty($_FILES['librarian_profile']['name'])) {
-        $fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
-        $targetFilePath = $uploadDir . $fileName;
-        $fileType = pathinfo($targetFilePath, PATHINFO_EXTENSION);
+        $fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
+		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+		$targetFilePath = $uploadDir . $fileName;
+
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
         if(in_array($fileType, $allowTypes)) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
-                $profile_image = $targetFilePath;
+                $profile_image = $fileName;
             } else {
                 $message = "Sorry, there was an error uploading your file.";
             }
@@ -104,9 +106,10 @@ if (isset($_POST['edit_librarian'])) {
     
     // Handle profile image upload
     if(!empty($_FILES['librarian_profile']['name'])) {
-        $fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
-        $targetFilePath = $uploadDir . $fileName;
-        $fileType = pathinfo($targetFilePath, PATHINFO_EXTENSION);
+		$fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
+		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+		$targetFilePath = $uploadDir . $fileName;
+
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
@@ -114,10 +117,10 @@ if (isset($_POST['edit_librarian'])) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
                 // Remove old file if it's not the default image
-                if($profile_image != $defaultImage && file_exists($profile_image)) {
-                    unlink($profile_image);
-                }
-                $profile_image = $targetFilePath;
+                if($profile_image != 'librarian.jpg' && file_exists($uploadDir . $profile_image)) {
+					unlink($uploadDir . $profile_image);
+				}
+                $profile_image = $fileName;
             } else {
                 $message = "Sorry, there was an error uploading your file.";
             }
@@ -169,7 +172,7 @@ $statement = $connect->prepare($query);
 $statement->execute();
 $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-include '../header.php';
+
 ?>
 
 <div class="container-fluid px-4">
@@ -303,7 +306,7 @@ include '../header.php';
 						</div>
                     </div>
                     
-                    <div class="mt-4 text-center">
+                    <div class="d-flex justify-content-end mt-3">
                         <button type="submit" name="add_librarian" class="btn btn-success btn-lg px-4">
                             <i class="fas fa-save me-2"></i>Add Librarian
                         </button>
@@ -393,7 +396,7 @@ include '../header.php';
 								<div class="card">
 									<div class="mt-2">
 										<div class="profile-preview-container text-center">
-											<img id="profile-preview" src="<?= !empty($librarians['librarian_profile']) ? $librarians['librarian_profile'] : $defaultImage ?>" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+											<img id="profile-preview" src="<?= !empty($librarians['librarian_profile']) ? '../upload/'. $librarians['librarian_profile'] : $defaultImage ?>" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
 										</div>
 									</div>								
 									<div class="input-group mb-2">
@@ -404,7 +407,7 @@ include '../header.php';
 							</div>
 						</div>
 					</div>
-                    <div class="mt-4 text-center">
+                    <div class="d-flex justify-content-end mt-3">
                         <button type="submit" name="edit_librarian" class="btn btn-primary btn-lg px-4">
                             <i class="fas fa-save me-2"></i>Update Librarian
                         </button>
@@ -437,7 +440,7 @@ include '../header.php';
                     <div class="col-md-4 mb-4 text-center">
                         <div class="card h-100">
                             <div class="card-body">
-                                <img src="<?= !empty($librarian['librarian_profile']) ? $librarian['librarian_profile'] : $defaultImage ?>" 
+                                <img src="<?= !empty($librarian['librarian_profile']) ? '../upload/' . $librarian['librarian_profile'] : $defaultImage ?>" 
                                      class="img-fluid rounded-circle mb-3" 
                                      style="max-width: 200px; max-height: 200px;">
                                 <h4 class="text-primary"><?= htmlspecialchars($librarian['librarian_name']) ?></h4>
@@ -446,7 +449,7 @@ include '../header.php';
                                         ? '<span class="badge bg-success fs-6">Active</span>' 
                                         : '<span class="badge bg-danger fs-6">Disabled</span>' ?>
                                 </p>
-                                <p class="text-muted mb-0">ID: <?= htmlspecialchars($librarian['librarian_id']) ?></p>
+                                <p class="text-muted mb-0">ID: <?= htmlspecialchars($librarian['librarian_unique_id']) ?></p>
                             </div>
                         </div>
                     </div>
@@ -480,7 +483,7 @@ include '../header.php';
                     </div>
                 </div>
                 
-                <div class="mt-4 text-center">
+                <div class="d-flex justify-content-end mt-3">
                     <a href="librarian.php?action=edit&code=<?= $librarian['librarian_id'] ?>" class="btn btn-primary px-4">
                         <i class="fas fa-edit me-2"></i>Edit Profile
                     </a>
@@ -504,7 +507,7 @@ include '../header.php';
         endif;
         // END VIEW LIBRARIAN
 
-        else: ?>
+	else: ?>
 
         <!-- Librarian List -->
         <div class="card shadow-sm mb-4">
@@ -542,7 +545,7 @@ include '../header.php';
                             <tr>
                                 <td><?= $row['librarian_id'] ?></td>
                                 <td class="text-center">
-                                    <img src="<?= !empty($row['librarian_profile']) ? $row['librarian_profile'] : $defaultImage ?>" 
+                                    <img src="<?= !empty($row['librarian_profile']) ? '../upload/' . $row['librarian_profile'] : $defaultImage ?>" 
                                          class="rounded-circle" 
                                          style="width: 40px; height: 40px; object-fit: cover;">
                                 </td>
@@ -554,8 +557,8 @@ include '../header.php';
                                         ? '<span class="badge bg-success">Active</span>' 
                                         : '<span class="badge bg-danger">Disabled</span>' ?>
                                 </td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['lib_created_on'])) ?></td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['lib_updated_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['lib_created_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['lib_updated_on'])) ?></td>
                                 <td class="text-center">
                                     <div class="btn-group" role="group">
                                         <a href="librarian.php?action=view&code=<?= $row['librarian_id'] ?>" class="btn btn-info btn-sm" title="View">
@@ -614,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // DataTable initialization
     if(document.getElementById('dataTable')) {
-        $('#dataTable').DataTable({
+        const table = $('#dataTable').DataTable({
             responsive: true,
             columnDefs: [
                 { responsivePriority: 1, targets: [0, 2, 8] },
@@ -627,11 +630,26 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             
             // Scroll settings combined here
-            scrollY: '400px',     // Vertical scrollbar height
+            scrollY: '500px',     // Vertical scrollbar height
             scrollX: true,        // Enable horizontal scrolling
             scrollCollapse: true, // Collapse the table height when fewer records
-            paging: true          // Enable pagination
+            paging: true,          // Enable pagination
+			fixedHeader: true,
+			stateSave: true,
+			// Fix alignment issues on draw and responsive changes
+			drawCallback: function() {
+				setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
+			}
         });
+		// Adjust columns on window resize
+		$(window).on('resize', function () {
+			table.columns.adjust().responsive.recalc();
+		});
+
+		// Final adjustment after full load/render
+		setTimeout(() => {
+			table.columns.adjust().responsive.recalc();
+		}, 300);
     }
     
     // For delete/enable/disable buttons
