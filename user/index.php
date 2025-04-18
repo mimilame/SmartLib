@@ -1,12 +1,12 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
 //issue_book_details.php
 
 include '../database_connection.php';
 include '../function.php';
 include '../header.php';
+
+// Check if user is logged in
+authenticate_user();
 
 $user_unique_id = $_SESSION['user_unique_id'] ?? null;
 

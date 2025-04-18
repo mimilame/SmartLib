@@ -7,10 +7,6 @@ include 'database_connection.php';
 include 'function.php';
 include 'header.php';
 
-if(!is_user_login())
-{
-	header('location:user_login.php');
-}
 
 $query = "
 	SELECT * FROM lms_issue_book 

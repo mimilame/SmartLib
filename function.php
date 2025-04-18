@@ -7,9 +7,6 @@ function base_url()
 }
 
 function startUserSession($user_unique_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
 
     $_SESSION['user_unique_id'] = $user_unique_id;
     $_SESSION['role_id'] = $role_id;
@@ -21,33 +18,100 @@ function startUserSession($user_unique_id, $role_id, $user_email, $role_name, $u
     error_log("Session started: " . print_r($_SESSION, true)); // Debugging
 }
 
-function redirect_logged_in_user($roleId) {
+// Checks if the user is logged in with a given role type
+function is_logged_in($type) {
+    $role_map = [
+        'admin'     => 1,
+        'librarian' => 2,
+        'faculty'   => 3,
+        'student'   => 4,
+        'visitor'   => 5
+    ];
+
+    if (!isset($_SESSION['role_id']) || !isset($role_map[$type])) {
+        return false;
+    }
+
+    return $_SESSION['role_id'] === $role_map[$type];
+}
+function authenticate_admin() {
+    // If not authenticated as admin or librarian, redirect to login page
+    if (!isset($_SESSION['role_id']) || !in_array($_SESSION['role_id'], [1, 2])) {
+        // Log the redirection attempt
+        error_log("Unauthenticated admin/librarian access attempt. Redirecting to login.");
+        
+        // Clear session and destroy it
+        $_SESSION = array();
+        session_destroy();
+        session_start();
+        
+        // Set a flash error message
+        $_SESSION['error'] = "Please log in as an administrator or librarian.";
+        
+        // Redirect to login page
+        header("Location: " . base_url() . "index.php");
+        exit();
+    }
+}
+// Authenticate faculty/student users
+function authenticate_user() {
+    // If not authenticated as faculty or student, redirect to login page
+    if (!isset($_SESSION['role_id']) || !in_array($_SESSION['role_id'], [3, 4])) {
+        // Log the redirection attempt
+        error_log("Unauthenticated user access attempt. Redirecting to login.");
+        
+        // Clear session and destroy it
+        $_SESSION = array();
+        session_destroy();
+        session_start();
+        
+        // Set a flash error message
+        $_SESSION['error'] = "Please log in as a faculty or student.";
+        
+        // Redirect to login page
+        header("Location: " . base_url() . "index.php");
+        exit();
+    }
+}
+
+// Authenticate visitor users
+function authenticate_visitor() {
+    // If not authenticated as visitor, redirect to login page
+    if (!isset($_SESSION['role_id']) || $_SESSION['role_id'] != 5) {
+        // Log the redirection attempt
+        error_log("Unauthenticated visitor access attempt. Redirecting to login.");
+        
+        // Clear session and destroy it
+        $_SESSION = array();
+        session_destroy();
+        session_start();
+        
+        // Set a flash error message
+        $_SESSION['error'] = "Please log in as a visitor.";
+        
+        // Redirect to login page
+        header("Location: " . base_url() . "index.php");
+        exit();
+    }
+}
+
+// Gets landing page based on role_id
+function get_role_landing_page($role_id) {
     $base_url = base_url();
 
-    switch ($roleId) {
-        case 1: // Admin
-        case 2: // Librarian
-            header("Location: " . $base_url . "admin/index.php");
-            break;
-        case 3: // Faculty
-        case 4: // Student
-            header("Location: " . $base_url . "user/index.php");
-            break;
-        case 5: // Visitor
-            header("Location: " . $base_url . "guest/index.php");
-            break;
-        default:
-            header("Location: " . $base_url);
+    if (in_array($role_id, [1, 2])) {
+        return $base_url . "admin/index.php";
+    } elseif (in_array($role_id, [3, 4])) {
+        return $base_url . "user/index.php";
+    } elseif ($role_id == 5) {
+        return $base_url . "guest/index.php";
+    } else {
+        return $base_url . "index.php";
     }
-    exit();
 }
 
 // Process login function
 function process_login($connect, $email, $password) {
-	if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-    error_log("Login attempt for email: $email");
 
     // Query to search across all user types using UNION
     $query = "
@@ -333,55 +397,6 @@ function fetchRoleName($userUniqueId) {
     return get_user_role($prefix);
 }
 
-function is_logged_in($type) {
-    if (!isset($_SESSION['role_name'])) {
-        return false;
-    }
-    
-    if ($type == 'admin' && $_SESSION['role_id'] == 1) {
-        return true;
-    } else if ($type == 'librarian' && $_SESSION['role_id'] == 2) {
-        return true;
-    } else if ($type == 'faculty' && $_SESSION['role_id'] == 3) {
-        return true;
-    } else if ($type == 'student' && $_SESSION['role_id'] == 4) {
-        return true;
-    } else if ($type == 'visitor' && $_SESSION['role_id'] == 5) {
-        return true;
-    }
-    
-    return false;
-}
-
-function is_authenticated_admin() {
-    // Check if admin or librarian session is set
-    $is_logged_in = isset($_SESSION['admin_unique_id']) && 
-                    isset($_SESSION['role_id']) && 
-                    ($_SESSION['role_id'] == 1 || $_SESSION['role_id'] == 2); // Admin or Librarian
-    
-    return $is_logged_in;
-}
-
-function authenticate_admin() {
-    // If not authenticated as admin or librarian, redirect to login page
-    if (!is_authenticated_admin()) {
-        // Log the redirection attempt
-        error_log("Unauthenticated admin/librarian access attempt. Redirecting to login.");
-        
-        // Clear session and destroy it
-        $_SESSION = array();
-        session_destroy();
-        session_start();
-        
-        // Set a flash error message
-        $_SESSION['error'] = "Please log in as an administrator or librarian.";
-        
-        // Redirect to login page
-        header("Location: ../index.php");
-        exit();
-    }
-}
-
 // Function to generate a unique user ID without role-based database lookup
 function generate_unique_id($connect, $role_prefix) {
     $unique_id = '';
@@ -471,6 +486,113 @@ function get_user_details_by_unique_id($unique_id, $connect) {
         return $statement->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         // Log error
+        error_log("User lookup error: " . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Get complete user details based on unique ID
+ * @param string $unique_id User's unique identifier
+ * @param PDO $connect Database connection
+ * @return array User details
+ */
+function get_complete_user_details($unique_id, $connect) {
+    // Determine user type based on unique ID prefix
+    $prefix = substr($unique_id, 0, 1);
+    
+    $details = [];
+    
+    try {
+        switch ($prefix) {
+            case 'A': // Admin
+                $query = "SELECT 
+                    admin_id AS id, 
+                    admin_email AS email, 
+                    admin_password AS password,
+                    admin_profile AS profile_image,
+                    admin_unique_id AS unique_id,
+                    1 AS role_id,
+                    'Administrator' AS role_name,
+                    'Administrator' AS name,
+                    NULL AS address,
+                    NULL AS contact_no,
+                    NULL AS created_on,
+                    NULL AS updated_on,
+                    'admin' AS table_prefix
+                FROM lms_admin 
+                WHERE admin_unique_id = :unique_id";
+                break;
+            
+            case 'L': // Librarian
+                $query = "SELECT 
+                    librarian_id AS id, 
+                    librarian_email AS email, 
+                    librarian_password AS password,
+                    librarian_name AS name,
+                    librarian_address AS address,
+                    librarian_contact_no AS contact_no,
+                    librarian_profile AS profile_image,
+                    librarian_unique_id AS unique_id,
+                    librarian_status AS status,
+                    2 AS role_id,
+                    'Librarian' AS role_name,
+                    lib_created_on AS created_on,
+                    lib_updated_on AS updated_on,
+                    'librarian' AS table_prefix
+                FROM lms_librarian 
+                WHERE librarian_unique_id = :unique_id";
+                break;
+            
+            default: // User (Faculty, Student, Visitor)
+                $query = "SELECT 
+                    user_id AS id, 
+                    user_email AS email, 
+                    user_password AS password,
+                    user_name AS name,
+                    user_address AS address,
+                    user_contact_no AS contact_no,
+                    user_profile AS profile_image,
+                    user_unique_id AS unique_id,
+                    user_status AS status,
+                    role_id,
+                    CASE
+                        WHEN role_id = 3 THEN 'Faculty'
+                        WHEN role_id = 4 THEN 'Student'
+                        WHEN role_id = 5 THEN 'Guest'
+                        ELSE 'User'
+                    END AS role_name,
+                    user_created_on AS created_on,
+                    user_updated_on AS updated_on,
+                    'user' AS table_prefix
+                FROM lms_user 
+                WHERE user_unique_id = :unique_id";
+                break;
+        }
+        
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':unique_id', $unique_id, PDO::PARAM_STR);
+        $statement->execute();
+        
+        $details = $statement->fetch(PDO::FETCH_ASSOC);
+        
+        // Set default profile image if not available
+        if (empty($details['profile_image'])) {
+            switch ($details['role_id']) {
+                case 1:
+                    $details['profile_image'] = 'admin.jpg';
+                    break;
+                case 2:
+                    $details['profile_image'] = 'librarian.jpg';
+                    break;
+                default:
+                    $details['profile_image'] = 'user.jpg';
+                    break;
+            }
+        }
+        
+        return $details;
+    } catch (PDOException $e) {
         error_log("User lookup error: " . $e->getMessage());
         return null;
     }
@@ -605,8 +727,6 @@ function convert_data($string, $action = 'encrypt')
 	return $output;
 }
 
-
-
 function Currency_list()
 {
 	$html = '
@@ -619,7 +739,6 @@ function Currency_list()
 	}
 	return $html;
 }
-
 
 function fill_author($connect)
 {
@@ -775,8 +894,6 @@ function Count_fines_paid_today($connect)
 
     return $total_fines_paid_today;
 }
-
-
 
 
 function Count_total_payments_made($connect)
@@ -1927,5 +2044,1105 @@ function Timezone_list()
 	return $html;
 }
 
+function getBookImagePath($book) {
+    $default_image = '../asset/img/book_placeholder.png';
+    $asset_dir = '../asset/img/';
+    $upload_dir = '../upload/';
+    $book_img = $book['book_img'] ?? '';
 
-?>
+    // If empty, use default
+    if (empty($book_img)) {
+        return $default_image;
+    }
+
+    // Normalize filename (just the basename in case a path is stored)
+    $filename = basename($book_img);
+
+    // Check if image exists in asset dir
+    if (file_exists($asset_dir . $filename)) {
+        return $asset_dir . $filename;
+    }
+
+    // Check if image exists in upload dir
+    if (file_exists($upload_dir . $filename)) {
+        return $upload_dir . $filename;
+    }
+
+    // If image was provided but doesn't exist, fallback to default
+    return $default_image;
+}
+function getAuthorImagePath($author) {
+    $default_image = '../asset/img/author.jpg';
+    $asset_dir = '../asset/img/';
+    $upload_dir = '../upload/';
+    
+    // Handle if an array is passed or just the filename
+    $author_img = is_array($author) ? ($author['author_profile'] ?? '') : $author;
+    
+    // If empty, use default
+    if (empty($author_img)) {
+        return $default_image;
+    }
+    
+    // Normalize filename (just the basename in case a path is stored)
+    $filename = basename($author_img);
+    
+    // Check if image exists in asset dir
+    if (file_exists($asset_dir . $filename)) {
+        return $asset_dir . $filename;
+    }
+    
+    // Check if image exists in upload dir
+    if (file_exists($upload_dir . $filename)) {
+        return $upload_dir . $filename;
+    }
+    
+    // If image was provided but doesn't exist, fallback to default
+    return $default_image;
+}
+
+function getBookStatusStats($connect) {
+    return $connect->query("
+        SELECT issue_book_status as status, COUNT(*) as count 
+        FROM lms_issue_book 
+        GROUP BY issue_book_status
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getOverdueBooks($connect) {
+    return $connect->query("
+        SELECT COUNT(*) as count 
+        FROM lms_issue_book 
+        WHERE issue_book_status = 'Overdue'
+    ")->fetch(PDO::FETCH_ASSOC);
+}
+
+function getMonthlyStats($connect) {
+    return $connect->query("
+        SELECT 
+            DATE_FORMAT(issue_date, '%b %Y') as month,
+            COUNT(CASE WHEN issue_book_status = 'Issue' THEN 1 END) as issued,
+            COUNT(CASE WHEN issue_book_status = 'Return' THEN 1 END) as returned,
+            COUNT(CASE WHEN issue_book_status = 'Not Return' THEN 1 END) as lost
+        FROM lms_issue_book
+        WHERE issue_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+        GROUP BY DATE_FORMAT(issue_date, '%Y-%m')
+        ORDER BY issue_date
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getPopularBooks($connect, $limit = 10) {
+    return $connect->query("
+        SELECT ib.book_id, b.book_name, COUNT(ib.book_id) AS issue_count 
+        FROM lms_issue_book ib 
+        INNER JOIN lms_book b ON ib.book_id = b.book_id 
+        GROUP BY ib.book_id, b.book_name 
+        ORDER BY issue_count DESC 
+        LIMIT $limit
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getCategoryStats($connect) {
+    return $connect->query("
+        SELECT c.category_name, COUNT(b.book_id) as book_count
+        FROM lms_category c
+        LEFT JOIN lms_book b ON c.category_id = b.category_id
+        WHERE c.category_status = 'Enable'
+        GROUP BY c.category_id, c.category_name
+        ORDER BY book_count DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getUserRoleStats($connect) {
+    return $connect->query("
+        SELECT r.role_name, COUNT(u.user_id) as user_count 
+        FROM user_roles r 
+        LEFT JOIN lms_user u ON r.role_id = u.role_id 
+        WHERE u.user_status = 'Enable' 
+        GROUP BY r.role_id, r.role_name
+        ORDER BY user_count DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getActiveBorrowers($connect, $limit = 10) {
+    return $connect->query("
+        SELECT u.user_name, u.user_unique_id, COUNT(i.issue_book_id) as borrow_count 
+        FROM lms_user u 
+        JOIN lms_issue_book i ON u.user_id = i.user_id 
+        GROUP BY u.user_id, u.user_name, u.user_unique_id
+        ORDER BY borrow_count DESC 
+        LIMIT $limit
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getRecentTransactions($connect, $limit = 50) {
+    return $connect->query("
+        SELECT b.book_name, u.user_name, i.issue_date, i.return_date, i.expected_return_date, i.issue_book_status 
+        FROM lms_issue_book i 
+        JOIN lms_book b ON i.book_id = b.book_id 
+        JOIN lms_user u ON i.user_id = u.user_id 
+        ORDER BY i.issue_date DESC
+        LIMIT $limit
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getOverdueBooksList($connect) {
+    return $connect->query("
+        SELECT b.book_name, u.user_name, u.user_email, i.issue_date, i.expected_return_date,
+               DATEDIFF(CURDATE(), i.expected_return_date) as days_overdue
+        FROM lms_issue_book i 
+        JOIN lms_book b ON i.book_id = b.book_id 
+        JOIN lms_user u ON i.user_id = u.user_id 
+        WHERE i.issue_book_status = 'Issue' 
+        AND i.expected_return_date < CURDATE()
+        ORDER BY days_overdue DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getAuthorTimeStats($connect) {
+    return $connect->query("
+        (SELECT 
+            'week' as time_period,
+            a.author_id,
+            a.author_name,
+            COUNT(ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable' AND
+            ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+        GROUP BY 
+            a.author_id, a.author_name
+        ORDER BY 
+            borrow_count DESC
+        LIMIT 5)
+
+        UNION ALL
+
+        (SELECT 
+            'month' as time_period,
+            a.author_id,
+            a.author_name,
+            COUNT(ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable' AND
+            ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+        GROUP BY 
+            a.author_id, a.author_name
+        ORDER BY 
+            borrow_count DESC
+        LIMIT 5)
+
+        UNION ALL
+
+        (SELECT 
+            'year' as time_period,
+            a.author_id,
+            a.author_name,
+            COUNT(ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable' AND
+            ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+        GROUP BY 
+            a.author_id, a.author_name
+        ORDER BY 
+            borrow_count DESC
+        LIMIT 5)
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getTopAuthors($connect, $limit = 15) {
+    return $connect->query("
+        SELECT 
+            a.author_id,
+            a.author_name,
+            GROUP_CONCAT(DISTINCT b.book_name ORDER BY b.book_name ASC) as unique_books_borrowed,
+            COUNT(ib.issue_book_id) as total_borrows,
+            SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK) THEN 1 ELSE 0 END) as week_borrows,
+            SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as month_borrows,
+            SUM(CASE WHEN ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) THEN 1 ELSE 0 END) as year_borrows
+        FROM 
+            lms_author a
+        JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable'
+        GROUP BY 
+            a.author_id, a.author_name
+        ORDER BY 
+            total_borrows DESC
+        LIMIT $limit
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function getAuthorTopBooks($connect) {
+    return $connect->query("
+        SELECT * FROM (
+            SELECT * FROM (
+                SELECT 
+                    'week' AS time_period,
+                    a.author_id,
+                    a.author_name,
+                    b.book_name,
+                    COUNT(ib.issue_book_id) AS borrow_count
+                FROM 
+                    lms_author a
+                JOIN 
+                    lms_book_author ba ON a.author_id = ba.author_id
+                JOIN 
+                    lms_book b ON ba.book_id = b.book_id
+                JOIN 
+                    lms_issue_book ib ON b.book_id = ib.book_id
+                WHERE 
+                    a.author_status = 'Enable'
+                    AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 WEEK)
+                GROUP BY 
+                    a.author_id, a.author_name, b.book_id, b.book_name
+                ORDER BY 
+                    borrow_count DESC
+                LIMIT 15
+            ) AS weekly
+
+            UNION ALL
+
+            SELECT * FROM (
+                SELECT 
+                    'month' AS time_period,
+                    a.author_id,
+                    a.author_name,
+                    b.book_name,
+                    COUNT(ib.issue_book_id) AS borrow_count
+                FROM 
+                    lms_author a
+                JOIN 
+                    lms_book_author ba ON a.author_id = ba.author_id
+                JOIN 
+                    lms_book b ON ba.book_id = b.book_id
+                JOIN 
+                    lms_issue_book ib ON b.book_id = ib.book_id
+                WHERE 
+                    a.author_status = 'Enable'
+                    AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+                GROUP BY 
+                    a.author_id, a.author_name, b.book_id, b.book_name
+                ORDER BY 
+                    borrow_count DESC
+                LIMIT 15
+            ) AS monthly
+
+            UNION ALL
+
+            SELECT * FROM (
+                SELECT 
+                    'year' AS time_period,
+                    a.author_id,
+                    a.author_name,
+                    b.book_name,
+                    COUNT(ib.issue_book_id) AS borrow_count
+                FROM 
+                    lms_author a
+                JOIN 
+                    lms_book_author ba ON a.author_id = ba.author_id
+                JOIN 
+                    lms_book b ON ba.book_id = b.book_id
+                JOIN 
+                    lms_issue_book ib ON b.book_id = ib.book_id
+                WHERE 
+                    a.author_status = 'Enable'
+                    AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+                GROUP BY 
+                    a.author_id, a.author_name, b.book_id, b.book_name
+                ORDER BY 
+                    borrow_count DESC
+                LIMIT 15
+            ) AS yearly
+        ) AS combined_data
+        ORDER BY time_period, borrow_count DESC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+}
+
+
+function formatAuthorTimeStats($authorTimeStats) {
+    $weeklyAuthors = array_filter($authorTimeStats, function($item) { 
+        return $item['time_period'] == 'week'; 
+    });
+    
+    $monthlyAuthors = array_filter($authorTimeStats, function($item) { 
+        return $item['time_period'] == 'month'; 
+    });
+    
+    $yearlyAuthors = array_filter($authorTimeStats, function($item) { 
+        return $item['time_period'] == 'year'; 
+    });
+    
+    return [
+        'weekly' => array_values($weeklyAuthors),
+        'monthly' => array_values($monthlyAuthors),
+        'yearly' => array_values($yearlyAuthors)
+    ];
+}
+
+
+function groupAuthorTopBooks($authorTopBooks, $booksPerAuthor = 3) {
+    $authorBooksMap = [];
+    foreach ($authorTopBooks as $book) {
+        if (!isset($authorBooksMap[$book['author_id']])) {
+            $authorBooksMap[$book['author_id']] = [];
+        }
+        if (count($authorBooksMap[$book['author_id']]) < $booksPerAuthor) {
+            $authorBooksMap[$book['author_id']][] = $book;
+        }
+    }
+    return $authorBooksMap;
+}
+// Function to get paginated books - add this to function.php
+function getPaginatedBooks($connect, $limit = 10, $offset = 0, $category_id = null) {
+    $params = [];
+    $query = "SELECT b.*, c.category_name 
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              WHERE b.book_status = 'Enable'";
+    
+    if ($category_id !== null) {
+        $query .= " AND b.category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $query .= " ORDER BY b.book_id DESC LIMIT :limit OFFSET :offset";
+    $params[':limit'] = $limit;
+    $params[':offset'] = $offset;
+    
+    $statement = $connect->prepare($query);
+    
+    foreach ($params as $key => $value) {
+        if ($key === ':limit' || $key === ':offset') {
+            $statement->bindValue($key, $value, PDO::PARAM_INT);
+        } else {
+            $statement->bindValue($key, $value);
+        }
+    }
+    
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to count total books - add this to function.php
+function countTotalBooks($connect, $category_id = null) {
+    $query = "SELECT COUNT(*) as total FROM lms_book WHERE book_status = 'Enable'";
+    $params = [];
+    
+    if ($category_id !== null) {
+        $query .= " AND category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $statement = $connect->prepare($query);
+    
+    foreach ($params as $key => $value) {
+        $statement->bindValue($key, $value);
+    }
+    
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    return $result['total'];
+}
+
+// Function to get books by author - add this to function.php
+function getBooksByAuthor($connect, $author_id, $limit = 5) {
+    $query = "SELECT b.* 
+              FROM lms_book b
+              JOIN lms_book_author ba ON b.book_id = ba.book_id
+              WHERE ba.author_id = :author_id
+              AND b.book_status = 'Enable'
+              ORDER BY b.book_id DESC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get all categories - add this to function.php
+function getAllCategories($connect) {
+    $query = "SELECT category_id, category_name 
+              FROM lms_category 
+              WHERE category_status = 'Enable' 
+              ORDER BY category_name";
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+// Get author of the week using the existing function from function.php
+function getTopAuthorsWithBooks($connect, $limit = 5) {
+    $query = "SELECT 
+        a.author_id,
+        a.author_name,
+        a.author_profile,
+        COUNT(DISTINCT ba.book_id) as book_count 
+    FROM 
+        lms_author a
+    JOIN 
+        lms_book_author ba ON a.author_id = ba.author_id
+    JOIN 
+        lms_book b ON ba.book_id = b.book_id 
+    WHERE 
+        a.author_status = 'Enable' AND
+        b.book_status = 'Enable'
+    GROUP BY 
+        a.author_id, a.author_name, a.author_profile
+    ORDER BY 
+        book_count DESC
+    LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // For each author, get their top books
+    foreach ($authors as &$author) {
+        $author['books'] = getBooksByAuthor($connect, $author['author_id'], 3);
+    }
+    
+    return $authors;
+}
+// Function to get detailed book information
+function getBookDetails($connect, $book_id) {
+	$query = "SELECT b.*, c.category_name 
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE b.book_id = :book_id AND b.book_status = 'Enable'
+			LIMIT 1";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetch(PDO::FETCH_ASSOC);
+}
+// Function to get book authors
+function getBookAuthors($connect, $book_id) {
+	$query = "SELECT a.* 
+			FROM lms_author a
+			JOIN lms_book_author ba ON a.author_id = ba.author_id
+			WHERE ba.book_id = :book_id AND a.author_status = 'Enable'
+			ORDER BY a.author_name";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+function getBookAvailability($connect, $book_id, $total_copies) {
+    $query = "SELECT COUNT(*) as borrowed_copies 
+             FROM lms_issue_book 
+             WHERE book_id = :book_id 
+             AND (issue_book_status = 'Issue' OR issue_book_status = 'Not Return')";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $borrowed_copies = $result['borrowed_copies'];
+    $available_copies = $total_copies - $borrowed_copies;
+    $is_available = $available_copies > 0;
+    
+    return [
+        'borrowed_copies' => $borrowed_copies,
+        'available_copies' => $available_copies,
+        'is_available' => $is_available
+    ];
+}
+function getBookBorrowCount($connect, $book_id) {
+    $query = "SELECT COUNT(*) as borrow_count 
+             FROM lms_issue_book 
+             WHERE book_id = :book_id";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    return $result['borrow_count'];
+}
+// Function to get book borrow history
+function getBookBorrowHistory($connect, $book_id, $limit = 10) {
+	$query = "SELECT ib.*, u.user_name 
+			FROM lms_issue_book ib
+			JOIN lms_user u ON ib.user_id = u.user_id
+			WHERE ib.book_id = :book_id
+			ORDER BY ib.issue_date DESC
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get similar books by category
+function getSimilarBooksByCategory($connect, $category_id, $current_book_id, $limit = 5) {
+	$query = "SELECT b.*, c.category_name 
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE b.category_id = :category_id 
+			AND b.book_id != :current_book_id 
+			AND b.book_status = 'Enable'
+			ORDER BY RAND()
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':category_id', $category_id, PDO::PARAM_INT);
+	$statement->bindParam(':current_book_id', $current_book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get books by the same author
+function getBooksBySameAuthor($connect, $book_id, $limit = 5) {
+	$query = "SELECT DISTINCT b.*, c.category_name 
+			FROM lms_book b
+			JOIN lms_book_author ba1 ON b.book_id = ba1.book_id
+			JOIN lms_book_author ba2 ON ba1.author_id = ba2.author_id
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			WHERE ba2.book_id = :book_id 
+			AND b.book_id != :book_id 
+			AND b.book_status = 'Enable'
+			ORDER BY RAND()
+			LIMIT :limit";
+	
+	$statement = $connect->prepare($query);
+	$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+	$statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+	$statement->execute();
+	
+	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getBookReviews($connect, $book_id, $limit = 5) {
+    // Get reviews with ratings for a specific book
+    $query = "SELECT r.*, u.user_name, r.rating
+              FROM lms_book_review r
+              JOIN lms_user u ON r.user_id = u.user_id
+              JOIN lms_book b ON r.book_id = b.book_id
+              WHERE r.book_id = :book_id 
+              AND b.book_status = 'Enable'
+              AND r.status = 'approved'
+              ORDER BY r.created_at DESC
+              LIMIT :limit";
+    
+    try {
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+        $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+        
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // If the table doesn't exist or there's an error, return an empty array
+        return [];
+    }
+}
+
+// Get book average rating - modified to check book status
+function getBookAverageRating($connect, $book_id) {
+    $query = "SELECT AVG(r.rating) as average_rating 
+              FROM lms_book_review r
+              JOIN lms_book b ON r.book_id = b.book_id
+              WHERE r.book_id = :book_id 
+              AND r.rating IS NOT NULL
+              AND b.book_status = 'Enable'";
+    
+    try {
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+        $statement->execute();
+        
+        $result = $statement->fetch(PDO::FETCH_ASSOC);
+        return $result['average_rating'] ? round($result['average_rating'], 1) : 0;
+    } catch (PDOException $e) {
+        return 0;
+    }
+}
+
+function generateRandomDigits() {
+    return str_pad(mt_rand(0, 99999999), 8, '0', STR_PAD_LEFT);
+}
+
+// Function to get a book by ID
+function getBookById($connect, $book_id) {
+    $query = "SELECT * FROM lms_book WHERE book_id = :book_id";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetch(PDO::FETCH_ASSOC);
+}
+
+// Get highest rated books - modified to use ISBN and ensure book is enabled
+function getHighestRatedBooks($connect, $limit = 5) {
+    $query = "SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_author, 
+                     AVG(r.rating) as average_rating, COUNT(r.review_id) as review_count
+              FROM lms_book b
+              JOIN lms_book_review r ON b.book_id = r.book_id
+              WHERE r.status = 'approved' 
+              AND r.rating IS NOT NULL
+              AND b.book_status = 'Enable'
+              GROUP BY b.book_id, b.book_name, b.book_isbn_number, b.book_author
+              HAVING review_count >= 3
+              ORDER BY average_rating DESC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Format the ratings
+    foreach ($books as &$book) {
+        $book['average_rating'] = number_format($book['average_rating'], 1);
+    }
+    
+    return $books;
+}
+
+// Get lowest rated books - modified to use ISBN and ensure book is enabled
+function getLowestRatedBooks($connect, $limit = 5) {
+    $query = "SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_author, 
+                     AVG(r.rating) as average_rating, COUNT(r.review_id) as review_count
+              FROM lms_book b
+              JOIN lms_book_review r ON b.book_id = r.book_id
+              WHERE r.status = 'approved' 
+              AND r.rating IS NOT NULL
+              AND b.book_status = 'Enable'
+              GROUP BY b.book_id, b.book_name, b.book_isbn_number, b.book_author
+              HAVING review_count >= 3
+              ORDER BY average_rating ASC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Format the ratings
+    foreach ($books as &$book) {
+        $book['average_rating'] = number_format($book['average_rating'], 1);
+    }
+    
+    return $books;
+}
+
+// Get most reviewed books - modified to ensure book is enabled
+function getMostReviewedBooks($connect, $limit = 5) {
+    $query = "SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_author, 
+                     COUNT(r.review_id) as review_count
+              FROM lms_book b
+              JOIN lms_book_review r ON b.book_id = r.book_id
+              WHERE r.status = 'approved'
+              AND b.book_status = 'Enable'
+              GROUP BY b.book_id, b.book_name, b.book_isbn_number, b.book_author
+              ORDER BY review_count DESC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get most active reviewers
+function getMostActiveReviewers($connect, $limit = 5) {
+    $query = "SELECT u.user_id, u.user_name, COUNT(r.review_id) as review_count
+              FROM lms_user u
+              JOIN lms_book_review r ON u.user_id = r.user_id
+              WHERE r.status = 'approved'
+              GROUP BY u.user_id, u.user_name
+              ORDER BY review_count DESC
+              LIMIT :limit";
+              
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+// Add a new function to search books by ISBN
+function getBookByISBN($connect, $isbn) {
+    $query = "SELECT * FROM lms_book WHERE book_isbn = :isbn AND book_status = 'Enable'";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':isbn', $isbn, PDO::PARAM_STR);
+    $statement->execute();
+    return $statement->fetch(PDO::FETCH_ASSOC);
+}
+
+// Get review settings
+function getReviewSettings($connect) {
+    try {
+        $query = "SELECT * FROM lms_review_settings LIMIT 1";
+        $statement = $connect->prepare($query);
+        $statement->execute();
+        
+        if ($statement->rowCount() > 0) {
+            return $statement->fetch(PDO::FETCH_ASSOC);
+        } else {
+            // Default settings if none found
+            return [
+                'moderate_reviews' => true,
+                'allow_guest_reviews' => false,
+                'reviews_per_page' => 10
+            ];
+        }
+    } catch (PDOException $e) {
+        // Create table if it doesn't exist
+        $query = "CREATE TABLE IF NOT EXISTS lms_review_settings (
+                  setting_id INT AUTO_INCREMENT PRIMARY KEY,
+                  moderate_reviews BOOLEAN NOT NULL DEFAULT TRUE,
+                  allow_guest_reviews BOOLEAN NOT NULL DEFAULT FALSE,
+                  reviews_per_page INT NOT NULL DEFAULT 10
+                 )";
+        $connect->exec($query);
+        
+        // Insert default settings
+        $query = "INSERT INTO lms_review_settings 
+                  (moderate_reviews, allow_guest_reviews, reviews_per_page) 
+                  VALUES (1, 0, 10)";
+        $connect->exec($query);
+        
+        // Return default settings
+        return [
+            'moderate_reviews' => true,
+            'allow_guest_reviews' => false,
+            'reviews_per_page' => 10
+        ];
+    }
+}
+
+// Get monthly review trends for the past year
+function getMonthlyReviewTrends($connect) {
+    $query = "SELECT 
+                DATE_FORMAT(r.created_at, '%Y-%m') as month,
+                COUNT(*) as review_count,
+                AVG(r.rating) as average_rating
+              FROM lms_book_review r
+              JOIN lms_book b ON r.book_id = b.book_id
+              WHERE r.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+              AND b.book_status = 'Enable'
+              GROUP BY DATE_FORMAT(r.created_at, '%Y-%m')
+              ORDER BY month ASC";
+    
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get recent reviews
+function getRecentReviews($connect, $limit = 6) {
+    $query = "SELECT r.*, u.user_name, b.book_name, b.book_img, b.book_isbn_number
+              FROM lms_book_review r
+              JOIN lms_user u ON r.user_id = u.user_id
+              JOIN lms_book b ON r.book_id = b.book_id
+              WHERE b.book_status = 'Enable'
+              ORDER BY r.created_at DESC
+              LIMIT :limit";
+
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function canManageReviews($user_unique_id) {
+    if (empty($user_unique_id)) {
+        return false;
+    }
+    
+    $prefix = strtoupper(substr($user_unique_id, 0, 1));
+    return ($prefix === 'A' || $prefix === 'L'); // Admin or Librarian
+}
+
+// Get pending reviews - modified to ensure book is enabled
+function getPendingReviews($connect) {
+    $query = "SELECT 
+                r.*,
+                b.book_name,
+                u.user_name AS reviewer_name,
+                CASE 
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'A' THEN 
+                        (SELECT SUBSTRING_INDEX(admin_email, '@', 1) FROM lms_admin WHERE admin_unique_id = r.flagged_by)
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'L' THEN 
+                        (SELECT SUBSTRING_INDEX(librarian_email, '@', 1) FROM lms_librarian WHERE librarian_unique_id = r.flagged_by)
+                    ELSE 'Unknown'
+                END AS flagged_by_name
+              FROM lms_book_review r
+              JOIN lms_book b ON r.book_id = b.book_id
+              JOIN lms_user u ON r.user_id = u.user_id
+              WHERE r.status = 'pending'
+              ORDER BY r.flagged_at DESC";
+              
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get flagged reviews
+function getFlaggedReviews($connect) {
+    $query = "SELECT 
+                r.*,
+                b.book_name,
+                u.user_name AS reviewer_name,
+                CASE 
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'A' THEN 
+                        (SELECT SUBSTRING_INDEX(admin_email, '@', 1) FROM lms_admin WHERE admin_unique_id = r.flagged_by)
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'L' THEN 
+                        (SELECT SUBSTRING_INDEX(librarian_email, '@', 1) FROM lms_librarian WHERE librarian_unique_id = r.flagged_by)
+                    ELSE 'Unknown'
+                END AS flagged_by_name
+              FROM lms_book_review r
+              JOIN lms_book b ON r.book_id = b.book_id
+              JOIN lms_user u ON r.user_id = u.user_id
+              WHERE r.status = 'flagged'
+              ORDER BY r.flagged_at DESC";
+             
+    $statement = $connect->prepare($query);
+    $statement->execute();
+   
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+// Update review settings
+function updateReviewSettings($connect, $settings) {
+    try {
+        // Check if settings exist
+        $query = "SELECT COUNT(*) FROM lms_review_settings";
+        $statement = $connect->prepare($query);
+        $statement->execute();
+        $count = $statement->fetchColumn();
+        
+        if ($count > 0) {
+            // Update existing settings
+            $query = "UPDATE lms_review_settings SET 
+                      moderate_reviews = :moderate_reviews,
+                      allow_guest_reviews = :allow_guest_reviews,
+                      reviews_per_page = :reviews_per_page";
+        } else {
+            // Insert new settings
+            $query = "INSERT INTO lms_review_settings 
+                      (moderate_reviews, allow_guest_reviews, reviews_per_page) 
+                      VALUES (:moderate_reviews, :allow_guest_reviews, :reviews_per_page)";
+        }
+        
+        $statement = $connect->prepare($query);
+        $statement->bindParam(':moderate_reviews', $settings['moderate_reviews'], PDO::PARAM_BOOL);
+        $statement->bindParam(':allow_guest_reviews', $settings['allow_guest_reviews'], PDO::PARAM_BOOL);
+        $statement->bindParam(':reviews_per_page', $settings['reviews_per_page'], PDO::PARAM_INT);
+        return $statement->execute();
+    } catch (PDOException $e) {
+        // Create table if it doesn't exist
+        $query = "CREATE TABLE lms_review_settings (
+                  setting_id INT AUTO_INCREMENT PRIMARY KEY,
+                  moderate_reviews BOOLEAN NOT NULL DEFAULT TRUE,
+                  allow_guest_reviews BOOLEAN NOT NULL DEFAULT FALSE,
+                  reviews_per_page INT NOT NULL DEFAULT 10
+                 )";
+        $connect->exec($query);
+        
+        // Try again
+        return updateReviewSettings($connect, $settings);
+    }
+}
+
+// Update review status (approve/reject)
+function updateReviewStatus($connect, $review_id, $status) {
+    $query = "UPDATE lms_book_review SET status = :status WHERE review_id = :review_id";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':status', $status, PDO::PARAM_STR);
+    $statement->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    return $statement->execute();
+}
+
+// Permanently delete a review from the review table
+function permanentlyDeleteReview($connect, $review_id) {
+    $query = "DELETE FROM lms_book_review WHERE review_id = :review_id";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    return $statement->execute();
+}
+
+// Flag a review
+function flagReview($connect, $review_id, $user_unique_id, $reason) {
+    // First check if this review exists
+    $check_query = "SELECT review_id, status FROM lms_book_review 
+                    WHERE review_id = :review_id";
+    
+    $check_stmt = $connect->prepare($check_query);
+    $check_stmt->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    $check_stmt->execute();
+    
+    if ($check_stmt->rowCount() == 0) {
+        return false; // Review doesn't exist
+    }
+    
+    $review = $check_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Update the review with flagged status
+    $query = "UPDATE lms_book_review 
+              SET status = 'flagged', 
+                  remarks = :reason,
+                  flagged_by = :user_unique_id,
+                  flagged_at = CURRENT_TIMESTAMP
+              WHERE review_id = :review_id";
+    
+    $stmt = $connect->prepare($query);
+    $stmt->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    $stmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+    $stmt->bindParam(':user_unique_id', $user_unique_id, PDO::PARAM_STR);
+    
+    return $stmt->execute();
+}
+
+// Approve a review
+function approveReview($connect, $review_id) {
+    try {
+        // First check if this review exists and get its current status
+        $check_query = "SELECT status FROM lms_book_review WHERE review_id = :review_id";
+        $check_stmt = $connect->prepare($check_query);
+        $check_stmt->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+        $check_stmt->execute();
+        
+        if ($check_stmt->rowCount() == 0) {
+            return false; // Review doesn't exist
+        }
+        
+        // Update the review with approved status
+        $query = "UPDATE lms_book_review 
+                SET status = 'approved',
+                    remarks = NULL,
+                    flagged_by = NULL,
+                    flagged_at = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE review_id = :review_id";
+        
+        $stmt = $connect->prepare($query);
+        $stmt->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+        
+        return $stmt->execute();
+    } catch (PDOException $e) {
+        error_log('Database error in approveReview: ' . $e->getMessage());
+        return false;
+    }
+}
+
+// Reject a review
+function rejectReview($connect, $review_id, $reason = '') {
+    $query = "UPDATE lms_book_review 
+              SET status = 'rejected',
+                  remarks = :reason,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE review_id = :review_id";
+    
+    $stmt = $connect->prepare($query);
+    $stmt->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    $stmt->bindParam(':reason', $reason, PDO::PARAM_STR);
+    
+    return $stmt->execute();
+}
+
+// Permanently delete a review
+function deleteReview($connect, $review_id) {
+    $query = "DELETE FROM lms_book_review WHERE review_id = :review_id";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':review_id', $review_id, PDO::PARAM_INT);
+    
+    return $statement->execute();
+}
+
+// Get all reviews with filtering options
+function getReviews($connect, $status = null, $limit = 10) {
+    $query = "SELECT 
+                r.*,
+                b.book_name,
+                u.user_name AS reviewer_name,
+                CASE 
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'A' THEN 
+                        (SELECT SUBSTRING_INDEX(admin_email, '@', 1) FROM lms_admin WHERE admin_unique_id = r.flagged_by)
+                    WHEN SUBSTRING(r.flagged_by, 1, 1) = 'L' THEN 
+                        (SELECT SUBSTRING_INDEX(librarian_email, '@', 1) FROM lms_librarian WHERE librarian_unique_id = r.flagged_by)
+                    ELSE NULL
+                END AS flagged_by_name
+              FROM lms_book_review r
+              JOIN lms_book b ON r.book_id = b.book_id
+              JOIN lms_user u ON r.user_id = u.user_id";
+    
+    // Add status filter if provided
+    if ($status) {
+        $query .= " WHERE r.status = :status";
+    }
+    
+    $query .= " ORDER BY r.created_at DESC";
+    
+    // Add limit if provided
+    if ($limit > 0) {
+        $query .= " LIMIT :limit";
+    }
+    
+    $statement = $connect->prepare($query);
+    
+    if ($status) {
+        $statement->bindParam(':status', $status, PDO::PARAM_STR);
+    }
+    
+    if ($limit > 0) {
+        $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    }
+    
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}

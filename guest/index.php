@@ -1,21 +1,11 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    // Set the cookie parameters to ensure session persistence
-    $lifetime = 86400; // 24 hours in seconds
-    $path = '/';
-    $domain = '';
-    $secure = false;
-    $httponly = true;
-    
-    session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
-    session_start();
-    
-    error_log("Session started with path: " . session_save_path());
-}
 	include '../database_connection.php';
 	include '../function.php';	
 	include '../header.php';
 	
+    // Check if user is logged in
+    authenticate_visitor();
+
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
 	$statement = $connect->prepare($query);
@@ -42,15 +32,6 @@ if (session_status() == PHP_SESSION_NONE) {
 	$page_title = $library_name . " - " . ucfirst($user_type); 
 
 
-	// Initialize variables for form processing
-	$message = '';
-	$success = '';
-
-
-	// Get any flash messages at the beginning of the page
-	$error_message = get_flash_message('error');
-	$success_message = get_flash_message('success');
-
 	$query = "
 	SELECT * FROM lms_book 
     WHERE book_status = 'Enable' 
@@ -62,12 +43,7 @@ if (session_status() == PHP_SESSION_NONE) {
 	$statement->execute();
 
 ?>
-<div class="bg"></div>
-<div class="bg bg2"></div>
-<div class="bg bg3"></div>
-<div class="bg1"></div>
-<div class="bg1 bg2"></div>
-<div class="bg1 bg3"></div>
+
 <?php
 	// Display SweetAlert messages if they exist
 	if(!empty($error_message)) {
@@ -79,27 +55,24 @@ if (session_status() == PHP_SESSION_NONE) {
 	}
 ?>
 
-
-    <div class="custom-bg">
-        <div class="book-slide">
+		<div class="book-slide">
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
 			<?php
 				// Query to fetch all books
-				$query = "SELECT * FROM lms_book WHERE book_status = 'Enable' ORDER BY book_id ASC";
-				$statement = $connect->prepare($query);
-				$statement->execute();
-				$books = $statement->fetchAll(PDO::FETCH_ASSOC);
-				// Color classes for alternating styles - matching the CSS classes we set
+				$books = getPaginatedBooks($connect, 10, 0); // Use the function instead of direct query
+				
+				// Color classes for alternating styles
 				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];
+				
 				// Loop through each book
 				foreach($books as $index => $book) {
-					// Use modulo to cycle through colors (0-based index % number of colors)
+					// Use modulo to cycle through colors
 					$colorClass = $colors[$index % count($colors)];
 					
-					// Get book cover image path (use placeholder if not available)
-					$book_img = !empty($book['book_img']) ? 'asset/img/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+					// Get book cover image path
+					$book_img = !empty($book['book_img']) ? '../asset/img/' . $book['book_img'] : '../asset/img/book_placeholder.png';
 					
-					// Start the book cell div - added color class here
+					// Start the book cell div
 					echo '<div class="book-cell ' . $colorClass . '">';
 					
 					// Book image div
@@ -116,17 +89,25 @@ if (session_status() == PHP_SESSION_NONE) {
 					echo '<div class="rate">';
 					echo '<fieldset class="rating ' . $colorClass . '">';
 					
-					// Generate rating inputs with unique IDs
-					$baseId = 'star' . (($index * 5) + 1);
-					for($i = 5; $i >= 1; $i--) {
-						$starId = $baseId . $i;
-						$labelClass = 'full1';
-						echo '<input type="checkbox" id="' . $starId . '" name="rating" value="' . $i . '" />';
-						echo '<label class="' . $labelClass . '" for="' . $starId . '"></label>';
-					}
+					// Get the average rating for this book
+					$averageRating = getBookAverageRating($connect, $book['book_id']);
+
+					// Generate rating inputs with unique IDs 
+					$baseId = 'star' . (($index * 5) + 1); 
+					for($i = 5; $i >= 1; $i--) { 
+						$starId = $baseId . $i; 
+						$labelClass = 'full'; 
+						$checked = ($i <= round($averageRating)) ? 'checked="checked"' : '';
+						echo '<input type="checkbox" ' . $checked . ' id="' . $starId . '" name="rating" value="' . $i . '" />'; 
+						echo '<label class="' . $labelClass . '" for="' . $starId . '"></label>'; 
+					} 
+					// Get the number of people who rated this book
+					$bookReviews = getBookReviews($connect, $book['book_id']);
+					$reviewCount = count($bookReviews);
+					$votersText = $reviewCount . ' ' . ($reviewCount == 1 ? 'rating' : 'ratings');
 					
 					echo '</fieldset>';
-					echo '<span class="book-voters">' . $book['book_no_of_copy'] . ' copies</span>';
+					echo '<span class="book-voters card-vote">' . $votersText . ' | ' . $book['book_no_of_copy'] . ' copies</span>';
 					echo '</div>';
 					
 					// Book summary and see button
@@ -139,37 +120,54 @@ if (session_status() == PHP_SESSION_NONE) {
 					echo '</div>'; // End book-content
 					echo '</div>'; // End book-cell
 				}
-				
-				?>
-               
+			?>
             </div>
         </div>
 
-        <div class="main-wrapper">
+        <div class="main-wrapper px-5">
             <div class="books-of">
                 <div class="week">
                     <div class="author-title">Author of the week</div>
-                    <div class="author">
-                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1400&q=80" alt="" class="author-img">
-                        <div class="author-name">Sebastian Jeremy</div>
-                    </div>
-                    <div class="author">
-                        <img src="https://images.unsplash.com/photo-1586297098710-0382a496c814?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1650&q=80" alt="" class="author-img">
-                        <div class="author-name">Jonathan Doe</div>
-                    </div>
-                    <!-- Additional author elements would follow the same pattern -->
+					<?php 
+						// Use the getTopAuthorsWithBooks function instead of direct query
+						$authors = getTopAuthorsWithBooks($connect, 5);
+						
+						foreach($authors as $author) {
+							$authorImg = !empty($author['author_profile']) ? '../asset/img/' . $author['author_profile'] : '../asset/img/author.png';
+							
+							echo '<div class="author">
+									<img src="' . $authorImg . '" alt="' . htmlspecialchars($author['author_name']) . '" class="author-img">
+									<div class="author-name">' . htmlspecialchars($author['author_name']) . '</div>
+								</div>';
+						}
+					?>
                 </div>
 
                 <div class="week year">
                     <div class="author-title">Books of the year</div>
-                    <div class="year-book">
-                        <img src="https://images-na.ssl-images-amazon.com/images/I/A1kNdYXw0GL.jpg" alt="" class="year-book-img">
-                        <div class="year-book-content">
-                            <div class="year-book-name">Disappearing Earth</div>
-                            <div class="year-book-author">by Julia Phillips</div>
-                        </div>
-                    </div>
-                    <!-- Additional year-book elements would follow the same pattern -->
+					<?php
+						// Use the getPopularBooks function instead of direct query
+						$topBooks = getPopularBooks($connect, 5);
+						
+						foreach($topBooks as $book) {
+							// You'll need to fetch the book details
+							$bookQuery = "SELECT book_img, book_author FROM lms_book WHERE book_id = :book_id";
+							$bookStmt = $connect->prepare($bookQuery);
+							$bookStmt->bindParam(':book_id', $book['book_id'], PDO::PARAM_INT);
+							$bookStmt->execute();
+							$bookDetails = $bookStmt->fetch(PDO::FETCH_ASSOC);
+							
+							$bookImg = !empty($bookDetails['book_img']) ? '../asset/img/' . $bookDetails['book_img'] : '../asset/img/book_placeholder.png';
+
+							echo '<div class="year-book">
+								<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="year-book-img">
+								<div class="year-book-content">
+									<div class="year-book-name">' . htmlspecialchars($book['book_name']) . '</div>
+									<div class="year-book-author">by ' . htmlspecialchars($bookDetails['book_author']) . '</div>
+								</div>
+							</div>';
+						}
+					?>
                 </div>
             </div>
 
@@ -177,42 +175,101 @@ if (session_status() == PHP_SESSION_NONE) {
                 <div class="main-menu">
                     <div class="genre">Popular by Genre</div>
                     <div class="book-types">
-                        <a href="#" class="book-type active"> All Genres</a>
-                        <a href="#" class="book-type"> Business</a>
-                        <a href="#" class="book-type"> Science</a>
-                        <a href="#" class="book-type"> Fiction</a>
-                        <a href="#" class="book-type"> Philosophy</a>
-                        <a href="#" class="book-type"> Biography</a>
+						<?php  
+							// Get the currently selected category (default to 'all')
+							$current_category = isset($_GET['category']) ? $_GET['category'] : 'all';
+							
+							// Use the getAllCategories function 
+							$categories = getAllCategories($connect);
+							
+							// Display "All Genres" link
+							$all_active = ($current_category == 'all') ? 'active' : '';
+							echo '<a href="?category=all" class="book-type ' . $all_active . '">All Genres</a>';
+							
+							// Display category links
+							foreach($categories as $category) {
+								$active = ($current_category == $category['category_id']) ? 'active' : '';
+								echo '<a href="?category=' . $category['category_id'] . '" class="book-type ' . $active . '">' . 
+									htmlspecialchars($category['category_name']) . '</a>'; 
+							} 
+						?>
                     </div>
                 </div>
 
                 <div class="book-cards">
-                    <div class="book-card">
-                        <div class="content-d-flex">
-                            <img src="https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fstatic.onecms.io%2Fwp-content%2Fuploads%2Fsites%2F6%2F2019%2F07%2Fchances-are-1-2000.jpg&q=85" alt="" class="book-card-img">
-                            <div class="card-content">
-                                <div class="book-name">Changes Are</div>
-                                <div class="book-by">by Richard Russo</div>
-                                <div class="rate">
-                                    <fieldset class="rating book-rate">
-                                        <input type="checkbox" id="star-c1" name="rating" value="5">
-                                        <label class="full" for="star-c1"></label>
-                                        <!-- Additional rating inputs -->
-                                    </fieldset>
-                                    <span class="book-voters card-vote">1.987 voters</span>
-                                </div>
-                                <div class="book-sum card-sum">Readers of all ages and walks of life have drawn inspiration and empowerment from Elizabeth Gilbert's books for years. </div>
-                            </div>
-                        </div>
-                        <div class="likes">
-                            <div class="like-profile">
-                                <img src="https://randomuser.me/api/portraits/women/63.jpg" alt="" class="like-img">
-                            </div>
-                            <!-- Additional like profiles -->
-                            <div class="like-name"><span>Samantha William</span> and <span>2 other friends</span> like this</div>
-                        </div>
-                    </div>
-                    <!-- Additional book-card elements would follow the same pattern -->
+					<?php
+						// Get the category filter from URL
+						$category_filter = isset($_GET['category']) ? $_GET['category'] : 'all';
+						
+						// Base query
+						$query = "SELECT b.book_id, b.book_name, b.book_author, b.book_img, c.category_name,
+								COUNT(ib.issue_book_id) as borrow_count, b.book_no_of_copy
+								FROM lms_book b
+								LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+								JOIN lms_category c ON b.category_id = c.category_id
+								WHERE b.book_status = 'Enable'";
+						
+						// Add category filter if not 'all'
+						if($category_filter !== 'all') {
+							$query .= " AND b.category_id = :category_id";
+						}
+						
+						$query .= " GROUP BY b.book_id
+								ORDER BY borrow_count DESC, b.book_name ASC
+								LIMIT 6";
+						
+						$statement = $connect->prepare($query);
+						
+						// Bind parameter if filtering by category
+						if($category_filter !== 'all') {
+							$statement->bindParam(':category_id', $category_filter);
+						}
+						
+						$statement->execute();
+						$books = $statement->fetchAll(PDO::FETCH_ASSOC);
+						
+						// Display books
+						if(count($books) > 0) {
+							foreach($books as $book) {
+								$bookImg = !empty($book['book_img']) ? '../asset/img/' . $book['book_img'] : '../asset/img/book_placeholder.png';
+								
+								echo '<div class="book-card">
+										<div class="content-wrapper m-0 d-flex">
+											<img src="' . $bookImg . '" alt="' . htmlspecialchars($book['book_name']) . '" class="book-card-img">
+											<div class="card-content">
+												<div class="book-name">' . htmlspecialchars($book['book_name']) . '</div>
+												<div class="book-by">by ' . htmlspecialchars($book['book_author']) . '</div>
+												<div class="rate">
+													<fieldset class="rating book-rate">';
+													
+									// Get the average rating for this book
+									$averageRating = getBookAverageRating($connect, $book['book_id']);
+
+									// Generate unique star rating inputs
+									for($i = 5; $i >= 1; $i--) {
+										$starId = 'card-star-' . $book['book_id'] . '-' . $i;
+										$checked = ($i <= round($averageRating)) ? 'checked="checked"' : '';
+										echo '<input type="checkbox" ' . $checked . ' id="' . $starId . '" name="rating" value="' . $i . '">
+											<label class="full" for="' . $starId . '"></label>';
+									}
+
+									// Get the number of people who rated this book
+									$bookReviews = getBookReviews($connect, $book['book_id']);
+									$reviewCount = count($bookReviews);
+									$votersText = $reviewCount . ' ' . ($reviewCount == 1 ? 'rating' : 'ratings');
+															
+									echo '</fieldset>
+										<span class="book-voters card-vote">' . $votersText . ' | ' . $book['book_no_of_copy'] . ' copies</span>
+										</div>
+									<div class="book-sum card-sum">' . htmlspecialchars($book['category_name']) . ' | Borrowed: ' . $book['borrow_count'] . ' times</div>
+									</div>
+									</div>
+								</div>';
+							}
+						} else {
+							echo '<div class="no-books">No books found in this category.</div>';
+						}
+					?>
                 </div>
             </div>
         </div>
@@ -243,7 +300,7 @@ if (session_status() == PHP_SESSION_NONE) {
 		
 										<!-- Left Section: Logo and Title -->
 										<div class="d-flex flex-column align-items-center p-4" style="flex: 1;">
-											<img src="asset\img\campus_logo.png" alt="School Logo" class="logo" />
+											<img src="../asset/img/campus_logo.png" alt="School Logo" class="logo" />
 											<h1 class="logo-name text-white mt-3">WMSU ESU CURUAN</h1>
 											<h2 class="faq-title text-white">Frequently Asked Questions</h2>
 										</div>
@@ -314,6 +371,6 @@ if (session_status() == PHP_SESSION_NONE) {
 
 <?php
 
-include 'footer.php';
+include '../footer.php';
 
 ?>

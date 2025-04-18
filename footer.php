@@ -4,13 +4,17 @@
     $statement = $connect->prepare($query);
     $statement->execute();
     $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+
 ?>
-        <?php if (is_logged_in('admin') || is_logged_in('librarian')) { ?>
+        <?php if ($role_id == 1 || $role_id == 2): ?>
 
         
-        </main>
-        <?php } elseif (is_logged_in('faculty') || is_logged_in('student') || is_logged_in('visitor')) { ?>
-                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+            </main>
+        <?php elseif ($role_id == 3 || $role_id == 4 || $role_id == 5): ?>
+            
+            </main>
+                <footer class="bg-dark text-white pt-1 pb-1 mt-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
                     <div class="mb-0 d-flex gap-2 align-items-center">
                         <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
                     </div>
@@ -33,13 +37,14 @@
                         </p>
                     </address>
                 </footer>
-            </div>
+            
         <?php 
-        } else { 
+        else: 
             // Default footer for login/registration or when no user is logged in
             
         ?>
-                <footer class="footer bg-dark text-white pt-1 pb-1 mt-1 position-fixed bottom-0 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
+            </main>
+                <footer class="bg-dark text-white pt-1 pb-1 mt-1 w-100 d-flex flex-wrap gap-3 align-items-center justify-content-center">
                     <div class="mb-0 d-flex gap-2 align-items-center">
                         <span class="py-3">Open Hours: 8am-4pm MON-FRI</span>
                     </div>
@@ -62,41 +67,42 @@
                         </p>
                     </address>
                 </footer>
-            </div>
-        <?php 
-        }
-        ?>
-        
-        <script src="../asset/js/scripts.js"></script>
-        <script src="../asset/js/dataTables-simple-demo.js"></script>
-        <script src="asset/js/scripts.js"></script>
-        <script src="asset/js/dataTables-simple-demo.js"></script>
-        <!-- Bootstrap Bundle JS -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+            
+        <?php endif; ?>
 
-        <!-- Simple DataTables -->
-        <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" crossorigin="anonymous"></script>
-        <!-- DataTables Responsive Extension -->
-        <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-        <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+
+        <!-- footer.php -->
 
         <!-- Bootstrap Bundle (includes Popper) -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+        <!-- DataTables JS -->
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+        <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+
+        <!-- Select2 JS -->
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-        <script src="../asset/js/custom-dataTables.js"></script>
-        <script src="asset/js/custom-dataTables.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.pkgd.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <!-- Chart.js -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.pkgd.js"></script>
+
+        <!-- Custom Scripts -->
+        <script src="../asset/js/scripts.js"></script>
+        <script src="asset/js/scripts.js"></script>
+
+        <!-- Initialize DataTables & Select2 -->
         <script>
             $(document).ready(function() {
+
+                // Initialize Select2
                 $('.js-example-basic-single').select2();
                 $('.js-example-basic-multiple').select2();
             });
         </script>
-
     </body>
 
 </html>

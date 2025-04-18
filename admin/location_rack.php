@@ -3,38 +3,40 @@
 
 include '../database_connection.php';
 include '../function.php';
+include '../header.php';
+authenticate_admin();
+require_once('library_map_component.php');
 
-
-$message = ''; // Feedback message
-
+$message = ''; 
 
 // DELETE (Disable/Enable)
 if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
-	$category_id = $_GET["code"];
-	$status = $_GET["status"];
+    $location_rack_id = $_GET["code"];
+    $status = $_GET["status"];
 
-	$data = array(
-		':location_rack_status' => $status,
-		':location_rack_id'     => $location_rack_id
-	);
+    $data = array(
+        ':location_rack_status' => $status,
+        ':location_rack_id'     => $location_rack_id
+    );
 
-	$query = "
-	UPDATE lms_location_rack 
-	SET location_rack_status = :location_rack_status 
-	WHERE location_rack_id = :location_rack_id";
+    $query = "
+    UPDATE lms_location_rack 
+    SET location_rack_status = :location_rack_status 
+    WHERE location_rack_id = :location_rack_id";
 
+    $statement = $connect->prepare($query);
+    $statement->execute($data);
 
-	$statement = $connect->prepare($query);
-	$statement->execute($data);
-
-	header('location:location_rack.php?msg=' . strtolower($status) . '');
-	exit;
+    header('location:location_rack.php?msg=' . strtolower($status) . '');
+    exit;
 }
 
 // ADD rack (Form Submit)
 if (isset($_POST['add_rack'])) {
-    $name = trim($_POST['location_rack_name']); // Clean the input
+    $name = trim($_POST['location_rack_name']);
     $status = $_POST['location_rack_status'];
+    $position_x = isset($_POST['position_x']) ? (int)$_POST['position_x'] : 0;
+    $position_y = isset($_POST['position_y']) ? (int)$_POST['position_y'] : 0;
 
     // Check for duplicate (case-insensitive comparison)
     $check_query = "
@@ -48,26 +50,26 @@ if (isset($_POST['add_rack'])) {
     $count = $statement->fetchColumn();
 
     if ($count > 0) {
-        // Rack already exists
         header('location:location_rack.php?action=add&error=exists');
         exit;
     }
 
-    // If not existing, insert new rack
-    $date_now = get_date_time($connect); // Get the current date once
+    $date_now = get_date_time($connect);
 
     $query = "
         INSERT INTO lms_location_rack 
-        (location_rack_name, location_rack_status, rack_created_on, rack_updated_on) 
-        VALUES (:name, :status, :created_on, :updated_on)
+        (location_rack_name, location_rack_status, rack_created_on, rack_updated_on, position_x, position_y) 
+        VALUES (:name, :status, :created_on, :updated_on, :position_x, :position_y)
     ";
     
     $statement = $connect->prepare($query);
     $statement->execute([
         ':name' => $name,
         ':status' => $status,
-        ':created_on' => $date_now,   // Same date for both created and updated
-        ':updated_on' => $date_now
+        ':created_on' => $date_now,
+        ':updated_on' => $date_now,
+        ':position_x' => $position_x,
+        ':position_y' => $position_y
     ]);
     
     header('location:location_rack.php?msg=add');
@@ -79,12 +81,16 @@ if (isset($_POST['edit_rack'])) {
     $id = $_POST['location_rack_id'];
     $name = $_POST['location_rack_name'];
     $status = $_POST['location_rack_status'];
+    $position_x = isset($_POST['position_x']) ? (int)$_POST['position_x'] : 0;
+    $position_y = isset($_POST['position_y']) ? (int)$_POST['position_y'] : 0;
 
     $update_query = "
         UPDATE lms_location_rack 
         SET location_rack_name = :name, 
             location_rack_status = :status,
-            rack_updated_on = :updated_on
+            rack_updated_on = :updated_on,
+            position_x = :position_x,
+            position_y = :position_y
         WHERE location_rack_id = :id
     ";
 
@@ -92,7 +98,9 @@ if (isset($_POST['edit_rack'])) {
         ':name' => $name,
         ':status' => $status,
         ':updated_on' => get_date_time($connect),
-        ':id' => $id
+        ':id' => $id,
+        ':position_x' => $position_x,
+        ':position_y' => $position_y
     ];
 
     $statement = $connect->prepare($update_query);
@@ -102,287 +110,550 @@ if (isset($_POST['edit_rack'])) {
     exit;
 }
 
-
-// SELECT rack
+// SELECT all racks for use in the map visualization
 $query = "SELECT * FROM lms_location_rack ORDER BY location_rack_id ASC";
 $statement = $connect->prepare($query);
 $statement->execute();
-$rack = $statement->fetchAll(PDO::FETCH_ASSOC);
+$all_racks = $statement->fetchAll(PDO::FETCH_ASSOC);
 
-include '../header.php';
+$query = "SELECT * FROM lms_library_features WHERE feature_status = 'Enable' ORDER BY feature_id ASC";
+$statement = $connect->prepare($query);
+$statement->execute();
+$library_features = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
-    <h1 class="my-3">Rack Location Management</h1>
+<div class="container-fluid px-4">
+    <h1 class="my-4">Rack Location Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rack Disabled',
-                    text: 'The rack has been successfully disabled.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rack Enabled',
-                    text: 'The rack has been successfully enabled.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rack Added',
-                    text: 'The rack was added successfully!',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rack Updated',
-                    text: 'The rack was updated successfully!',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php endif; ?>
+            document.addEventListener('DOMContentLoaded', function() {
+                <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Rack Disabled',
+                        text: 'The rack has been successfully disabled.',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done',
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Rack Enabled',
+                        text: 'The rack has been successfully enabled.',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done',
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Rack Added',
+                        text: 'The rack was added successfully!',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done',
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Rack Updated',
+                        text: 'The rack was updated successfully!',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done',
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                <?php endif; ?>
 
-            // Remove ?msg=... from the URL without reloading the page
-            if (window.history.replaceState) {
-                const url = new URL(window.location);
-                url.searchParams.delete('msg');
-                window.history.replaceState({}, document.title, url.pathname + url.search);
-            }
-        });
+                // Remove ?msg=... from the URL without reloading the page
+                if (window.history.replaceState) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('msg');
+                    window.history.replaceState({}, document.title, url.pathname + url.search);
+                }
+            });
         </script>
     <?php endif; ?>
 
-
     <?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
-    <!-- Add Rack Form -->
-    <div class="card">
-        <div class="card-header"><h5>Add Rack Location</h5></div>
-        <div class="card-body">
+        <!-- Add Rack Form -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Rack Location</h5>
+            </div>
+            <div class="card-body">
+                <?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" id="error-alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Rack location already exists.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
 
-            <?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
-                <div class="alert alert-danger" id="error-alert">
-                    Rack location already exists.
-                </div>
-            <?php endif; ?>
-
-            <form method="post">
-                <div class="mb-3">
-                    <label>Rack Location Name</label>
-                    <input type="text" name="location_rack_name" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label>Status</label>
-                    <select name="location_rack_status" class="form-select">
-                        <option value="Enable">Available</option>
-                        <option value="Disable">Full</option>
-                    </select>
-                </div>
-                <input type="submit" name="add_rack" class="btn btn-success" value="Add Rack">
-                <a href="location_rack.php" class="btn btn-secondary">Cancel</a>
-            </form>
+                <form method="post" class="row g-3">
+                    <div class="col-8 mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Rack Position on Map</h6>
+                            </div>
+                            <div class="card-body">
+                                <?php 
+                                // Render the library map component in 'add' mode with all existing racks
+                                $new_rack = ['location_rack_name' => 'New Rack'];
+                                renderLibraryMap('add', $new_rack, $all_racks, 400, $library_features);
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="col-md-11">
+                            <label for="location_rack_name" class="form-label">Rack Location Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-tag"></i></span>
+                                <input type="text" id="location_rack_name" name="location_rack_name" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-9">
+                            <label for="location_rack_status" class="form-label">Status</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
+                                <select name="location_rack_status" id="location_rack_status" class="form-select">
+                                    <option value="Enable">Available</option>
+                                    <option value="Disable">Full</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 mt-4 d-flex justify-content-end">
+                        <button type="submit" name="add_rack" class="btn btn-success me-2">
+                            <i class="fas fa-save me-2"></i>Add Rack
+                        </button>
+                        <a href="location_rack.php" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
-
 
     <?php elseif (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])): ?>
+        <?php
+        $id = $_GET['code'];
+        $query = "SELECT * FROM lms_location_rack WHERE location_rack_id = :id LIMIT 1";
+        $statement = $connect->prepare($query);
+        $statement->execute([':id' => $id]);
+        $rack = $statement->fetch(PDO::FETCH_ASSOC);
+        
+        // Default positions if not set in the database
+        $position_x = isset($rack['position_x']) ? $rack['position_x'] : 0;
+        $position_y = isset($rack['position_y']) ? $rack['position_y'] : 0;
+        ?>
 
-<?php
-$id = $_GET['code'];
-$query = "SELECT * FROM lms_location_rack WHERE location_rack_id = :id LIMIT 1";
-$statement = $connect->prepare($query);
-$statement->execute([':id' => $id]);
-$rack = $statement->fetch(PDO::FETCH_ASSOC);
-?>
+        <?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle me-2"></i> Rack location already exists. Please choose another name.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
 
-<?php if (isset($_GET['error']) && $_GET['error'] == 'exists'): ?>
-<div class="alert alert-danger">
-    Rack location already exists. Please choose another name.
-</div>
-<?php endif; ?>
-
-<!-- Edit Rack Form -->
-<div class="card">
-    <div class="card-header"><h5>Edit Rack Location</h5></div>
-    <div class="card-body">
-        <form method="post">
-            <input type="hidden" name="location_rack_id" value="<?= $rack['location_rack_id'] ?>">
-            <div class="mb-3">
-                <label>Rack Location Name</label>
-                <input type="text" name="location_rack_name" class="form-control" value="<?= $rack['location_rack_name'] ?>" required>
+        <!-- Edit Rack Form -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Rack Location</h5>
             </div>
-            <div class="mb-3">
-                <label>Status</label>
-                <select name="location_rack_status" class="form-select">
-                    <option value="Enable" <?= $rack['location_rack_status'] == 'Enable' ? 'selected' : '' ?>>Available</option>
-                    <option value="Disable" <?= $rack['location_rack_status'] == 'Disable' ? 'selected' : '' ?>>Full</option>
-                </select>
-            </div>
-            <input type="submit" name="edit_rack" class="btn btn-primary" value="Update Rack">
-            <a href="location_rack.php" class="btn btn-secondary">Cancel</a>
-        </form>
-    </div>
-</div>
-
-<?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
-            <?php
-		$id = $_GET['code'];
-		$query = "SELECT * FROM lms_location_rack WHERE location_rack_id = :id LIMIT 1";
-		$statement = $connect->prepare($query);
-		$statement->execute([':id' => $id]);
-		$category = $statement->fetch(PDO::FETCH_ASSOC);
-
-		if ($rack): 
-	?>
-
-
-		<!-- View Rack Details -->
-		<div class="card">
-			<div class="card-header"><h5>View Rack</h5></div>
-			<div class="card-body">
-				<p><strong>ID:</strong> <?= htmlspecialchars($rack['location_rack_id']) ?></p>
-				<p><strong>Location Rack Name:</strong> <?= htmlspecialchars($rack['location_rack_name']) ?></p>
-				<p><strong>Status:</strong> <?= htmlspecialchars($rack['location_rack_status']) ?></p>
-				<p><strong>Created On:</strong> <?= date('M d, Y h:i A', strtotime($rack['rack_created_on'])) ?></p>
-				<p><strong>Updated On:</strong> <?= date('M d, Y h:i A', strtotime($rack['rack_updated_on'])) ?></p>
-				<a href="location_rack.php" class="btn btn-secondary">Back</a>
-			</div>
-		</div>
-
-	<?php 
-		else: 
-	?>
-		<p class="alert alert-danger">Location Rack not found.</p>
-		<a href="location_rack.php" class="btn btn-secondary">Back</a>
-	<?php 
-		endif;
-	// END VIEW rack
-
-	else: ?>
-
-    <!-- Rack List -->
-<div class="card mb-4">
-    <div class="card-header">
-        <div class="row">
-            <div class="col col-md-6">
-                <i class="fas fa-table me-1"></i> Rack Management
-            </div>
-            <div class="col col-md-6">
-                <a href="location_rack.php?action=add" class="btn btn-success btn-sm float-end">Add Rack</a>
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    <input type="hidden" name="location_rack_id" value="<?= $rack['location_rack_id'] ?>">
+                    <div class="col-8 mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Rack Position on Map</h6>
+                            </div>
+                            <div class="card-body">
+                                <?php 
+                                // Render the library map component in 'edit' mode with all racks
+                                renderLibraryMap('edit', $rack, $all_racks, 400, $library_features);
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="col-md-11">
+                            <label for="location_rack_name" class="form-label">Rack Location Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-tag"></i></span>
+                                <input type="text" id="location_rack_name" name="location_rack_name" class="form-control" value="<?= htmlspecialchars($rack['location_rack_name']) ?>" required>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-9">
+                            <label for="location_rack_status" class="form-label">Status</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-toggle-on"></i></span>
+                                <select name="location_rack_status" id="location_rack_status" class="form-select">
+                                    <option value="Enable" <?= $rack['location_rack_status'] == 'Enable' ? 'selected' : '' ?>>Available</option>
+                                    <option value="Disable" <?= $rack['location_rack_status'] == 'Disable' ? 'selected' : '' ?>>Full</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4 d-flex justify-content-end">
+                        <button type="submit" name="edit_rack" class="btn btn-primary me-2">
+                            <i class="fas fa-save me-2"></i>Update Rack
+                        </button>
+                        <a href="location_rack.php" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
             </div>
         </div>
-    </div>
 
-    <div class="card-body">
-        <table id="dataTable" class="display nowrap" style="width:100%">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Rack Name</th>
-                    <th>Status</th>
-                    <th>Created On</th>
-                    <th>Updated On</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-<?php if (count($rack) > 0): ?>
-    <?php foreach ($rack as $row): ?>
-        <tr>
-            <td><?= $row['location_rack_id'] ?></td>
-            <td><?= $row['location_rack_name'] ?></td>
-            <td>
-                <?= ($row['location_rack_status'] === 'Enable') 
-                    ? '<span class="badge bg-success">Available</span>' 
-                    : '<span class="badge bg-danger">Full</span>' ?>
-            </td>
-            <td><?= date('Y-m-d H:i:s', strtotime($row['rack_created_on'])) ?></td>
-            <td><?= date('Y-m-d H:i:s', strtotime($row['rack_updated_on'])) ?></td>
-            <td class="text-center">
-                <a href="location_rack.php?action=view&code=<?= $row['location_rack_id'] ?>" class="btn btn-info btn-sm mb-1">
-                    <i class="fa fa-eye"></i>
-                </a>
-                <a href="location_rack.php?action=edit&code=<?= $row['location_rack_id'] ?>" class="btn btn-primary btn-sm mb-1">
-                    <i class="fa fa-edit"></i>
-                </a>
-                <button type="button" name="delete_button" class="btn btn-danger btn-sm" onclick="delete_data('<?= $row['location_rack_id'] ?>')">
-                    <i class="fa fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    <?php endforeach; ?>
-<?php else: ?>
-    <tr><td colspan="6" class="text-center">No Data Found</td></tr>
-<?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <?php elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['code'])): ?>
+        <?php
+            $id = $_GET['code'];
+            $query = "SELECT * FROM lms_location_rack WHERE location_rack_id = :id LIMIT 1";
+            $statement = $connect->prepare($query);
+            $statement->execute([':id' => $id]);
+            $rack = $statement->fetch(PDO::FETCH_ASSOC);
+            
+            // Default positions if not set in the database
+            $position_x = isset($rack['position_x']) ? $rack['position_x'] : 0;
+            $position_y = isset($rack['position_y']) ? $rack['position_y'] : 0;
+
+            if ($rack): 
+        ?>
+        <!-- View Rack Details -->
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Rack Location Map</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php 
+                        // Render the library map component in 'view' mode with all racks
+                        renderLibraryMap('view', $rack, $all_racks, 400, $library_features); 
+                        ?>
+                        
+                        <div class="card mt-3">
+                            <div class="card-body bg-light">
+                                <h6 class="card-title"><i class="fas fa-route me-2"></i>How to Find This Rack</h6>
+                                <p class="card-text mb-1">
+                                    <small>
+                                        <i class="fas fa-arrow-right me-1 text-success"></i>
+                                        Enter the library through the main entrance.
+                                    </small>
+                                </p>
+                                <?php
+                                $position_x = isset($rack['position_x']) ? $rack['position_x'] : 0;
+                                $position_y = isset($rack['position_y']) ? $rack['position_y'] : 0;
+                                ?>
+                                <p class="card-text mb-1">
+                                    <small>
+                                        <i class="fas fa-arrow-right me-1 text-success"></i>
+                                        <?php if($position_x < 100): ?>
+                                            Turn left and proceed to the west section.
+                                        <?php elseif($position_x < 200): ?>
+                                            Go straight to the center section.
+                                        <?php else: ?>
+                                            Turn right and proceed to the east section.
+                                        <?php endif; ?>
+                                    </small>
+                                </p>
+                                <p class="card-text mb-0">
+                                    <small>
+                                        <i class="fas fa-arrow-right me-1 text-success"></i>
+                                        <?php if($position_y < 100): ?>
+                                            The rack is located in the front area.
+                                        <?php elseif($position_y < 200): ?>
+                                            The rack is located in the middle area.
+                                        <?php else: ?>
+                                            The rack is located in the back area near the reading section.
+                                        <?php endif; ?>
+                                    </small>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Rack Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <tbody>
+                                <tr>
+                                    <th width="30%"><i class="fas fa-hashtag me-2"></i>ID</th>
+                                    <td><?= htmlspecialchars($rack['location_rack_id']) ?></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-tag me-2"></i>Rack Name</th>
+                                    <td><?= htmlspecialchars($rack['location_rack_name']) ?></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-toggle-on me-2"></i>Status</th>
+                                    <td>
+                                        <?php if($rack['location_rack_status'] === 'Enable'): ?>
+                                            <span class="badge bg-success">Available</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger">Full</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-calendar-plus me-2"></i>Created On</th>
+                                    <td><?= date('M d, Y h:i A', strtotime($rack['rack_created_on'])) ?></td>
+                                </tr>
+                                <tr>
+                                    <th><i class="fas fa-calendar-check me-2"></i>Updated On</th>
+                                    <td><?= date('M d, Y h:i A', strtotime($rack['rack_updated_on'])) ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-3 d-flex justify-content-end">
+                            <a href="location_rack.php" class="btn btn-secondary me-2">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </a>
+                            <a href="location_rack.php?action=edit&code=<?= $rack['location_rack_id'] ?>" class="btn btn-primary me-2">
+                                <i class="fas fa-edit me-2"></i>Edit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <?php else: ?>
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i> Location Rack not found.
+        </div>
+        <a href="location_rack.php" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back
+        </a>
+        <?php endif; ?>
+
+    <?php else: ?>
+        <!-- Rack List -->
+        <div class="row mb-4">
+            <div class="col-md-5">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-map me-2"></i>Library Rack Map</h5>
+                    </div>
+                    <div class="card-body">                       
+                        
+                        <!-- Library Map -->
+                        <div class="mb-4">
+                            <?php renderLibraryMap('list', null, $all_racks, 500, $library_features); ?>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Map Legend:</strong>
+                                <div class="d-flex flex-wrap gap-3 mt-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
+                                        </div>
+                                        <span>Active Rack</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-danger text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
+                                        </div>
+                                        <span>Disabled Rack</span>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-info text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="fas fa-archive"></i>
+                                        </div>
+                                        <span>Selected Rack</span>
+                                    </div>
+                                    <?php foreach ($library_features as $feature): ?>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                            <i class="<?= $feature['feature_icon'] ?>"></i>
+                                        </div>
+                                        <span><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Rack List</h5>
+                            </div>
+                            <div class="col text-end">
+                                <a href="location_rack.php?action=add" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus me-1"></i> Add Rack
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <table id="dataTable" class="display nowrap" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Rack Name</th>
+                                    <th>Status</th>
+                                    <th>Updated On</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php if (count($all_racks) > 0): ?>
+                                <?php foreach ($all_racks as $row): ?>
+                                <tr>
+                                    <td><?= $row['location_rack_id'] ?></td>
+                                    <td>
+                                        <span class="d-flex align-items-center">
+                                            <i class="fas fa-archive me-2 text-secondary"></i>
+                                            <?= htmlspecialchars($row['location_rack_name']) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if($row['location_rack_status'] === 'Enable'): ?>
+                                            <span class="badge bg-success">Available</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-danger">Full</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= date('M d, Y H:i:s', strtotime($row['rack_updated_on'])) ?></td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="location_rack.php?action=view&code=<?= $row['location_rack_id'] ?>" class="btn btn-info btn-sm" data-bs-toggle="tooltip" title="View Details">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <a href="location_rack.php?action=edit&code=<?= $row['location_rack_id'] ?>" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" title="Edit Rack">
+                                                <i class="fa fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-<?= ($row['location_rack_status'] === 'Enable') ? 'danger' : 'success' ?> btn-sm toggle-status-btn" 
+                                                    data-id="<?= $row['location_rack_id'] ?>" 
+                                                    data-status="<?= $row['location_rack_status'] ?>" 
+                                                    data-bs-toggle="tooltip" 
+                                                    title="<?= ($row['location_rack_status'] === 'Enable') ? 'Mark as Full' : 'Mark as Available' ?>">
+                                                <i class="fa <?= ($row['location_rack_status'] === 'Enable') ? 'fa-times' : 'fa-check' ?>"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="5" class="text-center">No Data Found</td></tr>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 </div>
 
-<?php endif; ?>
-</main>
-
 <script>
-// Function to disable a rack via confirm dialog (basic)
-function delete_data(rackId) {
-    if (confirm("Are you sure you want to disable this Rack?")) {
-        window.location.href = "rack.php?action=delete&code=" + rackId + "&status=Disable";
-    }
-}
+// DataTable initialization - ensure jQuery and DataTables are loaded
+$(document).ready(function() {
+    const table = $('#dataTable').DataTable({
+        responsive: true,
+        columnDefs: [
+            { responsivePriority: 1, targets: 1 },  // Rack Name (most important)
+            { responsivePriority: 2, targets: 4 },  // Action buttons
+            { responsivePriority: 3, targets: 0 },  // ID
+            { responsivePriority: 4, targets: 2 },  // Status
+            { 
+                targets: [4], // Action column
+                orderable: false,
+                searchable: false,
+                className: 'no-wrap' // Prevent button wrapping
+            },
+            { 
+                targets: [3], // Updated On
+                responsivePriority: 5, // Least important
+                type: 'date' // Better sorting for dates
+            }
+        ],
+        order: [[0, 'asc']], // Default sort by ID
+        language: {
+            emptyTable: "No racks available"
+        },
+        scrollY: '500px',
+        scrollX: false, // Added for horizontal responsiveness
+        scrollCollapse: true,
+        paging: true,
+        fixedHeader: true, // Optional: keeps headers visible while scrolling
+        drawCallback: function () {
+            setTimeout(() => {
+                table.columns.adjust().responsive.recalc();
+            }, 100);
+        }
+    });
+    // Adjust columns on window resize
+    $(window).on('resize', function () {
+        table.columns.adjust().responsive.recalc();
+    });
 
-$(document).ready(function() {    
-  $('#dataTable').DataTable({
-    responsive: true,
-    columnDefs: [
-      { responsivePriority: 1, targets: [0, 1, 5] },
-      { responsivePriority: 2, targets: [2, 3] }
-    ],
-    order: [[0, 'asc']],
-    autoWidth: false,
-    language: {
-      emptyTable: "No data available"
-    },
-    
-    // Scroll and pagination settings
-    scrollY: '400px',       // Vertical scroll
-    scrollX: true,          // Horizontal scroll
-    scrollCollapse: true,   // Collapse height when less data
-    paging: true            // Enable pagination
-  });
+    // Final adjustment after full load/render
+    setTimeout(() => {
+        table.columns.adjust().responsive.recalc();
+    }, 300);
 });
 
-// For deleting alert
+// Toggle status buttons
 document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-
-    deleteButtons.forEach(button => {
+    // Check if SweetAlert is available
+    if (typeof Swal === 'undefined') {
+        console.error('SweetAlert is not loaded');
+        return;
+    }
+    
+    // Get all toggle buttons
+    const toggleButtons = document.querySelectorAll('.toggle-status-btn');
+    
+    // Attach click event to each button
+    toggleButtons.forEach(button => {
         button.addEventListener('click', function(e) {
-            e.preventDefault();
-
+            e.preventDefault(); // Prevent default button behavior
+            
             const rackId = this.getAttribute('data-id');
             const currentStatus = this.getAttribute('data-status');
-            const action = (currentStatus === 'Enable') ? 'disable' : 'enable';
-
+            const newStatus = currentStatus === 'Enable' ? 'Disable' : 'Enable';
+            const actionText = currentStatus === 'Enable' ? 'mark as full' : 'mark as available';
+            
+            // Show SweetAlert confirmation
             Swal.fire({
-                title: `Are you sure you want to ${action} this rack?`,
-                text: "This action can be reverted later.",
-                icon: 'warning',
+                title: `Are you sure?`,
+                text: `Do you want to ${actionText} this rack?`,
+                icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: `Yes, ${action} it!`
+                confirmButtonColor: currentStatus === 'Enable' ? '#dc3545' : '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: `Yes, ${actionText}!`
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `rack.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${rackId}`;
+                    // Navigate to the action URL
+                    window.location.href = `location_rack.php?action=delete&code=${rackId}&status=${newStatus}`;
                 }
             });
         });
@@ -390,43 +661,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script>
-    // Remove query parameters from the URL (optional after showing alert)
-    if (window.history.replaceState) {
-        const url = new URL(window.location);
-        url.searchParams.delete('error');
-        window.history.replaceState({}, document.title, url.pathname + url.search);
-    }
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const alertBox = document.getElementById('error-alert');
-
-        if (alertBox) {
-            // Display the alert for 3 seconds (3000ms)
-            setTimeout(function() {
-                // Optional fade-out effect
-                alertBox.style.transition = 'opacity 0.5s ease';
-                alertBox.style.opacity = '0';
-
-                // Remove the alert after fade (0.5s delay)
-                setTimeout(function() {
-                    alertBox.remove();
-                }, 500);
-
-                // Remove 'error' param from the URL after the alert disappears
-                if (window.history.replaceState) {
-                    const url = new URL(window.location);
-                    url.searchParams.delete('error');
-                    window.history.replaceState({}, document.title, url.pathname + url.search);
-                }
-            }, 3000); // You can change this to 5000 for 5 seconds, etc.
-        }
-    });
-</script>
-<?php 
-
+<?php
 include '../footer.php';
-
 ?>

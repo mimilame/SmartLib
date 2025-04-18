@@ -1,744 +1,978 @@
 <?php
-// Database connection settings
+// Include necessary files
+
 include '../database_connection.php';
 include '../function.php';
 include '../header.php';
+include 'library_map_component.php';
 
-$message = '';
+// Define action handlers
+$action = isset($_GET['action']) ? $_GET['action'] : 'view';
+$error_message = '';
+$success_message = '';
+$setting_data = [];
+$library_features = [];
 
-// Fetch book circulation statistics
-$bookStatusStats = $connect->query("
-    SELECT issue_book_status as status, COUNT(*) as count 
-    FROM lms_issue_book 
-    GROUP BY issue_book_status
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Convert to format usable by charts
-$statusLabels = [];
-$statusCounts = [];
-foreach ($bookStatusStats as $stat) {
-    $statusLabels[] = $stat['status'];
-    $statusCounts[] = $stat['count'];
+// Get settings data from database
+try {
+    $query = "SELECT * FROM lms_setting LIMIT 1";
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    $setting_data = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    // Get library features
+    $library_features = getLibraryFeatures($connect);
+} catch (PDOException $e) {
+    $error_message = "Database Error: " . $e->getMessage();
 }
 
-// Fetch overdue books statistics
-$overdueBooks = $connect->query("
-    SELECT COUNT(*) as count 
-    FROM lms_issue_book 
-    WHERE issue_book_status = 'Overdue' 
-")->fetch(PDO::FETCH_ASSOC);
-
-// Fetch monthly transaction statistics (last 6 months)
-$monthlyStats = $connect->query("
-    SELECT 
-        DATE_FORMAT(issue_date, '%b %Y') as month,
-        COUNT(CASE WHEN issue_book_status = 'Issue' THEN 1 END) as issued,
-        COUNT(CASE WHEN issue_book_status = 'Return' THEN 1 END) as returned,
-        COUNT(CASE WHEN issue_book_status = 'Not Return' THEN 1 END) as lost
-    FROM lms_issue_book
-    WHERE issue_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-    GROUP BY DATE_FORMAT(issue_date, '%Y-%m')
-    ORDER BY issue_date
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch most frequently borrowed books
-$popularBooks = $connect->query("
-    SELECT ib.book_id, b.book_name, COUNT(ib.book_id) AS issue_count 
-    FROM lms_issue_book ib 
-    INNER JOIN lms_book b ON ib.book_id = b.book_id 
-    GROUP BY ib.book_id, b.book_name 
-    ORDER BY issue_count DESC 
-    LIMIT 10
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch category distribution
-$categoryStats = $connect->query("SELECT c.category_name, COUNT(b.book_id) as book_count FROM lms_category c LEFT JOIN lms_book b ON c.category_id = b.category_id WHERE c.category_status = 'Enable' GROUP BY c.category_id ORDER BY book_count DESC")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch active users by role
-$userRoleStats = $connect->query("
-    SELECT r.role_name, COUNT(u.user_id) as user_count 
-    FROM user_roles r 
-    LEFT JOIN lms_user u ON r.role_id = u.role_id 
-    WHERE u.user_status = 'Enable' 
-    GROUP BY r.role_id, r.role_name
-    ORDER BY user_count DESC
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch most active borrowers
-$activeBorrowers = $connect->query("
-    SELECT u.user_name, u.user_unique_id, COUNT(i.issue_book_id) as borrow_count 
-    FROM lms_user u 
-    JOIN lms_issue_book i ON u.user_id = i.user_id 
-    GROUP BY u.user_id, u.user_name, u.user_unique_id
-    ORDER BY borrow_count DESC 
-    LIMIT 10
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Fetch recent transactions
-$recentTransactions = $connect->query("
-    SELECT b.book_name, u.user_name, i.issue_date, i.return_date, i.expected_return_date, i.issue_book_status 
-    FROM lms_issue_book i 
-    JOIN lms_book b ON i.book_id = b.book_id 
-    JOIN lms_user u ON i.user_id = u.user_id 
-    ORDER BY i.issue_date DESC 
-    LIMIT 10
-")->fetchAll(PDO::FETCH_ASSOC);
-
-// Prepare category data for charts
-$categoryNames = [];
-$categoryCounts = [];
-foreach ($categoryStats as $category) {
-    $categoryNames[] = $category['category_name'];
-    $categoryCounts[] = $category['book_count'];
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Settings update
+    if (isset($_POST['update_settings'])) {
+        try {
+            $query = "
+            UPDATE lms_setting SET 
+                library_name = :library_name,
+                library_address = :library_address,
+                library_contact_number = :library_contact_number,
+                library_email_address = :library_email_address,
+                library_open_hours = :library_open_hours,
+                library_total_book_issue_day = :library_total_book_issue_day,
+                library_one_day_fine = :library_one_day_fine,
+                library_issue_total_book_per_user = :library_issue_total_book_per_user,
+                library_currency = :library_currency,
+                library_timezone = :library_timezone
+            WHERE setting_id = :setting_id
+            ";
+            
+            $statement = $connect->prepare($query);
+            $statement->execute([
+                ':library_name' => $_POST['library_name'],
+                ':library_address' => $_POST['library_address'],
+                ':library_contact_number' => $_POST['library_contact_number'],
+                ':library_email_address' => $_POST['library_email_address'],
+                ':library_open_hours' => $_POST['library_open_hours'],
+                ':library_total_book_issue_day' => $_POST['library_total_book_issue_day'],
+                ':library_one_day_fine' => $_POST['library_one_day_fine'],
+                ':library_issue_total_book_per_user' => $_POST['library_issue_total_book_per_user'],
+                ':library_currency' => $_POST['library_currency'],
+                ':library_timezone' => $_POST['library_timezone'],
+                ':setting_id' => $setting_data['setting_id']
+            ]);
+            
+            // Handle logo upload if provided
+            if (isset($_FILES['library_logo']) && $_FILES['library_logo']['name'] != '') {
+                $target_dir = "../uploads/";
+                if (!file_exists($target_dir)) {
+                    mkdir($target_dir, 0777, true);
+                }
+                
+                $target_file = $target_dir . "logo_" . time() . "." . pathinfo($_FILES['library_logo']['name'], PATHINFO_EXTENSION);
+                
+                if (move_uploaded_file($_FILES['library_logo']['tmp_name'], $target_file)) {
+                    $logo_name = basename($target_file);
+                    
+                    $query = "UPDATE lms_setting SET library_logo = :library_logo WHERE setting_id = :setting_id";
+                    $statement = $connect->prepare($query);
+                    $statement->execute([
+                        ':library_logo' => $logo_name,
+                        ':setting_id' => $setting_data['setting_id']
+                    ]);
+                }
+            }
+            
+            $success_message = "Library settings updated successfully!";
+            
+            // Refresh data
+            $statement = $connect->prepare("SELECT * FROM lms_setting LIMIT 1");
+            $statement->execute();
+            $setting_data = $statement->fetch(PDO::FETCH_ASSOC);
+            
+        } catch (PDOException $e) {
+            $error_message = "Error updating settings: " . $e->getMessage();
+        }
+    }
+    
+    // Library feature add/edit
+    elseif (isset($_POST['add_feature']) || isset($_POST['update_feature'])) {
+        $feature_data = [
+            ':feature_name' => $_POST['feature_name'],
+            ':feature_icon' => $_POST['feature_icon'],
+            ':position_x' => $_POST['position_x'],
+            ':position_y' => $_POST['position_y'],
+            ':width' => $_POST['width'],
+            ':height' => $_POST['height'],
+            ':bg_color' => $_POST['bg_color'],
+            ':text_color' => $_POST['text_color'],
+            ':feature_status' => $_POST['feature_status'],
+            ':updated_on' => date('Y-m-d H:i:s')
+        ];
+        
+        if (isset($_POST['add_feature'])) {
+            $feature_data[':created_on'] = date('Y-m-d H:i:s');
+            $result = addLibraryFeature($connect, $feature_data);
+        } else {
+            $feature_data[':feature_id'] = $_POST['feature_id'];
+            $result = updateLibraryFeature($connect, $feature_data);
+        }
+        
+        if (isset($result['status']) && $result['status']) {
+            $success_message = $result['message'];
+        } else {
+            $error_message = isset($result['message']) ? $result['message'] : "An error occurred";
+        }
+        
+        // Refresh features
+        $library_features = getLibraryFeatures($connect);
+    }
+    
+    // Feature delete
+    elseif (isset($_POST['delete_feature'])) {
+        if (deleteLibraryFeature($connect, $_POST['feature_id'])) {
+            $success_message = "Feature deleted successfully!";
+        } else {
+            $error_message = "Error deleting feature";
+        }
+        
+        // Refresh features
+        $library_features = getLibraryFeatures($connect);
+    }
 }
 
-// Prepare user role data for charts
-$roleNames = [];
-$roleCounts = [];
-foreach ($userRoleStats as $role) {
-    $roleNames[] = $role['role_name'];
-    $roleCounts[] = $role['user_count'];
+// Get rack data for map display
+$racks = [];
+try {
+    $query = "SELECT * FROM lms_location_rack";
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    $racks = $statement->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Table might not exist, ignore
 }
 
-// Fetch detailed overdue books listing
-$overdueBooksList = $connect->query("
-    SELECT b.book_name, u.user_name, u.user_email, i.issue_date, i.expected_return_date,
-           DATEDIFF(CURDATE(), i.expected_return_date) as days_overdue
-    FROM lms_issue_book i 
-    JOIN lms_book b ON i.book_id = b.book_id 
-    JOIN lms_user u ON i.user_id = u.user_id 
-    WHERE i.issue_book_status = 'Issue' 
-    AND i.expected_return_date < CURDATE()
-    ORDER BY days_overdue DESC
-")->fetchAll(PDO::FETCH_ASSOC);
-
+// Check if library features table exists, create if not
+try {
+    $query = "SELECT 1 FROM lms_library_features LIMIT 1";
+    $connect->query($query);
+} catch (PDOException $e) {
+    createLibraryFeaturesTable($connect);
+}
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System - Reports</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .status-card {
-            transition: all 0.3s ease;
-        }
-        .status-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
-        }
-        .table-responsive {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .nav-tabs .nav-link {
-            color: #495057;
-        }
-        .nav-tabs .nav-link.active {
-            color: #0d6efd;
-            font-weight: bold;
-        }
-        .card-counter {
-            padding: 20px;
-            border-radius: 10px;
-            color: #fff;
-            transition: all 0.3s ease;
-        }
-        .card-counter i {
-            font-size: 4rem;
-            opacity: 0.4;
-        }
-        .card-counter .count-numbers {
-            position: absolute;
-            right: 35px;
-            top: 20px;
-            font-size: 32px;
-            display: block;
-        }
-        .card-counter .count-name {
-            position: absolute;
-            right: 35px;
-            top: 65px;
-            font-style: italic;
-            text-transform: capitalize;
-            opacity: 0.8;
-            display: block;
-        }
-        .bg-issued { background-color: #4caf50; }
-        .bg-returned { background-color: #2196F3; }
-        .bg-overdue { background-color: #ff9800; }
-        .bg-lost { background-color: #f44336; }
-    </style>
-</head>
-<body>
-    <div class="container-fluid mt-4">
-        <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Library Analytics Dashboard</h1>
-        
-        <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab" aria-controls="transactions" aria-selected="true">
-                    <i class="bi bi-arrow-left-right"></i> Book Transactions
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="popular-tab" data-bs-toggle="tab" data-bs-target="#popular" type="button" role="tab" aria-controls="popular" aria-selected="false">
-                    <i class="bi bi-star"></i> Popular Books
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab" aria-controls="categories" aria-selected="false">
-                    <i class="bi bi-list-check"></i> Categories
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false">
-                    <i class="bi bi-people"></i> Active Users
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="borrowers-tab" data-bs-toggle="tab" data-bs-target="#borrowers" type="button" role="tab" aria-controls="borrowers" aria-selected="false">
-                    <i class="bi bi-person-badge"></i> Active Borrowers
-                </button>
-            </li>
-        </ul>
-        
-        <div class="tab-content" id="reportTabsContent">
-            <!-- Book Transactions Tab -->
-            <div class="tab-pane fade show active" id="transactions" role="tabpanel" aria-labelledby="transactions-tab">
-                <div class="row mb-4">
-                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-                        <div class="card card-counter bg-issued status-card">
-                            <i class="bi bi-book float-start"></i>
-                            <span class="count-numbers">
-                                <?php
-                                $issued = 0;
-                                foreach ($bookStatusStats as $stat) {
-                                    if ($stat['status'] == 'Issued') {
-                                        $issued = $stat['count'];
-                                        break;
-                                    }
-                                }
-                                echo $issued;
-                                ?>
-                            </span>
-                            <span class="count-name">Books Issued</span>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-                        <div class="card card-counter bg-returned status-card">
-                            <i class="bi bi-arrow-return-left float-start"></i>
-                            <span class="count-numbers">
-                                <?php
-                                $returned = 0;
-                                foreach ($bookStatusStats as $stat) {
-                                    if ($stat['status'] == 'Returned') {
-                                        $returned = $stat['count'];
-                                        break;
-                                    }
-                                }
-                                echo $returned;
-                                ?>
-                            </span>
-                            <span class="count-name">Books Returned</span>
-                        </div>
-                    </div>
-                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-                        <div class="card card-counter bg-overdue status-card">
-                            <i class="bi bi-alarm float-start"></i>
-                            <span class="count-numbers">
-                                <?php
-                                $overdue = 0;
-                                foreach ($bookStatusStats as $stat) {
-                                    if ($stat['status'] == 'Overdue') {
-                                        $overdue = $stat['count'];
-                                        break;
-                                    }
-                                }
-                                echo $overdue;
-                                ?>
-                            </span>
-                            <span class="count-name">Books Overdue</span>
-                        </div>
-                    </div>
+<div class="container-fluid px-4 py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">
+                <i class="fas fa-cogs me-2"></i> Library Settings
+            </h1>
+            <p class="mb-0 text-muted">Manage your library system settings and environment</p>
+        </div>
+    </div>
+    
+    <?php if (!empty($success_message)): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i> <?= $success_message ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php endif; ?>
+    
+    <?php if (!empty($error_message)): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i> <?= $error_message ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php endif; ?>
 
-                    <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-                        <div class="card card-counter bg-lost status-card">
-                            <i class="bi bi-question-circle float-start"></i>
-                            <span class="count-numbers">
-                                <?php
-                                $lost = 0;
-                                foreach ($bookStatusStats as $stat) {
-                                    if ($stat['status'] == 'Lost') {
-                                        $lost = $stat['count'];
-                                        break;
-                                    }
-                                }
-                                echo $lost;
-                                ?>
-                            </span>
-                            <span class="count-name">Books Lost</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="false">
+                <i class="fas fa-sliders-h me-2"></i>General Settings
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="map-tab" data-bs-toggle="tab" data-bs-target="#map" type="button" role="tab" aria-controls="map" aria-selected="true">
+                <i class="fas fa-map-marked-alt me-2"></i>Library Map
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="features-tab" data-bs-toggle="tab" data-bs-target="#features" type="button" role="tab" aria-controls="features" aria-selected="false">
+                <i class="fas fa-puzzle-piece me-2"></i>Library Features
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="fines-tab" data-bs-toggle="tab" data-bs-target="#fines" type="button" role="tab" aria-controls="fines" aria-selected="false">
+                <i class="fas fa-money-bill-wave me-2"></i>Fine Management
+            </button>
+        </li>
+    </ul>
+    
+    <!-- Tab Content -->
+    <div class="tab-content bg-white p-4 shadow-sm rounded-bottom" id="settingsTabContent">
+        <!-- General Settings Tab -->
+        <div class="tab-pane fade " id="general" role="tabpanel" aria-labelledby="general-tab">
+            <form method="post" enctype="multipart/form-data">
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-graph-up"></i> Transaction Trends (Last 6 Months)</h5>
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-building me-2"></i>Library Information</h5>
                             </div>
                             <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="transactionTrendsChart"></canvas>
+                                <div class="mb-3">
+                                    <label for="library_name" class="form-label">Library Name</label>
+                                    <input type="text" class="form-control" id="library_name" name="library_name" value="<?= htmlspecialchars($setting_data['library_name'] ?? '') ?>" required>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-pie-chart"></i> Current Book Status Distribution</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="bookStatusChart"></canvas>
+                                <div class="mb-3">
+                                    <label for="library_address" class="form-label">Address</label>
+                                    <textarea class="form-control" id="library_address" name="library_address" rows="3"><?= htmlspecialchars($setting_data['library_address'] ?? '') ?></textarea>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0"><i class="bi bi-card-list"></i> Recent Transactions</h5>
-                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#recentTransactionsTable">
-                                    <i class="bi bi-arrows-expand"></i> Toggle View
-                                </button>
-                            </div>
-                            <div class="collapse show" id="recentTransactionsTable">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-hover">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Book Name</th>
-                                                    <th>User</th>
-                                                    <th>Issue Date</th>
-                                                    <th>Expected Return</th>
-                                                    <th>Return Date</th>
-                                                    <th>Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php foreach ($recentTransactions as $transaction): ?>
-                                                <?php 
-                                                    $status_class = '';
-                                                    switch ($transaction['issue_book_status']) {
-                                                        case 'Issue':
-                                                            if (strtotime($transaction['expected_return_date']) < time()) {
-                                                                $status_class = 'table-danger';
-                                                            } else {
-                                                                $status_class = 'table-warning';
-                                                            }
-                                                            break;
-                                                        case 'Return':
-                                                            $status_class = 'table-success';
-                                                            break;
-                                                        case 'Not Return':
-                                                            $status_class = 'table-danger';
-                                                            break;
-                                                        default:
-                                                            $status_class = '';
-                                                    }
-                                                ?>
-                                                <tr class="<?= $status_class ?>">
-                                                    <td><?= htmlspecialchars($transaction['book_name']) ?></td>
-                                                    <td><?= htmlspecialchars($transaction['user_name']) ?></td>
-                                                    <td><?= date('M d, Y', strtotime($transaction['issue_date'])) ?></td>
-                                                    <td><?= date('M d, Y', strtotime($transaction['expected_return_date'])) ?></td>
-                                                    <td><?= $transaction['return_date'] ? date('M d, Y', strtotime($transaction['return_date'])) : 'Not returned' ?></td>
-                                                    <td>
-                                                        <?php if ($transaction['issue_book_status'] == 'Issue'): ?>
-                                                            <?php if (strtotime($transaction['expected_return_date']) < time()): ?>
-                                                                <span class="badge bg-danger">Overdue</span>
-                                                            <?php else: ?>
-                                                                <span class="badge bg-warning">Issued</span>
-                                                            <?php endif; ?>
-                                                        <?php elseif ($transaction['issue_book_status'] == 'Return'): ?>
-                                                            <span class="badge bg-success">Returned</span>
-                                                        <?php elseif ($transaction['issue_book_status'] == 'Not Return'): ?>
-                                                            <span class="badge bg-danger">Lost</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0"><i class="bi bi-exclamation-triangle"></i> Overdue Books</h5>
-                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#overdueTable">
-                                    <i class="bi bi-arrows-expand"></i> Toggle View
-                                </button>
-                            </div>
-                            <div class="collapse show" id="overdueTable">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-hover">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Book Name</th>
-                                                    <th>Borrower</th>
-                                                    <th>Email</th>
-                                                    <th>Issue Date</th>
-                                                    <th>Due Date</th>
-                                                    <th>Days Overdue</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (count($overdueBooksList) > 0): ?>
-                                                    <?php foreach ($overdueBooksList as $book): ?>
-                                                    <tr>
-                                                        <td><?= htmlspecialchars($book['book_name']) ?></td>
-                                                        <td><?= htmlspecialchars($book['user_name']) ?></td>
-                                                        <td><?= htmlspecialchars($book['user_email']) ?></td>
-                                                        <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
-                                                        <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
-                                                        <td><span class="badge bg-danger"><?= $book['days_overdue'] ?> days</span></td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                <?php else: ?>
-                                                    <tr>
-                                                        <td colspan="6" class="text-center">No overdue books at the moment.</td>
-                                                    </tr>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Popular Books Tab -->
-            <div class="tab-pane fade" id="popular" role="tabpanel" aria-labelledby="popular-tab">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-trophy"></i> Most Borrowed Books</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="popularBooksChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-list-ol"></i> Top 10 Books</h5>
-                            </div>
-                            <div class="card-body">
-                                <ol class="list-group list-group-numbered">
-                                    <?php foreach ($popularBooks as $book): ?>
-                                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                                        <div class="ms-2 me-auto">
-                                            <div class="fw-bold"><?= htmlspecialchars($book['book_name']) ?></div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="library_contact_number" class="form-label">Contact Number</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                            <input type="text" class="form-control" id="library_contact_number" name="library_contact_number" value="<?= htmlspecialchars($setting_data['library_contact_number'] ?? '') ?>">
                                         </div>
-                                        <span class="badge bg-primary rounded-pill"><?= $book['issue_count'] ?> times</span>
-                                    </li>
-                                    <?php endforeach; ?>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Categories Tab -->
-            <div class="tab-pane fade" id="categories" role="tabpanel" aria-labelledby="categories-tab">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-diagram-3"></i> Category Distribution</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="categoryDistributionChart"></canvas>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="library_email_address" class="form-label">Email Address</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                            <input type="email" class="form-control" id="library_email_address" name="library_email_address" value="<?= htmlspecialchars($setting_data['library_email_address'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="library_open_hours" class="form-label">Opening Hours</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                                        <input type="text" class="form-control" id="library_open_hours" name="library_open_hours" value="<?= htmlspecialchars($setting_data['library_open_hours'] ?? '') ?>">
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-list-check"></i> Categories List</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Category</th>
-                                                <th>Number of Books</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($categoryStats as $category): ?>
-                                            <tr>
-                                                <td><?= htmlspecialchars($category['category_name']) ?></td>
-                                                <td><span class="badge bg-info"><?= $category['book_count'] ?></span></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Active Users Tab -->
-            <div class="tab-pane fade" id="users" role="tabpanel" aria-labelledby="users-tab">
-                <div class="row">
+                    
                     <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-people"></i> User Distribution by Role</h5>
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-gradient-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>System Configuration</h5>
                             </div>
                             <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="userRolesChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-person-lines-fill"></i> Active Users by Role</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Role</th>
-                                                <th>Number of Users</th>
-                                                <th>Percentage</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php 
-                                            $totalUsers = 0;
-                                            foreach ($userRoleStats as $role) {
-                                                $totalUsers += $role['user_count'];
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="library_currency" class="form-label">Currency</label>
+                                        <select class="form-select" id="library_currency" name="library_currency">
+                                            <option value="PHP" <?= (isset($setting_data['library_currency']) && $setting_data['library_currency'] == 'PHP') ? 'selected' : '' ?>>PHP (₱)</option>
+                                            <option value="USD" <?= (isset($setting_data['library_currency']) && $setting_data['library_currency'] == 'USD') ? 'selected' : '' ?>>USD ($)</option>
+                                            <option value="EUR" <?= (isset($setting_data['library_currency']) && $setting_data['library_currency'] == 'EUR') ? 'selected' : '' ?>>EUR (€)</option>
+                                            <option value="GBP" <?= (isset($setting_data['library_currency']) && $setting_data['library_currency'] == 'GBP') ? 'selected' : '' ?>>GBP (£)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label for="library_timezone" class="form-label">Timezone</label>
+                                        <select class="form-select" id="library_timezone" name="library_timezone">
+                                            <?php
+                                            $timezones = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
+                                            foreach ($timezones as $timezone) {
+                                                $selected = (isset($setting_data['library_timezone']) && $setting_data['library_timezone'] == $timezone) ? 'selected' : '';
+                                                echo '<option value="' . $timezone . '" ' . $selected . '>' . $timezone . '</option>';
                                             }
-                                            
-                                            foreach ($userRoleStats as $role): 
-                                                $percentage = ($role['user_count'] / $totalUsers) * 100;
                                             ?>
-                                            <tr>
-                                                <td><?= htmlspecialchars($role['role_name']) ?></td>
-                                                <td><?= $role['user_count'] ?></td>
-                                                <td>
-                                                    <div class="progress">
-                                                        <div class="progress-bar" role="progressbar" style="width: <?= $percentage ?>%;" aria-valuenow="<?= $percentage ?>" aria-valuemin="0" aria-valuemax="100"><?= number_format($percentage, 1) ?>%</div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label for="library_total_book_issue_day" class="form-label">Issue Period (Days)</label>
+                                        <input type="number" class="form-control" id="library_total_book_issue_day" name="library_total_book_issue_day" value="<?= htmlspecialchars($setting_data['library_total_book_issue_day'] ?? '') ?>" min="1">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="library_one_day_fine" class="form-label">Daily Fine</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                            <input type="number" class="form-control" id="library_one_day_fine" name="library_one_day_fine" value="<?= htmlspecialchars($setting_data['library_one_day_fine'] ?? '') ?>" step="0.01" min="0">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="library_issue_total_book_per_user" class="form-label">Max Books per User</label>
+                                        <input type="number" class="form-control" id="library_issue_total_book_per_user" name="library_issue_total_book_per_user" value="<?= htmlspecialchars($setting_data['library_issue_total_book_per_user'] ?? '') ?>" min="1">
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="library_logo" class="form-label">Library Logo</label>
+                                    <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <input type="file" class="form-control" id="library_logo" name="library_logo" accept="image/*">
+                                            <div class="form-text">Recommended size: 200x60 pixels</div>
+                                        </div>
+                                        <div class="col-md-4 text-center">
+                                            <?php if (isset($setting_data['library_logo']) && !empty($setting_data['library_logo'])): ?>
+                                                <img src="../uploads/<?= htmlspecialchars($setting_data['library_logo']) ?>" alt="Library Logo" class="img-thumbnail" style="max-height: 60px;">
+                                            <?php else: ?>
+                                                <div class="bg-light p-3 rounded text-center">
+                                                    <i class="fas fa-image text-muted"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Active Borrowers Tab -->
-            <div class="tab-pane fade" id="borrowers" role="tabpanel" aria-labelledby="borrowers-tab">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-bar-chart-line"></i> Most Active Borrowers</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="activeBorrowersChart"></canvas>
-                                </div>
-                            </div>
+                
+                <div class="text-end mt-4">
+                    <button type="submit" name="update_settings" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Library Map Tab -->
+        <div class="tab-pane fade show active" id="map" role="tabpanel" aria-labelledby="map-tab">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map me-2"></i>Library Floor Map
+                                <small class="ms-2 opacity-75">Visualize rack locations and library features</small>
+                            </h5>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title"><i class="bi bi-person-badge"></i> Top Borrowers</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>ID</th>
-                                                <th>Books Borrowed</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($activeBorrowers as $borrower): ?>
-                                            <tr>
-                                                <td><?= htmlspecialchars($borrower['user_name']) ?></td>
-                                                <td><?= htmlspecialchars($borrower['user_unique_id']) ?></td>
-                                                <td><span class="badge bg-success"><?= $borrower['borrow_count'] ?></span></td>
-                                            </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Map Legend:</strong>
+                                    <div class="d-flex flex-wrap gap-3 mt-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                                <i class="fas fa-archive"></i>
+                                            </div>
+                                            <span>Active Rack</span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-danger text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                                <i class="fas fa-archive"></i>
+                                            </div>
+                                            <span>Disabled Rack</span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-info text-white d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                                <i class="fas fa-archive"></i>
+                                            </div>
+                                            <span>Selected Rack</span>
+                                        </div>
+                                        <?php foreach ($library_features as $feature): ?>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                                <i class="<?= $feature['feature_icon'] ?>"></i>
+                                            </div>
+                                            <span><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
+                            </div>
+                            
+                            <!-- Library Map -->
+                            <div class="mb-4">
+                                <?php renderLibraryMap('list', null, $racks, 500, null, $library_features); ?>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <!-- Library Features Tab -->
+        <div class="tab-pane fade" id="features" role="tabpanel" aria-labelledby="features-tab">
+            <div class="row">
+                <div class="col-lg-5">
+                    <!-- Feature Form -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0" id="feature-form-title">
+                                <i class="fas fa-plus-circle me-2"></i>Add New Feature
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="feature-form">
+                                <input type="hidden" id="feature_id" name="feature_id">
+                                
+                                <div class="mb-3">
+                                    <label for="feature_name" class="form-label">Feature Name</label>
+                                    <input type="text" class="form-control" id="feature_name" name="feature_name" required>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="feature_icon" class="form-label">Icon</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i id="icon-preview" class="fas fa-landmark"></i></span>
+                                            <input type="text" class="form-control" id="feature_icon" name="feature_icon" value="fas fa-landmark" required>
+                                        </div>
+                                        <div class="form-text">Example: fas fa-book, fas fa-door-open</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="feature_status" class="form-label">Status</label>
+                                        <select class="form-select" id="feature_status" name="feature_status">
+                                            <option value="Enable">Enable</option>
+                                            <option value="Disable">Disable</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="bg_color" class="form-label">Background Color</label>
+                                        <select class="form-select" id="bg_color" name="bg_color">
+                                            <option value="primary">Primary (Blue)</option>
+                                            <option value="secondary">Secondary (Gray)</option>
+                                            <option value="success">Success (Green)</option>
+                                            <option value="danger">Danger (Red)</option>
+                                            <option value="warning">Warning (Yellow)</option>
+                                            <option value="info">Info (Light Blue)</option>
+                                            <option value="dark">Dark (Black)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="text_color" class="form-label">Text Color</label>
+                                        <select class="form-select" id="text_color" name="text_color">
+                                            <option value="white">White</option>
+                                            <option value="dark">Dark</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <label for="position_x" class="form-label">X Position</label>
+                                        <input type="number" class="form-control" id="position_x" name="position_x" value="50" min="0" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="position_y" class="form-label">Y Position</label>
+                                        <input type="number" class="form-control" id="position_y" name="position_y" value="50" min="0" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="width" class="form-label">Width</label>
+                                        <input type="number" class="form-control" id="width" name="width" value="100" min="20" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="height" class="form-label">Height</label>
+                                        <input type="number" class="form-control" id="height" name="height" value="40" min="20" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="button" id="reset-form" class="btn btn-outline-secondary">
+                                        <i class="fas fa-undo me-1"></i> Reset
+                                    </button>
+                                    <div>
+                                        <button type="submit" id="add-feature-btn" name="add_feature" class="btn btn-primary">
+                                            <i class="fas fa-plus-circle me-1"></i> Add Feature
+                                        </button>
+                                        <button type="submit" id="update-feature-btn" name="update_feature" class="btn btn-success d-none">
+                                            <i class="fas fa-save me-1"></i> Update Feature
+                                        </button>
+                                        <button type="submit" id="delete-feature-btn" name="delete_feature" class="btn btn-danger d-none" onclick="return confirm('Are you sure you want to delete this feature?')">
+                                            <i class="fas fa-trash me-1"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Feature Preview -->
+                    <div class="card shadow-sm mt-4">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>Feature Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="p-3 bg-light rounded d-flex justify-content-center align-items-center">
+                                <div id="feature-preview" class="d-flex justify-content-center align-items-center bg-primary text-white" style="width: 100px; height: 40px; border-radius: 4px;">
+                                    <i class="fas fa-landmark me-2"></i>
+                                    <span id="preview-text">Feature</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-7">
+                    <!-- Features List -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list me-2"></i>Library Features
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <?php if (empty($library_features)): ?>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>No library features defined yet. Create your first one!
+                                </div>
+                            <?php else: ?>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Feature</th>
+                                                <th>Position</th>
+                                                <th>Size</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($library_features as $feature): ?>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?> d-flex justify-content-center align-items-center me-2" style="width: 30px; height: 30px; border-radius: 4px;">
+                                                                <i class="<?= $feature['feature_icon'] ?>"></i>
+                                                            </div>
+                                                            <span><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                                        </div>
+                                                    </td>
+                                                    <td>X: <?= $feature['position_x'] ?>, Y: <?= $feature['position_y'] ?></td>
+                                                    <td><?= $feature['width'] ?> x <?= $feature['height'] ?></td>
+                                                    <td>
+                                                    <span class="badge bg-<?= ($feature['feature_status'] == 'Enable') ? 'success' : 'danger' ?>">
+                                                            <?= $feature['feature_status'] ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <button type="button" class="btn btn-sm btn-info edit-feature" 
+                                                            data-id="<?= $feature['feature_id'] ?>"
+                                                            data-name="<?= htmlspecialchars($feature['feature_name']) ?>"
+                                                            data-icon="<?= htmlspecialchars($feature['feature_icon']) ?>"
+                                                            data-pos-x="<?= $feature['position_x'] ?>"
+                                                            data-pos-y="<?= $feature['position_y'] ?>"
+                                                            data-width="<?= $feature['width'] ?>"
+                                                            data-height="<?= $feature['height'] ?>"
+                                                            data-bg-color="<?= $feature['bg_color'] ?>"
+                                                            data-text-color="<?= $feature['text_color'] ?>"
+                                                            data-status="<?= $feature['feature_status'] ?>">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- Feature Map Preview -->
+                    <div class="card shadow-sm mt-4">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map me-2"></i>Features Map Preview
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-light position-relative rounded" style="height: 300px;">
+                                <?php foreach ($library_features as $feature): ?>
+                                    <?php if ($feature['feature_status'] == 'Enable'): ?>
+                                    <div class="position-absolute d-flex justify-content-center align-items-center bg-<?= $feature['bg_color'] ?> text-<?= $feature['text_color'] ?>" 
+                                         style="width: <?= $feature['width'] ?>px; height: <?= $feature['height'] ?>px; 
+                                                left: <?= $feature['position_x'] ?>px; top: <?= $feature['position_y'] ?>px; 
+                                                border-radius: 4px; z-index: 10;">
+                                        <i class="<?= $feature['feature_icon'] ?> me-2"></i>
+                                        <span><?= htmlspecialchars($feature['feature_name']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fine Management Tab -->
+        <div class="tab-pane fade" id="fines" role="tabpanel" aria-labelledby="fines-tab">
+            <div class="row">
+                <div class="col-lg-6">
+                    <!-- Fine Settings -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-money-bill-wave me-2"></i>Fine Configuration
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                <div class="mb-3">
+                                    <label for="fine_method" class="form-label">Fine Calculation Method</label>
+                                    <select class="form-select" id="fine_method" name="fine_method">
+                                        <option value="daily" <?= (isset($setting_data['fine_method']) && $setting_data['fine_method'] == 'daily') ? 'selected' : '' ?>>Daily Rate</option>
+                                        <option value="fixed" <?= (isset($setting_data['fine_method']) && $setting_data['fine_method'] == 'fixed') ? 'selected' : '' ?>>Fixed Amount</option>
+                                        <option value="progressive" <?= (isset($setting_data['fine_method']) && $setting_data['fine_method'] == 'progressive') ? 'selected' : '' ?>>Progressive Rate</option>
+                                    </select>
+                                    <div class="form-text">Choose how fines will be calculated for overdue books.</div>
+                                </div>
+                                
+                                <div id="daily-fine-section" class="mb-3">
+                                    <label for="daily_fine_rate" class="form-label">Daily Fine Rate</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                        <input type="number" class="form-control" id="daily_fine_rate" name="daily_fine_rate" value="<?= htmlspecialchars($setting_data['library_one_day_fine'] ?? '') ?>" step="0.01" min="0">
+                                        <span class="input-group-text">per day</span>
+                                    </div>
+                                    <div class="form-text">The amount charged for each day a book is overdue.</div>
+                                </div>
+                                
+                                <div id="fixed-fine-section" class="mb-3 d-none">
+                                    <label for="fixed_fine_amount" class="form-label">Fixed Fine Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                        <input type="number" class="form-control" id="fixed_fine_amount" name="fixed_fine_amount" value="<?= htmlspecialchars($setting_data['fixed_fine_amount'] ?? '') ?>" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-text">A one-time fine applied regardless of how many days the book is overdue.</div>
+                                </div>
+                                
+                                <div id="progressive-fine-section" class="mb-3 d-none">
+                                    <label class="form-label">Progressive Fine Rates</label>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="mb-2">
+                                                <label for="week1_rate" class="form-label">First week (per day)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                                    <input type="number" class="form-control" id="week1_rate" name="week1_rate" value="<?= htmlspecialchars($setting_data['week1_rate'] ?? '') ?>" step="0.01" min="0">
+                                                </div>
+                                            </div>
+                                            <div class="mb-2">
+                                                <label for="week2_rate" class="form-label">Second week (per day)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                                    <input type="number" class="form-control" id="week2_rate" name="week2_rate" value="<?= htmlspecialchars($setting_data['week2_rate'] ?? '') ?>" step="0.01" min="0">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="week3_rate" class="form-label">After two weeks (per day)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                                    <input type="number" class="form-control" id="week3_rate" name="week3_rate" value="<?= htmlspecialchars($setting_data['week3_rate'] ?? '') ?>" step="0.01" min="0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-text">Different rates applied based on how long the book is overdue.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="grace_period" class="form-label">Grace Period (Days)</label>
+                                    <input type="number" class="form-control" id="grace_period" name="grace_period" value="<?= htmlspecialchars($setting_data['grace_period'] ?? '0') ?>" min="0">
+                                    <div class="form-text">Number of days after due date before fines start accumulating.</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="max_fine_amount" class="form-label">Maximum Fine Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></span>
+                                        <input type="number" class="form-control" id="max_fine_amount" name="max_fine_amount" value="<?= htmlspecialchars($setting_data['max_fine_amount'] ?? '') ?>" step="0.01" min="0">
+                                    </div>
+                                    <div class="form-text">The maximum fine that can be charged per book (0 for no limit).</div>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="apply_weekends" name="apply_weekends" value="1" <?= (isset($setting_data['apply_weekends']) && $setting_data['apply_weekends'] == 1) ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="apply_weekends">
+                                        Apply fines for weekends
+                                    </label>
+                                    <div class="form-text">If checked, fines will accumulate on weekends.</div>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="auto_fine_calculation" name="auto_fine_calculation" value="1" <?= (isset($setting_data['auto_fine_calculation']) && $setting_data['auto_fine_calculation'] == 1) ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="auto_fine_calculation">
+                                        Enable automatic fine calculation
+                                    </label>
+                                    <div class="form-text">If checked, fines will be automatically calculated when books are returned.</div>
+                                </div>
+                                
+                                <div class="text-end mt-4">
+                                    <button type="submit" name="update_fine_settings" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Fine Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <!-- Fine Calculation Preview -->
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-calculator me-2"></i>Fine Calculator
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Use this tool to calculate potential fines based on your settings.</p>
+                            
+                            <div class="mb-3">
+                                <label for="due_date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="due_date" value="<?= date('Y-m-d') ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="return_date" class="form-label">Return Date</label>
+                                <input type="date" class="form-control" id="return_date" value="<?= date('Y-m-d', strtotime('+7 days')) ?>">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="num_books" class="form-label">Number of Books</label>
+                                <input type="number" class="form-control" id="num_books" value="1" min="1">
+                            </div>
+                            
+                            <div class="text-center mb-3">
+                                <button type="button" id="calculate-fine" class="btn btn-primary">
+                                    <i class="fas fa-calculator me-2"></i>Calculate Fine
+                                </button>
+                            </div>
+                            
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Estimated Fine:</h6>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <p class="mb-0">Days overdue: <span id="days-overdue">0</span></p>
+                                            <p class="mb-0">Fine per book: <span id="fine-per-book">0.00</span> <?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></p>
+                                        </div>
+                                        <div class="text-end">
+                                            <h4 id="total-fine" class="mb-0 text-danger">0.00 <?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?></h4>
+                                            <small class="text-muted">Total fine amount</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fine Policies -->
+                    <div class="card shadow-sm mt-4">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-alt me-2"></i>Fine Policies
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post">
+                                <div class="mb-3">
+                                    <label for="fine_policy" class="form-label">Fine Policy Text</label>
+                                    <textarea class="form-control" id="fine_policy" name="fine_policy" rows="6"><?= htmlspecialchars($setting_data['fine_policy'] ?? 'Library fines are charged for overdue items. The current rate is '.$setting_data['library_one_day_fine'].' '.$setting_data['library_currency'].' per day per item. Please return your items on time to avoid fines.') ?></textarea>
+                                    <div class="form-text">This text will be displayed to users regarding fine policies.</div>
+                                </div>
+                                
+                                <div class="text-end">
+                                    <button type="submit" name="update_fine_policy" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Policy
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
- 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
- <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Initialize transaction trends chart
-        const transactionTrendsCtx = document.getElementById("transactionTrendsChart").getContext("2d");
-        const transactionTrendsChart = new Chart(transactionTrendsCtx, {
-            type: "line",
-            data: {
-                labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                datasets: [{
-                    label: "Books Issued",
-                    data: [50, 75, 60, 90, 120, 110],
-                    borderColor: "#007bff",
-                    backgroundColor: "rgba(0, 123, 255, 0.1)",
-                    fill: true
-                }, {
-                    label: "Books Returned",
-                    data: [40, 70, 55, 85, 115, 105],
-                    borderColor: "#28a745",
-                    backgroundColor: "rgba(40, 167, 69, 0.1)",
-                    fill: true
-                }]
-            }
-        });
-
-        // Initialize book status chart
-        const bookStatusCtx = document.getElementById("bookStatusChart").getContext("2d");
-        const bookStatusChart = new Chart(bookStatusCtx, {
-            type: "doughnut",
-            data: {
-                labels: ["Issued", "Returned", "Overdue", "Lost"],
-                datasets: [{
-                    data: [120, 90, 15, 5],
-                    backgroundColor: ["#007bff", "#28a745", "#dc3545", "#ffc107"]
-                }]
-            }
-        });
-
-        // Toggle table views
-        document.querySelectorAll("[data-bs-toggle='collapse']").forEach(button => {
-            button.addEventListener("click", function () {
-                const target = document.querySelector(this.getAttribute("data-bs-target"));
-                target.classList.toggle("show");
-            });
-        });
-
-        // Handle tab navigation
-        document.querySelectorAll(".nav-link").forEach(tab => {
-            tab.addEventListener("click", function () {
-                document.querySelectorAll(".nav-link").forEach(t => t.classList.remove("active"));
-                this.classList.add("active");
-            });
-        });
-
-        // Popular Books Chart
-        const popularBooksChartCtx = document.getElementById("popularBooksChart").getContext("2d");
-        new Chart(popularBooksChartCtx, {
-            type: "bar",
-            data: {
-                labels: popularBooks.map(book => book.book_name),
-                datasets: [{
-                    label: "Times Borrowed",
-                    data: popularBooks.map(book => book.issue_count),
-                    backgroundColor: "#007bff"
-                }]
-            }
-        });
-
-        // Category Distribution Chart
-        const categoryChartCtx = document.getElementById("categoryDistributionChart").getContext("2d");
-        new Chart(categoryChartCtx, {
-            type: "doughnut",
-            data: {
-                labels: categoryStats.map(category => category.category_name),
-                datasets: [{
-                    data: categoryStats.map(category => category.book_count),
-                    backgroundColor: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0"]
-                }]
-            }
-        });
-
-        // User Roles Distribution Chart
-        const userRolesChartCtx = document.getElementById("userRolesChart").getContext("2d");
-        new Chart(userRolesChartCtx, {
-            type: "pie",
-            data: {
-                labels: userRoleStats.map(role => role.role_name),
-                datasets: [{
-                    data: userRoleStats.map(role => role.user_count),
-                    backgroundColor: ["#ff6384", "#36a2eb", "#ffce56"]
-                }]
-            }
-        });
-
-        // Active Borrowers Chart
-        const activeBorrowersChartCtx = document.getElementById("activeBorrowersChart").getContext("2d");
-        new Chart(activeBorrowersChartCtx, {
-            type: "bar",
-            data: {
-                labels: activeBorrowers.map(borrower => borrower.user_name),
-                datasets: [{
-                    label: "Books Borrowed",
-                    data: activeBorrowers.map(borrower => borrower.borrow_count),
-                    backgroundColor: "#28a745"
-                }]
-            }
-        });
+<!-- JavaScript for Settings Page -->
+<script>
+$(document).ready(function() {
+    // Enable select2 for timezone dropdown
+    $('#library_timezone').select2({
+        placeholder: "Select a timezone",
+        theme: "bootstrap-5"
     });
+    
+    // Feature icon preview
+    $('#feature_icon').on('input', function() {
+        updatePreview();
+    });
+    
+    // Feature name preview
+    $('#feature_name').on('input', function() {
+        updatePreview();
+    });
+    
+    // Color previews
+    $('#bg_color, #text_color').on('change', function() {
+        updatePreview();
+    });
+    
+    // Map position and size updates
+    $('#position_x, #position_y, #width, #height').on('input', function() {
+        updatePreview();
+    });
+    
+    // Initialize preview
+    updatePreview();
+    
+    // Function to update preview
+    function updatePreview() {
+        // Update icon preview
+        const iconClass = $('#feature_icon').val();
+        $('#icon-preview').attr('class', iconClass);
+        
+        // Update feature preview
+        const featureName = $('#feature_name').val() || 'Feature';
+        const bgColor = $('#bg_color').val();
+        const textColor = $('#text_color').val();
+        const width = $('#width').val() + 'px';
+        const height = $('#height').val() + 'px';
+        
+        $('#preview-text').text(featureName);
+        $('#feature-preview').attr('class', `d-flex justify-content-center align-items-center bg-${bgColor} text-${textColor}`);
+        $('#feature-preview').css({
+            'width': width,
+            'height': height
+        });
+        
+        // Update icon in preview
+        $('#feature-preview i').attr('class', iconClass + ' me-2');
+    }
+    
+    // Edit feature button click
+    $('.edit-feature').on('click', function() {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        const icon = $(this).data('icon');
+        const posX = $(this).data('pos-x');
+        const posY = $(this).data('pos-y');
+        const width = $(this).data('width');
+        const height = $(this).data('height');
+        const bgColor = $(this).data('bg-color');
+        const textColor = $(this).data('text-color');
+        const status = $(this).data('status');
+        
+        // Populate form
+        $('#feature_id').val(id);
+        $('#feature_name').val(name);
+        $('#feature_icon').val(icon);
+        $('#position_x').val(posX);
+        $('#position_y').val(posY);
+        $('#width').val(width);
+        $('#height').val(height);
+        $('#bg_color').val(bgColor);
+        $('#text_color').val(status);
+        $('#feature_status').val(status);
+        
+        // Update form UI
+        $('#feature-form-title').html('<i class="fas fa-edit me-2"></i>Edit Feature');
+        $('#add-feature-btn').addClass('d-none');
+        $('#update-feature-btn').removeClass('d-none');
+        $('#delete-feature-btn').removeClass('d-none');
+        
+        // Update preview
+        updatePreview();
+        
+        // Scroll to form
+        $('html, body').animate({
+            scrollTop: $("#feature-form").offset().top - 100
+        }, 200);
+    });
+    
+    // Reset form button
+    $('#reset-form').on('click', function() {
+        $('#feature-form')[0].reset();
+        $('#feature_id').val('');
+        $('#feature-form-title').html('<i class="fas fa-plus-circle me-2"></i>Add New Feature');
+        $('#add-feature-btn').removeClass('d-none');
+        $('#update-feature-btn').addClass('d-none');
+        $('#delete-feature-btn').addClass('d-none');
+        updatePreview();
+    });
+    
+    // Fine calculation method toggle
+    $('#fine_method').on('change', function() {
+        const method = $(this).val();
+        
+        // Hide all sections first
+        $('#daily-fine-section, #fixed-fine-section, #progressive-fine-section').addClass('d-none');
+        
+        // Show relevant section
+        if (method === 'daily') {
+            $('#daily-fine-section').removeClass('d-none');
+        } else if (method === 'fixed') {
+            $('#fixed-fine-section').removeClass('d-none');
+        } else if (method === 'progressive') {
+            $('#progressive-fine-section').removeClass('d-none');
+        }
+    }).trigger('change');
+    
+    // Calculate fine button
+    $('#calculate-fine').on('click', function() {
+        const dueDate = new Date($('#due_date').val());
+        const returnDate = new Date($('#return_date').val());
+        const numBooks = parseInt($('#num_books').val(), 10);
+        
+        // Get milliseconds difference and convert to days
+        const diffTime = Math.abs(returnDate - dueDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Calculate fine based on method
+        let finePerBook = 0;
+        const fineMethod = $('#fine_method').val();
+        const gracePeriod = parseInt($('#grace_period').val(), 10) || 0;
+        const maxFine = parseFloat($('#max_fine_amount').val()) || 0;
+        
+        // Calculate effective overdue days after grace period
+        const effectiveDays = Math.max(0, diffDays - gracePeriod);
+        
+        if (fineMethod === 'daily') {
+            const dailyRate = parseFloat($('#daily_fine_rate').val()) || 0;
+            finePerBook = dailyRate * effectiveDays;
+        } else if (fineMethod === 'fixed') {
+            finePerBook = effectiveDays > 0 ? parseFloat($('#fixed_fine_amount').val()) || 0 : 0;
+        } else if (fineMethod === 'progressive') {
+            const week1Rate = parseFloat($('#week1_rate').val()) || 0;
+            const week2Rate = parseFloat($('#week2_rate').val()) || 0;
+            const week3Rate = parseFloat($('#week3_rate').val()) || 0;
+            
+            if (effectiveDays <= 7) {
+                finePerBook = week1Rate * effectiveDays;
+            } else if (effectiveDays <= 14) {
+                finePerBook = (week1Rate * 7) + (week2Rate * (effectiveDays - 7));
+            } else {
+                finePerBook = (week1Rate * 7) + (week2Rate * 7) + (week3Rate * (effectiveDays - 14));
+            }
+        }
+        
+        // Apply maximum fine if set
+        if (maxFine > 0 && finePerBook > maxFine) {
+            finePerBook = maxFine;
+        }
+        
+        // Calculate total fine
+        const totalFine = finePerBook * numBooks;
+        
+        // Update display
+        $('#days-overdue').text(diffDays);
+        $('#fine-per-book').text(finePerBook.toFixed(2));
+        $('#total-fine').text(totalFine.toFixed(2) + ' ' + '<?= isset($setting_data['library_currency']) ? $setting_data['library_currency'] : 'PHP' ?>');
+    });
+});
 </script>
+
+<?php
+// Include footer
+require_once '../footer.php';
+?>
