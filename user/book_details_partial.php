@@ -1,7 +1,7 @@
 <?php
 // book_details_partial.php - For loading book details via AJAX
-include 'database_connection.php';
-include 'function.php';
+include '../database_connection.php';
+include '../function.php';
 
 // Only include database connection and function files
 // Don't include header/footer since this is loaded in a modal
@@ -14,7 +14,14 @@ if ($book_id <= 0) {
 }
 
 // Get book details
-$book = getBookDetails($connect, $book_id);
+$book_query = "SELECT b.*, c.category_name 
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              WHERE b.book_id = :book_id";
+$book_statement = $connect->prepare($book_query);
+$book_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$book_statement->execute();
+$book = $book_statement->fetch(PDO::FETCH_ASSOC);
 
 if (!$book) {
     echo '<div class="alert alert-danger m-3">Book not found.</div>';
@@ -22,26 +29,67 @@ if (!$book) {
 }
 
 // Get authors
-$authors = getBookAuthors($connect, $book_id);
+$author_query = "SELECT a.* FROM lms_author a 
+                JOIN lms_book_author ba ON a.author_id = ba.author_id 
+                WHERE ba.book_id = :book_id";
+$author_statement = $connect->prepare($author_query);
+$author_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$author_statement->execute();
+$authors = $author_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get borrow history (only for admins)
 $borrow_history = [];
 if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1) {
-    $borrow_history = getBookBorrowHistory($connect, $book_id);
+    $history_query = "SELECT ib.*, u.user_name
+                     FROM lms_issue_book ib
+                     JOIN lms_user u ON ib.user_id = u.user_id
+                     WHERE ib.book_id = :book_id
+                     ORDER BY ib.issue_date DESC";
+    $history_statement = $connect->prepare($history_query);
+    $history_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $history_statement->execute();
+    $borrow_history = $history_statement->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Get similar books by category
-$similar_books = getSimilarBooksByCategory($connect, $book['category_id'], $book_id, 6);
+$similar_query = "SELECT b.* FROM lms_book b
+                 WHERE b.category_id = :category_id
+                 AND b.book_id != :book_id
+                 AND b.book_status = 'Enable'
+                 ORDER BY b.book_id DESC
+                 LIMIT 6";
+$similar_statement = $connect->prepare($similar_query);
+$similar_statement->bindParam(':category_id', $book['category_id'], PDO::PARAM_INT);
+$similar_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$similar_statement->execute();
+$similar_books = $similar_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get books by same author
-$author_books = getBooksBySameAuthor($connect, $book_id, 6);
+$author_books_query = "SELECT DISTINCT b.* FROM lms_book b
+                      JOIN lms_book_author ba ON b.book_id = ba.book_id
+                      JOIN lms_book_author ba2 ON ba.author_id = ba2.author_id
+                      WHERE ba2.book_id = :book_id
+                      AND b.book_id != :book_id
+                      AND b.book_status = 'Enable'
+                      ORDER BY b.book_id DESC
+                      LIMIT 6";
+$author_books_statement = $connect->prepare($author_books_query);
+$author_books_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$author_books_statement->execute();
+$author_books = $author_books_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get book reviews
-$reviews = getBookReviews($connect, $book_id);
+$reviews_query = "SELECT r.*, u.user_name
+                 FROM lms_book_review r
+                 JOIN lms_user u ON r.user_id = u.user_id
+                 WHERE r.book_id = :book_id
+                 ORDER BY r.created_at DESC";
+$reviews_statement = $connect->prepare($reviews_query);
+$reviews_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$reviews_statement->execute();
+$reviews = $reviews_statement->fetchAll(PDO::FETCH_ASSOC);
 
 // Get book availability status
-// Calculate available copies based on total and borrowed
-$book_details = getBookById($connect, $book_id);
 $query = "SELECT COUNT(*) as borrowed_copies 
          FROM lms_issue_book 
          WHERE book_id = :book_id 
@@ -50,6 +98,21 @@ $statement = $connect->prepare($query);
 $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
 $statement->execute();
 $result = $statement->fetch(PDO::FETCH_ASSOC);
+
+$borrowed_copies = $result['borrowed_copies'];
+$available_copies = $book['book_no_of_copy'] - $borrowed_copies;
+$is_available = $available_copies > 0;
+
+// Get borrow frequency
+$query = "SELECT COUNT(*) as borrow_count 
+         FROM lms_issue_book 
+         WHERE book_id = :book_id";
+$statement = $connect->prepare($query);
+$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+$statement->execute();
+$result = $statement->fetch(PDO::FETCH_ASSOC);
+$borrow_count = $result['borrow_count'];
+
 // Format authors as a comma-separated string
 $author_names = array_map(function($author) {
     return $author['author_name'];
@@ -57,15 +120,7 @@ $author_names = array_map(function($author) {
 $author_string = implode(', ', $author_names);
 
 // Get book cover image
-$book_img = getBookImagePath($book);
-// Get book availability status
-$availability = getBookAvailability($connect, $book_id, $book['book_no_of_copy']);
-$borrowed_copies = $availability['borrowed_copies'];
-$available_copies = $availability['available_copies'];
-$is_available = $availability['is_available'];
-
-// Get borrow frequency
-$borrow_count = getBookBorrowCount($connect, $book_id);
+$book_img = !empty($book['book_img']) ? '../asset/img/' . $book['book_img'] : '../asset/img/book_placeholder.png';
 ?>
 
 <div class="container-fluid p-0">
@@ -228,7 +283,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                     <div class="card-body">
                                         <div class="d-flex">
                                             <?php 
-                                            $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_profile'] : 'asset/img/author.png';
+                                            $author_img = !empty($author['author_profile']) ? '../asset/img/' . $author['author_profile'] : '../asset/img/author.png';
                                             ?>
                                             <img src="<?php echo $author_img; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="rounded-circle me-3" style="width: 80px; height: 80px; object-fit: cover;">
                                             <div>
@@ -310,7 +365,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                     <div class="col">
                                         <div class="card h-100 border-0 shadow-sm">
                                             <?php 
-                                            $similar_book_img = !empty($similar_book['book_img']) ? 'upload/' . $similar_book['book_img'] : 'asset/img/book_placeholder.png';
+                                            $similar_book_img = !empty($similar_book['book_img']) ? '../asset/img/' . $similar_book['book_img'] : '../asset/img/book_placeholder.png';
                                             ?>
                                             <img src="<?php echo $similar_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($similar_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
@@ -331,7 +386,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                     <div class="col">
                                         <div class="card h-100 border-0 shadow-sm">
                                             <?php 
-                                            $author_book_img = !empty($author_book['book_img']) ? 'upload/' . $author_book['book_img'] : 'asset/img/book_placeholder.png';
+                                            $author_book_img = !empty($author_book['book_img']) ? '../asset/img/' . $author_book['book_img'] : '../asset/img/book_placeholder.png';
                                             ?>
                                             <img src="<?php echo $author_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($author_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
@@ -346,7 +401,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                     </div>
                     
                     <!-- Borrow History Tab (Admin only) -->
-                    <?php if (!empty($borrow_history) && isset($_SESSION['role_id']) && $_SESSION['role_id'] == 0): ?>
+                    <?php if (!empty($borrow_history) && isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1): ?>
                     <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
                         <h5 class="mb-3">Borrow History</h5>
                         <div class="table-responsive">

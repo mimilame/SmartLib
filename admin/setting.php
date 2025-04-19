@@ -13,36 +13,50 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'general';
 
 // General Settings Form Submit
 if (isset($_POST['edit_setting'])) {
+    // Process library hours from the form
+    $library_hours = [];
+    if (isset($_POST['library_hours']) && is_array($_POST['library_hours'])) {
+        foreach ($_POST['library_hours'] as $day => $hours) {
+            $library_hours[$day] = [
+                'open' => !empty($hours['open']) ? $hours['open'] : null,
+                'close' => !empty($hours['close']) ? $hours['close'] : null
+            ];
+        }
+    }
+    
+    // Convert hours to JSON for storage
+    $library_hours_json = json_encode($library_hours);
+    
     $data = array(
-        ':library_name'                    => $_POST['library_name'],
+        ':library_name'                   => $_POST['library_name'],
         ':library_address'                => $_POST['library_address'],
-        ':library_contact_number'        => $_POST['library_contact_number'],
-        ':library_email_address'        => $_POST['library_email_address'],
-		':library_open_hours'        => $_POST['library_open_hours'],
-        ':library_total_book_issue_day'    => $_POST['library_total_book_issue_day'],
-        ':library_one_day_fine'            => $_POST['library_one_day_fine'],
-        ':library_currency'                => $_POST['library_currency'],
-        ':library_timezone'                => $_POST['library_timezone'],
-        ':library_issue_total_book_per_user'    => $_POST['library_issue_total_book_per_user']
+        ':library_contact_number'         => $_POST['library_contact_number'],
+        ':library_email_address'          => $_POST['library_email_address'],
+        ':library_open_hours'             => $library_hours_json,
+        ':library_total_book_issue_day'   => $_POST['library_total_book_issue_day'],
+        ':library_one_day_fine'           => $_POST['library_one_day_fine'],
+        ':library_max_fine_per_book'      => $_POST['library_max_fine_per_book'], // New field for max fine cap
+        ':library_currency'               => $_POST['library_currency'],
+        ':library_timezone'               => $_POST['library_timezone'],
+        ':library_issue_total_book_per_user' => $_POST['library_issue_total_book_per_user']
     );
-
+    
     $query = "
     UPDATE lms_setting 
     SET library_name = :library_name,
         library_address = :library_address, 
         library_contact_number = :library_contact_number, 
         library_email_address = :library_email_address, 
-		library_open_hours = :library_open_hours, 
+        library_open_hours = :library_open_hours, 
         library_total_book_issue_day = :library_total_book_issue_day, 
         library_one_day_fine = :library_one_day_fine, 
+        library_max_fine_per_book = :library_max_fine_per_book, 
         library_currency = :library_currency, 
         library_timezone = :library_timezone, 
         library_issue_total_book_per_user = :library_issue_total_book_per_user
     ";
-
     $statement = $connect->prepare($query);
     $statement->execute($data);
-
     $message = 'general_success';
     $active_tab = 'general';
 }
@@ -352,15 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                     <input type="text" name="library_name" id="library_name" class="form-control" value="<?= htmlspecialchars($settings['library_name'] ?? '') ?>" required />
                                                     <div class="invalid-feedback">Please provide a library name.</div>
                                                 </div>
-                                            </div>
-											<div class="mb-3">
-												<label for="library_open_hours" class="form-label fw-medium">Opening Hours</label>
-												<div class="input-group">
-													<span class="input-group-text"><i class="fas fa-clock text-primary"></i></span>
-													<input type="text" name="library_open_hours" class="form-control" id="library_open_hours" name="library_open_hours" value="<?= htmlspecialchars($settings['library_open_hours'] ?? '') ?>">
-												</div>
-											</div>
-                                            
+                                            </div>                                            
                                             <div class="mb-4">
                                                 <label for="library_address" class="form-label fw-medium">Address</label>
                                                 <div class="input-group">
@@ -460,10 +466,73 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 </div>
                                                 <div class="form-text">Maximum number of books a user can borrow at once</div>
                                             </div>
+                                            <div class="row mb-3">
+                                                <label for="library_max_fine_per_book" class="form-label fw-medium">Maximum Fine Per Book</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-money-bill-wave text-primary"></i></span>
+                                                    <input type="number" name="library_max_fine_per_book" id="library_max_fine_per_book" class="form-control" min="0" step="0.01" 
+                                                        value="<?= $settings['library_max_fine_per_book'] ?? '50.00' ?>">
+                                                    <span class="input-group-text"><?= $settings['library_currency'] ?></span>
+                                                </div>
+                                                <div class="form-text">Maximum amount a user can be charged for a single overdue book.</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
+                                <div class="col-lg-12">    
+                                    <div class="card h-100 settings-card">
+                                        <div class="card-header bg-light p-0">                                           
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Configure your library's operating hours. Books returned after closing time will be considered returned on the next business day for fine calculations.
+                                            </div>
+                                        </div>  
+                                        <div class="card-body">                              
+                                            <div class="row mb-2">
+                                                <?php
+                                                $open_hours = json_decode($settings['library_open_hours'] ?? '{}', true);
+                                                $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+                                                ?>
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered">
+                                                        <thead class="bg-light">
+                                                            <tr>
+                                                                <th width="25%">Day</th>
+                                                                <th width="37.5%">Opening Time</th>
+                                                                <th width="37.5%">Closing Time</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php foreach ($days as $day): ?>
+                                                            <tr>
+                                                                <td class="align-middle fw-medium"><?= $day ?></td>
+                                                                <td>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text"><i class="fas fa-door-open"></i></span>
+                                                                        <input type="time" name="library_hours[<?= $day ?>][open]" class="form-control" 
+                                                                            value="<?= $open_hours[$day]['open'] ?? '' ?>">
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text"><i class="fas fa-door-closed"></i></span>
+                                                                        <input type="time" name="library_hours[<?= $day ?>][close]" class="form-control" 
+                                                                            value="<?= $open_hours[$day]['close'] ?? '' ?>">
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div class="form-text">
+                                                    Leave both fields empty for days when the library is closed. Time should be in 24-hour format.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <!-- Save Settings Button -->
                                 <div class="col-12 d-flex justify-content-end">
                                     <button type="submit" name="edit_setting" class="btn btn-primary btn-modern">

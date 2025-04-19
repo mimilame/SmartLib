@@ -7,30 +7,6 @@ include '../header.php';
 authenticate_admin();
 $message = '';
 
-// DELETE (Disable/Enable)
-if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] == 'delete') {
-    $fines_id = $_GET["code"];
-    $status = $_GET["status"]; // Accepts 'Active' or 'Deleted'
-
-    $data = [
-        ':fines_status' => $status,
-        ':fines_id'     => $fines_id
-    ];
-
-    $query = "
-        UPDATE lms_fines 
-        SET fines_status = :fines_status, fines_updated_on = NOW()
-        WHERE fines_id = :fines_id
-    ";
-
-    $statement = $connect->prepare($query);
-    $statement->execute($data);
-
-    header('location:fines.php?msg=' . strtolower($status));
-    exit;
-}
-
-
 // Fetch all fines with user and book details
 $query = "
     SELECT 
@@ -108,56 +84,56 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Fine Disabled',
-                    text: 'The fine has been successfully disabled.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Fine Enabled',
-                    text: 'The fine has been successfully enabled.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Fine Added',
-                    text: 'The fine was added successfully!',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Fine Updated',
-                    text: 'The fine was updated successfully!',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'delete'): ?>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Fine Deleted',
-                    text: 'The fine was successfully deleted or marked as deleted.',
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
-                });
-            <?php endif; ?>
+            document.addEventListener('DOMContentLoaded', function() {
+                <?php if (isset($_GET["msg"]) && $_GET["msg"] == 'disable'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Fine Disabled',
+                        text: 'The fine has been successfully disabled.',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done'
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Fine Enabled',
+                        text: 'The fine has been successfully enabled.',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done'
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Fine Added',
+                        text: 'The fine was added successfully!',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done'
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Fine Updated',
+                        text: 'The fine was updated successfully!',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done'
+                    });
+                <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'delete'): ?>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Fine Deleted',
+                        text: 'The fine was successfully deleted or marked as deleted.',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'Done'
+                    });
+                <?php endif; ?>
 
-            // Remove ?msg=... from the URL without reloading the page
-            if (window.history.replaceState) {
-                const url = new URL(window.location);
-                url.searchParams.delete('msg');
-                window.history.replaceState({}, document.title, url.pathname + url.search);
-            }
-        });
+                // Remove ?msg=... from the URL without reloading the page
+                if (window.history.replaceState) {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('msg');
+                    window.history.replaceState({}, document.title, url.pathname + url.search);
+                }
+            });
         </script>
     <?php endif; ?>
 
@@ -203,8 +179,8 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
                                 <td><?= htmlspecialchars($row['fines_id']) ?></td>
                                 <td><?= htmlspecialchars($row['user_name']) ?></td>
                                 <td><?= htmlspecialchars($row['issue_book_id']) ?></td>
-                                <td><?= htmlspecialchars($row['expected_return_date']) ?></td>
-                                <td><?= htmlspecialchars($row['return_date']) ?></td>
+                                <td><?= date('M d, Y', strtotime($row['expected_return_date'])) ?></td>
+                                <td><?= date('M d, Y', strtotime($row['return_date'])) ?></td>
                                 <td><?= htmlspecialchars($row['days_late']) ?></td>
                                 <td><?= htmlspecialchars($row['fines_amount']) ?></td>
                                 <td>
@@ -216,20 +192,17 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
                                         }
                                     ?>
                                 </td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['fines_created_on'])) ?></td>
-                                <td><?= date('Y-m-d H:i:s', strtotime($row['fines_updated_on'])) ?></td>
-                                <td class="text-center">
-                                    <a href="fines_action.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm mb-1">
-                                        <i class="fa fa-eye"></i>
-                                    </a>
-                                    <a href="fines_action.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm mb-1">
-                                        <i class="fa fa-edit"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-danger btn-sm delete-btn"
-                                            data-id="<?= $row['fines_id'] ?>"
-                                            data-status="<?= $row['fines_status'] ?>">
-                                        <i class="fa fa-trash"></i>
-                                    </button>
+                                <td><?= date('M d, Y', strtotime($row['fines_created_on'])) ?></td>
+                                <td><?= date('M d, Y', strtotime($row['fines_updated_on'])) ?></td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="fines_action.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a href="fines_action.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -242,76 +215,42 @@ $fines = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 
 <script>
-// Function to disable a fine via confirm dialog (basic)
-function delete_data(fineId) {
-    if (confirm("Are you sure you want to disable this Fine?")) {
-        window.location.href = "fines.php?action=delete&code=" + fineId + "&status=Disable";
-    }
-}
 
-$(document).ready(function() {    
-    const table = $('#dataTable').DataTable({
-        responsive: true,
-        columnDefs: [
-        { responsivePriority: 1, targets: [0, 1, 5, 10] },
-        { responsivePriority: 2, targets: [2, 3] }
-        ],
-        order: [[0, 'asc']],
-        autoWidth: false,
-        language: {
-        emptyTable: "No fines available"
-        },
-        
-        // Scroll and pagination settings
-        info: true,
-        paging: true, 
-        scrollY: '500px',       // Vertical scroll
-        scrollCollapse: true,   // Collapse height when less data
-        searching: false,          // Enable pagination
-        fixedHeader: true,
-        stateSave: true,
-        // Fix alignment issues on draw and responsive changes
-        drawCallback: function() {
-            setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
-        }
-    });
-    // Handle window resize to maintain column alignment
-    $(window).on('resize', function() {
-        table.columns.adjust().responsive.recalc();
-    });
-    
-    // Force alignment after a short delay to ensure proper rendering
-    setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
-});
-
-// For deleting alert
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-btn');
-
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const fineId = this.getAttribute('data-id');
-            const currentStatus = this.getAttribute('data-status');
-            const action = (currentStatus === 'Enable') ? 'disable' : 'enable';
-
-            Swal.fire({
-                title: `Are you sure you want to ${action} this fine?`,
-                text: "This action can be reverted later.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: `Yes, ${action} it!`
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `fines.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${fineId}`;
-                }
-            });
+    $(document).ready(function() {    
+        const table = $('#dataTable').DataTable({
+            responsive: true,
+            columnDefs: [
+            { responsivePriority: 1, targets: [0, 1, 5, 10] },
+            { responsivePriority: 2, targets: [2, 3] }
+            ],
+            order: [[0, 'asc']],
+            autoWidth: false,
+            language: {
+            emptyTable: "No fines available"
+            },
+            
+            // Scroll and pagination settings
+            info: true,
+            paging: true, 
+            scrollY: '500px',       // Vertical scroll
+            scrollCollapse: true,   // Collapse height when less data
+            searching: false,          // Enable pagination
+            fixedHeader: true,
+            stateSave: true,
+            // Fix alignment issues on draw and responsive changes
+            drawCallback: function() {
+                setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
+            }
         });
+        // Handle window resize to maintain column alignment
+        $(window).on('resize', function() {
+            table.columns.adjust().responsive.recalc();
+        });
+        
+        // Force alignment after a short delay to ensure proper rendering
+        setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
     });
-});
+
 </script>
 
 <script>
@@ -323,32 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 </script>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const alertBox = document.getElementById('error-alert');
 
-        if (alertBox) {
-            // Display the alert for 3 seconds (3000ms)
-            setTimeout(function() {
-                // Optional fade-out effect
-                alertBox.style.transition = 'opacity 0.5s ease';
-                alertBox.style.opacity = '0';
-
-                // Remove the alert after fade (0.5s delay)
-                setTimeout(function() {
-                    alertBox.remove();
-                }, 500);
-
-                // Remove 'error' param from the URL after the alert disappears
-                if (window.history.replaceState) {
-                    const url = new URL(window.location);
-                    url.searchParams.delete('error');
-                    window.history.replaceState({}, document.title, url.pathname + url.search);
-                }
-            }, 3000);
-        }
-    });
-</script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {

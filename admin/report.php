@@ -472,7 +472,7 @@ foreach ($combinedReviews as $review) {
                             <div class="card-body p-0 border-0">
                                 <!-- Carousel Container -->
                                 <div class="reviews-carousel-container">
-                                    <div class="reviews-carousel" id="reviewsCarousel" style="    width: 99em;">
+                                    <div class="reviews-carousel" id="reviewsCarousel" style="width: 65em;">
                                         <?php foreach ($getReviews as $review): ?>
                                             <?php 
                                                 $book = getBookById($connect, $review['book_id']);

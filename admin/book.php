@@ -1076,11 +1076,8 @@ $(document).ready(function () {
         },
 
         columnDefs: [
-            { responsivePriority: 1, targets: 1 }, // Book Title
-            { responsivePriority: 2, targets: 10 }, // Actions
-            { responsivePriority: 3, targets: 0 }, // Book ID
-            { responsivePriority: 4, targets: [2, 3, 4] }, // Author, Category, Rack
-            { responsivePriority: 5, targets: [5, 6, 7, 8, 9] } // ISBN, Copies, Status, Dates
+            { responsivePriority: 1, targets: [0, 1, 10]}, // Book ID, Title, Actions
+            { responsivePriority: 2, targets: [4, 6, 7] } 
         ],
 
         drawCallback: function () {

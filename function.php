@@ -2044,6 +2044,7 @@ function Timezone_list()
 	return $html;
 }
 
+
 function getBookImagePath($book) {
     $default_image = '../asset/img/book_placeholder.png';
     $asset_dir = '../asset/img/';
@@ -2100,6 +2101,36 @@ function getAuthorImagePath($author) {
     // If image was provided but doesn't exist, fallback to default
     return $default_image;
 }
+function getUserImagePath($user) {
+    $default_image = '../asset/img/user.jpg'; // You can change this to your default user image
+    $asset_dir = '../asset/img/';
+    $upload_dir = '../upload/';
+    
+    // Handle if an array is passed or just the filename
+    $user_img = is_array($user) ? ($user['user_profile'] ?? '') : $user;
+
+    // If empty, use default
+    if (empty($user_img)) {
+        return $default_image;
+    }
+
+    // Normalize filename (just the basename in case path is stored)
+    $filename = basename($user_img);
+
+    // Check if image exists in asset dir
+    if (file_exists($asset_dir . $filename)) {
+        return $asset_dir . $filename;
+    }
+
+    // Check if image exists in upload dir
+    if (file_exists($upload_dir . $filename)) {
+        return $upload_dir . $filename;
+    }
+
+    // Fallback to default
+    return $default_image;
+}
+
 
 function getBookStatusStats($connect) {
     return $connect->query("
@@ -2559,6 +2590,80 @@ function getBookDetails($connect, $book_id) {
 	
 	return $statement->fetch(PDO::FETCH_ASSOC);
 }
+function getBookCatalog($connect, $include_reviews = false, $book_id = null) {
+    // Main book info with category, rack, and average rating
+    $query = "
+        SELECT 
+            b.book_id,
+            b.book_name,
+            b.book_author,
+            b.book_isbn_number,
+            b.book_location_rack,
+            b.book_no_of_copy,
+            b.book_img,
+            b.book_description,
+            b.book_edition,
+            b.book_publisher,
+            b.book_published,
+            b.book_added_on,
+            b.book_updated_on,
+            c.category_name,
+            lr.location_rack_id,
+            lr.location_rack_name,
+            lr.position_x,
+            lr.position_y,
+            AVG(r.rating) AS avg_rating,
+            COUNT(r.review_id) AS total_reviews
+        FROM lms_book b
+        LEFT JOIN lms_category c ON b.category_id = c.category_id
+        LEFT JOIN lms_location_rack lr ON b.book_location_rack = lr.location_rack_name
+        LEFT JOIN lms_book_review r ON b.book_id = r.book_id AND r.status = 'approved'
+        WHERE b.book_status = 'Enable'
+    ";
+
+    // Add filtering if book_id is provided
+    if ($book_id !== null) {
+        $query .= " AND b.book_id = :book_id";
+    }
+
+    $query .= "
+        GROUP BY b.book_id
+        ORDER BY b.book_name ASC
+    ";
+
+    $statement = $connect->prepare($query);
+
+    // Bind book_id if set
+    if ($book_id !== null) {
+        $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    }
+
+    $statement->execute();
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+    // If $include_reviews is true, fetch individual reviews per book
+    if ($include_reviews && !empty($books)) {
+        foreach ($books as &$book) {
+            $reviewStmt = $connect->prepare("
+                SELECT 
+                    r.review_id, r.rating, r.review_text, r.created_at,
+                    u.user_fullname, u.user_profile
+                FROM lms_book_review r
+                JOIN lms_user u ON r.user_id = u.user_id
+                WHERE r.book_id = :book_id AND r.status = 'approved'
+                ORDER BY r.created_at DESC
+                LIMIT 5
+            ");
+            $reviewStmt->bindParam(':book_id', $book['book_id'], PDO::PARAM_INT);
+            $reviewStmt->execute();
+            $book['reviews'] = $reviewStmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+    }
+
+    return $books;
+}
+
+
 // Function to get book authors
 function getBookAuthors($connect, $book_id) {
 	$query = "SELECT a.* 
@@ -3145,4 +3250,266 @@ function getReviews($connect, $status = null, $limit = 10) {
     $statement->execute();
     
     return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function isAfterLibraryHours($return_date_time) {
+    global $library_hours;
+    
+    $return_dt = new DateTime($return_date_time);
+    $return_day = $return_dt->format('l'); // Get day name (Monday, Tuesday, etc.)
+    $return_time = $return_dt->format('H:i'); // Get time in 24-hour format
+    
+    // If library is closed on this day, count as next open day
+    if (!isset($library_hours[$return_day]) || 
+        $library_hours[$return_day]['open'] === null || 
+        $library_hours[$return_day]['close'] === null) {
+        
+        // Find next open day
+        $next_dt = clone $return_dt;
+        $found_open_day = false;
+        
+        for ($i = 1; $i <= 7; $i++) {
+            $next_dt->modify('+1 day');
+            $next_day = $next_dt->format('l');
+            
+            if (isset($library_hours[$next_day]) && 
+                $library_hours[$next_day]['open'] !== null) {
+                $found_open_day = true;
+                break;
+            }
+        }
+        
+        if ($found_open_day) {
+            // Set time to opening time of next open day
+            $next_dt->setTime(
+                (int)substr($library_hours[$next_day]['open'], 0, 2),
+                (int)substr($library_hours[$next_day]['open'], 3, 2)
+            );
+            return $next_dt->format('Y-m-d H:i:s');
+        }
+        
+        return false; // Couldn't find an open day (unusual case)
+    }
+    
+    // Check if return time is after closing time
+    $closing_time = $library_hours[$return_day]['close'];
+    if ($return_time > $closing_time) {
+        // Find next open day
+        $next_dt = clone $return_dt;
+        $next_dt->modify('+1 day');
+        $next_day = $next_dt->format('l');
+        
+        // If next day is closed, find the next open day
+        $days_checked = 0;
+        while ((!isset($library_hours[$next_day]) || 
+                $library_hours[$next_day]['open'] === null) && 
+               $days_checked < 7) {
+            $next_dt->modify('+1 day');
+            $next_day = $next_dt->format('l');
+            $days_checked++;
+        }
+        
+        // Set time to opening time of next open day
+        if ($days_checked < 7) {
+            $next_dt->setTime(
+                (int)substr($library_hours[$next_day]['open'], 0, 2),
+                (int)substr($library_hours[$next_day]['open'], 3, 2)
+            );
+            return $next_dt->format('Y-m-d H:i:s');
+        }
+    }
+    
+    return false; // Return time is within library hours
+}
+
+function getLibrarySettings($connect) {
+    $settings_query = "SELECT 
+        library_total_book_issue_day, 
+        library_issue_total_book_per_user, 
+        library_open_hours,
+        library_one_day_fine,
+        library_max_fine_per_book
+    FROM lms_setting LIMIT 1";
+    
+    $settings_stmt = $connect->query($settings_query);
+    $settings = $settings_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    // Parse library open hours from JSON
+    $hours_json = $settings['library_open_hours'] ?? null;
+    $library_hours = [];
+
+    if ($hours_json) {
+        $library_hours = json_decode($hours_json, true);
+
+        // Fallback in case JSON is invalid or missing any day
+        $default_hours = ['open' => '08:00:00', 'close' => '17:00:00'];
+        $days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        foreach ($days_of_week as $day) {
+            if (!isset($library_hours[$day])) {
+                $library_hours[$day] = $day === 'Saturday' || $day === 'Sunday' ? ['open' => null, 'close' => null] : $default_hours;
+            } else {
+                // Ensure open/close keys are present
+                $library_hours[$day] = array_merge($default_hours, $library_hours[$day]);
+            }
+        }
+    } else {
+        // If empty, fallback to hardcoded default hours
+        $library_hours = [
+            'Monday' => ['open' => '08:00:00', 'close' => '17:00:00'],
+            'Tuesday' => ['open' => '08:00:00', 'close' => '17:00:00'],
+            'Wednesday' => ['open' => '08:00:00', 'close' => '17:00:00'],
+            'Thursday' => ['open' => '08:00:00', 'close' => '17:00:00'],
+            'Friday' => ['open' => '08:00:00', 'close' => '17:00:00'],
+            'Saturday' => ['open' => null, 'close' => null],
+            'Sunday' => ['open' => null, 'close' => null]
+        ];
+    }
+
+    
+    return [
+        'loan_days' => $settings['library_total_book_issue_day'] ?? 7,
+        'max_books_per_user' => $settings['library_issue_total_book_per_user'] ?? 2,
+        'library_hours' => $library_hours,
+        'fine_rate_per_day' => $settings['library_one_day_fine'] ?? 5,
+        'max_fine_per_book' => $settings['library_max_fine_per_book'] ?? 500
+    ];
+}
+
+function isLibraryClosed($date_str, $library_hours) {
+    $date = new DateTime($date_str);
+    $day_of_week = $date->format('l'); // Returns day name (Monday, Tuesday, etc.)
+    
+    return !isset($library_hours[$day_of_week]) || 
+           $library_hours[$day_of_week]['open'] === null || 
+           $library_hours[$day_of_week]['close'] === null;
+}
+
+function adjustReturnDate($return_date_str, $library_hours) {
+    // Parse the return date and time
+    $return_date = new DateTime($return_date_str);
+    $return_time = $return_date->format('H:i:s');
+    $day_of_week = $return_date->format('l');
+    
+    // Start with current date
+    $adjusted_date = clone $return_date;
+    
+    // Check if library is closed or if time is after closing
+    if (isLibraryClosed($return_date_str, $library_hours) || 
+        ($library_hours[$day_of_week]['close'] !== null && $return_time > $library_hours[$day_of_week]['close'])) {
+        
+        // Move to next day
+        $adjusted_date->modify('+1 day');
+        
+        // Keep moving forward until we find an open day
+        while (isLibraryClosed($adjusted_date->format('Y-m-d'), $library_hours)) {
+            $adjusted_date->modify('+1 day');
+        }
+    }
+    
+    return $adjusted_date->format('Y-m-d');
+}
+
+function calculateFine($expected_date, $actual_date, $settings) {
+    $expected = new DateTime($expected_date);
+    $actual = new DateTime($actual_date);
+    
+    // Calculate difference in days
+    $interval = $expected->diff($actual);
+    $days_late = $interval->invert ? 0 : $interval->days;
+    
+    // Calculate fine amount with maximum cap
+    $fine_amount = $days_late * $settings['fine_rate_per_day'];
+    $fine_amount = min($fine_amount, $settings['max_fine_per_book']);
+    
+    return [
+        'days_late' => $days_late,
+        'fine_amount' => $fine_amount
+    ];
+}
+
+function calculateExpectedReturnDate($issue_date, $loan_days, $library_hours) {
+    $issue_date_obj = new DateTime($issue_date);
+    $return_date = clone $issue_date_obj;
+    $return_date->modify("+{$loan_days} days");
+    
+    // Find the next open day if the calculated return date falls on a closed day
+    while (isLibraryClosed($return_date->format('Y-m-d'), $library_hours)) {
+        $return_date->modify('+1 day');
+    }
+    
+    // Add library closing time to the return date
+    $day_of_week = $return_date->format('l');
+    $close_time = $library_hours[$day_of_week]['close'] ?? '17:00:00';
+    
+    return $return_date->format('Y-m-d') . ' ' . $close_time;
+}
+
+function checkAndUpdateOverdueBooks($connect, $settings) {
+    // Get current date and time
+    $current_date = date('Y-m-d H:i:s');
+    
+    // Update books to "Overdue" if their expected return date has passed
+    $update_overdue_query = "
+        UPDATE lms_issue_book
+        SET issue_book_status = 'Overdue', issue_updated_on = NOW()
+        WHERE issue_book_status = 'Issued' 
+        AND expected_return_date < :current_date
+    ";
+    $statement = $connect->prepare($update_overdue_query);
+    $statement->execute([':current_date' => $current_date]);
+    
+    // Get all overdue books that don't have fine records yet
+    $overdue_books_query = "
+        SELECT ib.issue_book_id, ib.user_id, ib.expected_return_date, ib.book_id 
+        FROM lms_issue_book ib
+        LEFT JOIN lms_fines f ON ib.issue_book_id = f.issue_book_id
+        WHERE ib.issue_book_status = 'Overdue'
+        AND f.fines_id IS NULL
+    ";
+    $statement = $connect->prepare($overdue_books_query);
+    $statement->execute();
+    $overdue_books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Create fine records for overdue books
+    foreach ($overdue_books as $book) {
+        $fine_data = calculateFine(
+            $book['expected_return_date'], 
+            $current_date, 
+            $settings
+        );
+        $days_late = $fine_data['days_late'];
+        $fine_amount = $fine_data['fine_amount'];
+        
+        if ($days_late > 0) {
+            $insert_query = "
+                INSERT INTO lms_fines (
+                    user_id, 
+                    issue_book_id, 
+                    expected_return_date, 
+                    days_late, 
+                    fines_amount, 
+                    fines_status, 
+                    fines_created_on
+                )
+                VALUES (
+                    :user_id, 
+                    :issue_book_id, 
+                    :expected_return_date, 
+                    :days_late, 
+                    :fines_amount, 
+                    'Unpaid', 
+                    NOW()
+                )
+            ";
+            $statement = $connect->prepare($insert_query);
+            $statement->execute([
+                ':user_id' => $book['user_id'],
+                ':issue_book_id' => $book['issue_book_id'],
+                ':expected_return_date' => $book['expected_return_date'],
+                ':days_late' => $days_late,
+                ':fines_amount' => $fine_amount
+            ]);
+        }
+    }
 }

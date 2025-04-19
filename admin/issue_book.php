@@ -17,7 +17,18 @@
             ORDER BY lms_issue_book.issue_book_id DESC";
 
 
-    // Mark as Lost (Instead of Delete)
+    // Get library settings at the start
+    $library_settings = getLibrarySettings($connect);
+    $loan_days = $library_settings['loan_days'];
+    $max_books_per_user = $library_settings['max_books_per_user'];
+    $library_hours = $library_settings['library_hours'];
+    $fine_rate_per_day = $library_settings['fine_rate_per_day'];
+    $max_fine_per_book = $library_settings['max_fine_per_book'];
+
+    // Check for overdue books at the start of the script
+    checkAndUpdateOverdueBooks($connect, $library_settings);
+
+    // Mark as Lost (Instead of Delete) - No change needed
     if (isset($_GET["action"], $_GET['code']) && $_GET["action"] == 'delete') {
         $issue_book_id = $_GET["code"];
         $status = 'Lost'; // Always set status to 'Lost'
@@ -40,121 +51,103 @@
         exit;
     }
 
-    // ISSUE Book (Form Submit)
+    // ISSUE Book (Form Submit) - Modified to use library settings
     if (isset($_POST['issue_book'])) {
         $book_id = trim($_POST['book_id']);
         $user_id = trim($_POST['user_id']);
         $issue_date = trim($_POST['issue_date']);
-        $expected_return_date = trim($_POST['expected_return_date']);
         $status = trim($_POST['issue_book_status']);
-
-        // Check for duplicate entry
-        $check_duplicate_query = "
-            SELECT COUNT(*) as duplicate_count
-            FROM lms_issue_book
-            WHERE book_id = :book_id AND user_id = :user_id AND issue_book_status IN ('Issued', 'Overdue')
+        
+        // Calculate expected return date based on issue date and library settings
+        $expected_return_date = calculateExpectedReturnDate($issue_date, $loan_days, $library_hours);
+        
+        // Check for duplicate issued book
+        $duplicate_check = "
+            SELECT COUNT(*) AS duplicate_count 
+            FROM lms_issue_book 
+            WHERE book_id = :book_id 
+            AND user_id = :user_id 
+            AND issue_book_status IN ('Issued', 'Overdue')
         ";
-
-        $statement = $connect->prepare($check_duplicate_query);
-        $statement->execute([
-            ':book_id' => $book_id,
-            ':user_id' => $user_id
-        ]);
-
-        $duplicate = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if ($duplicate['duplicate_count'] > 0) {
-            // Duplicate found, redirect with error message
+        $stmt = $connect->prepare($duplicate_check);
+        $stmt->execute([':book_id' => $book_id, ':user_id' => $user_id]);
+        if ($stmt->fetchColumn() > 0) {
             header('location:issue_book.php?action=add&error=duplicate');
             exit;
         }
 
-        // Check if the user already has 2 active books (issued or overdue)
-        $check_user_limit_query = "
-            SELECT COUNT(*) as book_count
-            FROM lms_issue_book
-            WHERE user_id = :user_id AND issue_book_status IN ('Issued', 'Overdue')
+        // Check user's active issue count
+        $limit_check = "
+            SELECT COUNT(*) AS count 
+            FROM lms_issue_book 
+            WHERE user_id = :user_id 
+            AND issue_book_status IN ('Issued', 'Overdue')
         ";
-
-        $statement = $connect->prepare($check_user_limit_query);
-        $statement->execute([':user_id' => $user_id]);
-        $user_books = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if ($user_books['book_count'] >= 2) {
-            // User already has 2 books, redirect with error message
+        $stmt = $connect->prepare($limit_check);
+        $stmt->execute([':user_id' => $user_id]);
+        if ($stmt->fetchColumn() >= $max_books_per_user) {
             header('location:issue_book.php?action=add&error=limit');
             exit;
         }
 
-        // Check if the book has available copies
-        $check_query = "
-            SELECT book_no_of_copy 
-            FROM lms_book 
-            WHERE book_id = :book_id
-        ";
+        // Check book availability
+        $check_query = "SELECT book_no_of_copy FROM lms_book WHERE book_id = :book_id";
+        $stmt = $connect->prepare($check_query);
+        $stmt->execute([':book_id' => $book_id]);
+        $book = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $statement = $connect->prepare($check_query);
-        $statement->execute([':book_id' => $book_id]);
-        $book = $statement->fetch(PDO::FETCH_ASSOC);
-
-        if ($book['book_no_of_copy'] > 0) {
-            // Book is available, proceed with issuing
+        if ($book && $book['book_no_of_copy'] > 0) {
             $date_now = get_date_time($connect);
 
-            // Insert issue record
+            // Insert the issue record
             $insert_query = "
                 INSERT INTO lms_issue_book 
-                (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
-                VALUES (:book_id, :user_id, :issue_date, :expected_return_date, :issue_book_status, :issued_on, :updated_on)
+                    (book_id, user_id, issue_date, expected_return_date, issue_book_status, issued_on, issue_updated_on) 
+                VALUES 
+                    (:book_id, :user_id, :issue_date, :expected_return_date, :status, :issued_on, :updated_on)
             ";
-
-            $statement = $connect->prepare($insert_query);
-            $statement->execute([
+            $stmt = $connect->prepare($insert_query);
+            $stmt->execute([
                 ':book_id' => $book_id,
                 ':user_id' => $user_id,
                 ':issue_date' => $issue_date,
                 ':expected_return_date' => $expected_return_date,
-                ':issue_book_status' => $status,
+                ':status' => $status,
                 ':issued_on' => $date_now,
                 ':updated_on' => $date_now
             ]);
 
-            // Decrease the number of copies
-            $update_query = "
+            // Decrease the available copies
+            $update_book = "
                 UPDATE lms_book 
-                SET book_no_of_copy = book_no_of_copy - 1, book_updated_on = :updated_on 
+                SET book_no_of_copy = book_no_of_copy - 1, 
+                    book_updated_on = :updated_on 
                 WHERE book_id = :book_id
             ";
-
-            $statement = $connect->prepare($update_query);
-            $statement->execute([
-                ':updated_on' => $date_now,
-                ':book_id' => $book_id
-            ]);
+            $stmt = $connect->prepare($update_book);
+            $stmt->execute([':updated_on' => $date_now, ':book_id' => $book_id]);
 
             header('location:issue_book.php?msg=issued');
             exit;
         } else {
-            // Book not available
             header('location:issue_book.php?action=add&error=no_copy');
             exit;
         }
     }
 
-    // EDIT Issue Book
+    // EDIT Issue Book - Modified to handle library hours and fine calculation
     if (isset($_POST['edit_issue_book'])) {
         $issue_book_id = $_POST['issue_book_id'];
         $user_id = $_POST['user_id'];
         $book_id = $_POST['book_id'];
         $issue_date = $_POST['issue_date'];
         $expected_return_date = $_POST['expected_return_date'];
-        $issue_book_status = $_POST['issue_book_status']; // New status input
+        $issue_book_status = $_POST['issue_book_status'];
         $date_now = get_date_time($connect);
         
         // Handle book condition based on status
         $book_condition = null;
         if ($issue_book_status === 'Returned') {
-            // Check if we have a predefined condition or custom remarks
             if (isset($_POST['book_condition'])) {
                 $selected_condition = $_POST['book_condition'];
                 if ($selected_condition === 'Others' && isset($_POST['condition_remarks'])) {
@@ -166,63 +159,11 @@
         }
         
         // Set return date if status is "Returned"
-        $return_date = ($issue_book_status === 'Returned') ? date('Y-m-d') : null;
-
-        // Automatically update books to "Overdue" if their expected return date has passed
-        $update_overdue_query = "
-            UPDATE lms_issue_book
-            SET issue_book_status = 'Overdue'
-            WHERE issue_book_status = 'Issued' 
-            AND expected_return_date < CURDATE()
-        ";
-        $statement = $connect->prepare($update_overdue_query);
-        $statement->execute();
-
-        // Check if any book is marked as "Overdue" and insert a fine if not already recorded
-        $overdue_books_query = "
-            SELECT issue_book_id, user_id, expected_return_date 
-            FROM lms_issue_book
-            WHERE issue_book_status = 'Overdue'
-        ";
-        $statement = $connect->prepare($overdue_books_query);
-        $statement->execute();
-        $overdue_books = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($overdue_books as $book) {
-            $overdue_issue_id = $book['issue_book_id'];
-            $overdue_user_id = $book['user_id'];
-            $expected_return_date = $book['expected_return_date'];
-            $days_late = (strtotime(date('Y-m-d')) - strtotime($expected_return_date)) / (60 * 60 * 24);
-
-            if ($days_late > 0) {
-                $fine_per_day = 5; // Fine amount per day
-                $fines_amount = $days_late * $fine_per_day;
-
-                // Check if a fine record already exists
-                $check_query = "
-                    SELECT fines_id FROM lms_fines 
-                    WHERE issue_book_id = :issue_book_id AND user_id = :user_id
-                ";
-                $statement = $connect->prepare($check_query);
-                $statement->execute([':issue_book_id' => $overdue_issue_id, ':user_id' => $overdue_user_id]);
-                $existing_fine = $statement->fetch(PDO::FETCH_ASSOC);
-
-                if (!$existing_fine) {
-                    // Insert new fine record
-                    $insert_query = "
-                        INSERT INTO lms_fines (user_id, issue_book_id, expected_return_date, days_late, fines_amount, fines_status, fines_created_on)
-                        VALUES (:user_id, :issue_book_id, :expected_return_date, :days_late, :fines_amount, 'Unpaid', NOW())
-                    ";
-                    $statement = $connect->prepare($insert_query);
-                    $statement->execute([
-                        ':user_id' => $overdue_user_id,
-                        ':issue_book_id' => $overdue_issue_id,
-                        ':expected_return_date' => $expected_return_date,
-                        ':days_late' => $days_late,
-                        ':fines_amount' => $fines_amount
-                    ]);
-                }
-            }
+        $return_date = null;
+        if ($issue_book_status === 'Returned') {
+            $return_date_raw = date('Y-m-d H:i:s');
+            // Adjust return date if it's after hours or on closed days
+            $return_date = adjustReturnDate($return_date_raw, $library_hours);
         }
 
         // Check for duplicate entry before updating
@@ -282,12 +223,13 @@
         // Fine calculation logic
         if ($issue_book_status === 'Returned' || $issue_book_status === 'Overdue') {
             $return_date_actual = $return_date ?: date('Y-m-d');
-            $days_late = (strtotime($return_date_actual) - strtotime($expected_return_date)) / (60 * 60 * 24);
+            
+            // Calculate fine based on library settings
+            $fine_data = calculateFine($expected_return_date, $return_date_actual, $library_settings);
+            $days_late = $fine_data['days_late'];
+            $fines_amount = $fine_data['fine_amount'];
 
             if ($days_late > 0) {
-                $fine_per_day = 5; // Fine amount is now set to 5 pesos per day
-                $fines_amount = $days_late * $fine_per_day;
-
                 // Check if a fine record already exists
                 $check_query = "
                     SELECT fines_id FROM lms_fines 
@@ -336,7 +278,8 @@
         if ($issue_book_status === 'Returned') {
             $update_book_query = "
                 UPDATE lms_book 
-                SET book_no_of_copy = book_no_of_copy + 1 
+                SET book_no_of_copy = book_no_of_copy + 1,
+                    book_updated_on = NOW()
                 WHERE book_id = :book_id
             ";
             $statement = $connect->prepare($update_book_query);
@@ -344,7 +287,8 @@
         } elseif ($issue_book_status === 'Issued') {
             $update_book_query = "
                 UPDATE lms_book 
-                SET book_no_of_copy = book_no_of_copy - 1 
+                SET book_no_of_copy = book_no_of_copy - 1,
+                    book_updated_on = NOW()
                 WHERE book_id = :book_id AND book_no_of_copy > 0
             ";
             $statement = $connect->prepare($update_book_query);
@@ -374,7 +318,7 @@
     ";
 
     $statement = $connect->prepare($query);
-    $statement->execute();
+    $statement->execute();  
     $issue_book = $statement->fetchAll(PDO::FETCH_ASSOC);
 
     // Fetch all book names for dropdown lists
@@ -1319,7 +1263,195 @@
         }
     });
 </script>
-
+<script>
+    // Date validation and dynamic calculations for library system
+    document.addEventListener("DOMContentLoaded", function() {
+        // Get form elements
+        const issueDateInput = document.getElementById('issue_date');
+        const returnDateInput = document.getElementById('expected_return_date');
+        const actualReturnDateInput = document.getElementById('return_date');
+        const statusSelect = document.getElementById('issue_book_status');
+        const bookConditionContainer = document.getElementById('book-condition-container');
+        const finesContainer = document.getElementById('fines-container');
+        const daysLateInput = document.getElementById('days_late');
+        const finesAmountInput = document.getElementById('fines_amount');
+        
+        // Library settings (these will be populated from PHP)
+        const librarySettings = {
+            libraryHours: window.libraryHours || {},
+            fineRatePerDay: window.fineRatePerDay || 5,
+            maxFinePerBook: window.maxFinePerBook || 500,
+            loanDays: window.loanDays || 7
+        };
+        
+        // Format date for input fields
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        // Get day name from date
+        function getDayName(date) {
+            return date.toLocaleDateString('en-US', { weekday: 'long' });
+        }
+        
+        // Check if the library is closed on a specific date
+        function isLibraryClosed(date) {
+            const dayName = getDayName(date);
+            return !librarySettings.libraryHours[dayName] || 
+                !librarySettings.libraryHours[dayName].open || 
+                !librarySettings.libraryHours[dayName].close;
+        }
+        
+        // Find next open day
+        function getNextOpenDay(date) {
+            const nextDay = new Date(date);
+            nextDay.setDate(nextDay.getDate() + 1);
+            
+            while (isLibraryClosed(nextDay)) {
+                nextDay.setDate(nextDay.getDate() + 1);
+            }
+            
+            return nextDay;
+        }
+        
+        // Calculate expected return date based on issue date
+        function calculateExpectedReturnDate(issueDate) {
+            if (!issueDate) return null;
+            
+            const date = new Date(issueDate);
+            date.setDate(date.getDate() + librarySettings.loanDays);
+            
+            // Find next open day if return date falls on closed day
+            while (isLibraryClosed(date)) {
+                date.setDate(date.getDate() + 1);
+            }
+            
+            return date;
+        }
+        
+        // Calculate fine amount
+        function calculateFine() {
+            if (!expectedReturnDateInput || !actualReturnDateInput) return;
+            
+            const expectedDate = new Date(expectedReturnDateInput.value);
+            const actualDate = new Date(actualReturnDateInput.value);
+            
+            if (isNaN(expectedDate.getTime()) || isNaN(actualDate.getTime())) return;
+            
+            // Check if return is after hours or on closed day
+            let adjustedDate = new Date(actualDate);
+            const dayName = getDayName(actualDate);
+            
+            const isAfterHours = 
+                isLibraryClosed(actualDate) || 
+                (librarySettings.libraryHours[dayName]?.close && 
+                actualDate.getHours() >= parseInt(librarySettings.libraryHours[dayName].close.split(':')[0]));
+            
+            if (isAfterHours) {
+                adjustedDate = getNextOpenDay(actualDate);
+            }
+            
+            // Calculate days late
+            const timeDiff = adjustedDate.getTime() - expectedDate.getTime();
+            let daysLate = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+            
+            // Calculate fine amount with cap
+            let fineAmount = daysLate * librarySettings.fineRatePerDay;
+            fineAmount = Math.min(fineAmount, librarySettings.maxFinePerBook);
+            
+            // Update form fields
+            if (daysLateInput) daysLateInput.value = daysLate;
+            if (finesAmountInput) finesAmountInput.value = fineAmount.toFixed(2);
+            
+            // Show cap message if applicable
+            const fineInfo = document.getElementById('fine-info');
+            if (fineInfo) {
+                if (daysLate * librarySettings.fineRatePerDay > librarySettings.maxFinePerBook) {
+                    fineInfo.textContent = `Fine capped at maximum amount: ${librarySettings.maxFinePerBook}`;
+                    fineInfo.style.display = 'block';
+                } else {
+                    fineInfo.style.display = 'none';
+                }
+            }
+            
+            return { daysLate, fineAmount };
+        }
+        
+        // Initialize date inputs with validation
+        if (issueDateInput) {
+            // Set minimum date to today
+            const today = new Date();
+            issueDateInput.setAttribute('min', formatDate(today));
+            
+            // Update expected return date when issue date changes
+            issueDateInput.addEventListener('change', function() {
+                if (!returnDateInput) return;
+                
+                const issueDate = new Date(this.value);
+                if (isNaN(issueDate.getTime())) return;
+                
+                const expectedReturnDate = calculateExpectedReturnDate(issueDate);
+                if (expectedReturnDate) {
+                    returnDateInput.value = formatDate(expectedReturnDate);
+                }
+            });
+        }
+        
+        // Validate that return date is after issue date
+        if (returnDateInput && issueDateInput) {
+            returnDateInput.addEventListener('change', function() {
+                const issueDate = new Date(issueDateInput.value);
+                const returnDate = new Date(this.value);
+                
+                if (isNaN(issueDate.getTime()) || isNaN(returnDate.getTime())) return;
+                
+                if (returnDate <= issueDate) {
+                    alert("Expected return date must be after the issue date");
+                    this.value = '';
+                }
+            });
+        }
+        
+        // Toggle book condition fields based on status
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function() {
+                const status = this.value;
+                
+                // Show/hide book condition fields
+                if (bookConditionContainer) {
+                    bookConditionContainer.style.display = (status === 'Returned') ? 'block' : 'none';
+                }
+                
+                // Show/hide fines when status is Returned or Overdue
+                if (finesContainer) {
+                    finesContainer.style.display = (status === 'Returned' || status === 'Overdue') ? 'block' : 'none';
+                }
+                
+                // Add return date if status is Returned
+                if (status === 'Returned' && actualReturnDateInput) {
+                    actualReturnDateInput.value = formatDate(new Date());
+                    calculateFine();
+                }
+            });
+        }
+        
+        // Calculate fine when return date changes
+        if (actualReturnDateInput) {
+            actualReturnDateInput.addEventListener('change', calculateFine);
+        }
+        
+        // Initial calculation on page load
+        if (actualReturnDateInput && expectedReturnDateInput) {
+            calculateFine();
+        }
+        
+        // Trigger status change event to initialize display
+        if (statusSelect) {
+            const event = new Event('change');
+            statusSelect.dispatchEvent(event);
+        }
+    });
+</script>
 
 <?php
 include '../footer.php';
