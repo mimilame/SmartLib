@@ -2430,13 +2430,19 @@ function groupAuthorTopBooks($authorTopBooks, $booksPerAuthor = 3) {
     }
     return $authorBooksMap;
 }
-// Function to get paginated books - add this to function.php
+// Function to get paginated books 
 function getPaginatedBooks($connect, $limit = 10, $offset = 0, $category_id = null) {
     $params = [];
-    $query = "SELECT b.*, c.category_name 
-              FROM lms_book b
-              LEFT JOIN lms_category c ON b.category_id = c.category_id
-              WHERE b.book_status = 'Enable'";
+    $query = "SELECT b.*, c.category_name, AVG(r.rating) as average_rating, 
+			GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+			LEFT JOIN lms_author a ON ba.author_id = a.author_id
+			LEFT JOIN lms_book_review r ON b.book_id = r.book_id
+			WHERE b.book_status = 'Enable' AND r.status = 'approved'
+			GROUP BY b.book_id
+			";
     
     if ($category_id !== null) {
         $query .= " AND b.category_id = :category_id";

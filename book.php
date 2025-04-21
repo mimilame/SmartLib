@@ -85,7 +85,7 @@ $total_pages = ceil($total_books / $limit);
             $is_available = $availability['is_available'];
             $available_copies = $availability['available_copies'];
         ?>
-        <div class="col book-card" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
+        <div class="col books" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
             <div class="card h-100 book-item shadow-sm">
                 <div class="position-relative">
                     <img src="<?php echo $book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
@@ -167,7 +167,7 @@ $total_pages = ceil($total_books / $limit);
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Book card click handlers
-    const bookCards = document.querySelectorAll('.book-card');
+    const bookCards = document.querySelectorAll('.books');
     const viewButtons = document.querySelectorAll('.view-book-btn');
     const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
     
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search-books');
     searchInput.addEventListener('keyup', function() {
         const searchTerm = this.value.toLowerCase().trim();
-        const bookCards = document.querySelectorAll('.book-card');
+        const bookCards = document.querySelectorAll('.book');
         
         bookCards.forEach(card => {
             const bookTitle = card.querySelector('.card-title').textContent.toLowerCase();
@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
     sortSelect.addEventListener('change', function() {
         const sortValue = this.value;
         const bookGrid = document.getElementById('book-grid');
-        const bookCards = Array.from(document.querySelectorAll('.book-card'));
+        const bookCards = Array.from(document.querySelectorAll('.book'));
         
         // Sort books based on selected option
         bookCards.sort((a, b) => {

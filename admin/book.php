@@ -49,7 +49,7 @@
     if (isset($_POST['add_book'])) {
         $name = trim($_POST['book_name']); // Clean the input
         $category_id = trim($_POST['category_id']);
-        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $author_ids = $_POST['author_ids'];
         $rack = trim($_POST['book_location_rack']);
         $isbn = trim($_POST['book_isbn_number']);
         $no_of_copies = trim($_POST['book_no_of_copy']);
@@ -179,7 +179,7 @@
         $id = $_POST['book_id'];
         $name = $_POST['book_name'];
         $category_id = $_POST['category_id'];
-        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $author_ids = $_POST['author_ids'];
         $rack = $_POST['book_location_rack'];
         $isbn = $_POST['book_isbn_number'];
         $no_of_copies = $_POST['book_no_of_copy'];
@@ -248,11 +248,21 @@
             }
         }
 
-
         // Get author names for the book_author field
         $author_names = [];
-        // Your existing code for author names
+        if (!empty($author_ids)) {
+            $author_names_query = "SELECT author_name FROM lms_author WHERE author_id IN (" . implode(',', array_fill(0, count($author_ids), '?')) . ")";
+            $author_names_stmt = $connect->prepare($author_names_query);
+            
+            foreach ($author_ids as $index => $id_value) {
+                $author_names_stmt->bindValue($index + 1, $id_value);
+            }
+            
+            $author_names_stmt->execute();
+            $author_names = $author_names_stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
         $author_string = implode(', ', $author_names);
+        
 
         // Build update query without potentially problematic fields
         $update_query = "
@@ -283,7 +293,7 @@
         $params = [
             ':name' => $name,
             ':category_id' => $category_id,
-            ':author' => $author_string,
+            ':author' => $author_string, // This is the key part - storing the author string
             ':rack' => $rack,
             ':no_of_copies' => $no_of_copies,
             ':status' => $status,
@@ -338,7 +348,6 @@
             exit;
         }
     }
-
 
     // List all books with their category names
     $query = "
@@ -642,7 +651,7 @@
                                             foreach ($racks as $rack):
                                                 $id = isset($rack['location_rack_id']) ? htmlspecialchars($rack['location_rack_id']) : '';
                                                 $name = isset($rack['location_rack_name']) ? htmlspecialchars($rack['location_rack_name']) : '';
-                                                $selected = (isset($book['book_location_rack']) && isset($rack['location_rack_id']) && $rack['location_rack_id'] == $book['book_location_rack']) ? 'selected' : '';
+                                                $selected = ($book['book_location_rack'] === $name) ? 'selected' : '';
                                             ?>
                                                 <option value="<?= $name ?>"<?= $selected ?>><?= $name ?></option>
                                             <?php endforeach; ?>

@@ -359,8 +359,8 @@
     // Check if user is logged in
     authenticate_visitor();
     ?>
-    <div class="d-flex flex-wrap fixed-top align-items-center justify-content-center justify-content-md-between mb-4">
-		<header class="header d-flex flex-wrap align-items-center justify-content-center justify-content-md-between py-3 mb-4 border-bottom bg-danger w-100">
+    <div class="d-flex flex-wrap fixed-top align-items-center justify-content-between justify-content-md-between mb-4">
+		<header class="header d-flex flex-wrap align-items-center justify-content-between justify-content-md-between py-3 mb-4 border-bottom bg-danger w-100">
 			<a href="/" class="d-flex align-items-center col-md-3 mb-2 mb-md-0 text-dark text-decoration-none">
 				<img src="<?php echo base_url() . 'asset/img/' . $library_logo; ?>" alt="Library Logo" width="32" height="32" class="rounded-circle ">
 				<?php echo $library_name; ?>
