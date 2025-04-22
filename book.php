@@ -3,7 +3,7 @@
 include 'database_connection.php';
 include 'function.php';
 include 'header.php';
-
+validate_session();
 // Use the improved function to get categories
 $all_categories = getAllCategories($connect);
 
@@ -11,7 +11,7 @@ $all_categories = getAllCategories($connect);
 $selected_category = isset($_GET['category']) ? $_GET['category'] : '';
 
 // Get pagination parameters
-$limit = 20; // Number of books per page
+$limit = 30; // Number of books per page
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $offset = ($page - 1) * $limit;
 
@@ -72,8 +72,12 @@ $total_pages = ceil($total_books / $limit);
     <!-- Book Grid -->
     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 gap-5" id="book-grid">
         <?php foreach ($all_books as $book): 
+            $base_url = base_url();
             // Get book cover image using the utility function
-            $book_img = getBookImagePath($book);
+            $bookImgPath = getBookImagePath($book);
+							
+            // Remove the leading "../" from the path for browser display
+            $bookImgUrl = str_replace('../', $base_url, $bookImgPath);
             
             // Get authors
             $authors = getBookAuthors($connect, $book['book_id']);
@@ -88,7 +92,7 @@ $total_pages = ceil($total_books / $limit);
         <div class="col books" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
             <div class="card h-100 book-item shadow-sm">
                 <div class="position-relative">
-                    <img src="<?php echo $book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
+                    <img src="<?php echo $bookImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
                     <div class="position-absolute top-0 start-0 m-2">
                         <span class="badge <?php echo $is_available ? 'bg-success' : 'bg-danger'; ?>">
                             <?php echo $is_available ? 'Available' : 'Unavailable'; ?>

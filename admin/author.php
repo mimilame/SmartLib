@@ -36,7 +36,7 @@ if (isset($_POST['add_author'])) {
     $biography = isset($_POST['author_biography']) ? trim($_POST['author_biography']) : '';
     
     // Default profile image
-    $profile_image = 'author.png';
+    $profile_image = 'author.jpg';
     
     // Check if profile image was uploaded
     if(isset($_FILES['author_profile']) && $_FILES['author_profile']['error'] == 0) {
@@ -46,7 +46,7 @@ if (isset($_POST['add_author'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Generate unique filename
-            $new_filename = time() . '.' . $ext;
+            $new_filename = 'author_' . time() . '.' . $ext;
             $upload_path = '../upload/' . $new_filename;
             
             // Create directory if it doesn't exist
@@ -137,7 +137,7 @@ if (isset($_POST['edit_author'])) {
                 $profile_image = $new_filename;
                 
                 // Delete old file if it's not the default
-                if($current_profile != 'author.png' && file_exists('../upload/' . $current_profile)) {
+                if($current_profile != 'author.jpg' && file_exists('../upload/' . $current_profile)) {
                     unlink('../upload/' . $current_profile);
                 }
             }

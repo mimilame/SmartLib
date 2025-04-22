@@ -48,14 +48,14 @@ if (isset($_POST['add_librarian'])) {
     $profile_image = 'librarian.jpg';
     
     if(!empty($_FILES['librarian_profile']['name'])) {
-        $fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
-		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+		$fileName = 'librarian_' . time() . '.' . $ext;
 		$targetFilePath = $uploadDir . $fileName;
 
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
-        if(in_array($fileType, $allowTypes)) {
+        if(in_array($ext, $allowTypes)) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
                 $profile_image = $fileName;
@@ -106,14 +106,14 @@ if (isset($_POST['edit_librarian'])) {
     
     // Handle profile image upload
     if(!empty($_FILES['librarian_profile']['name'])) {
-		$fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
-		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+		$ext = pathinfo($filename, PATHINFO_EXTENSION);
+		$fileName = 'librarian_' . time() . '.' . $ext;
 		$targetFilePath = $uploadDir . $fileName;
 
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
-        if(in_array($fileType, $allowTypes)) {
+        if(in_array($ext, $allowTypes)) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
                 // Remove old file if it's not the default image

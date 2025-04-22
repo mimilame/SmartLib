@@ -76,7 +76,7 @@
                 $maxsize = 5 * 1024 * 1024;
                 if ($filesize < $maxsize) {
                     // Generate unique filename
-                    $new_filename = uniqid() . '.' . $ext;
+                    $new_filename = 'book_' . time() . '.' . $ext;
                     $upload_path = $upload_dir . $new_filename;
                     
                     if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
@@ -234,7 +234,7 @@
                 $maxsize = 5 * 1024 * 1024;
                 if ($filesize < $maxsize) {
                     // Generate unique filename
-                    $new_filename = uniqid() . '.' . $ext;
+                    $new_filename = 'book_' . time() . '.' . $ext;
                     $upload_path = $upload_dir . $new_filename;
                     
                     if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {

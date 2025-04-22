@@ -56,7 +56,7 @@ if (isset($_POST['add_user'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Create unique filename
-            $new_filename = 'user_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_filename = 'user_' . time() . '.' . $ext;
             $upload_dir = '../upload/';
             
             // Create directory if it doesn't exist
@@ -143,7 +143,7 @@ if (isset($_POST['edit_user'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Create unique filename
-            $new_filename = 'user_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_filename = 'user_' . time() . '.' . $ext;
             $upload_dir = '../upload/';
             
             // Create directory if it doesn't exist

@@ -71,6 +71,26 @@
         <?php endif; ?>
 
 
+        <?php if(isset($_SESSION['swal_type'])): ?>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    Swal.fire({
+                        icon: '<?php echo $_SESSION['swal_type']; ?>',
+                        title: '<?php echo $_SESSION['swal_title']; ?>',
+                        text: '<?php echo $_SESSION['swal_text']; ?>',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'OK'
+                    });
+                });
+            </script>
+        <?php
+                // Clear the flash message after displaying
+                unset($_SESSION['swal_type']);
+                unset($_SESSION['swal_title']);
+                unset($_SESSION['swal_text']);
+            endif;
+        ?>
+
         <!-- footer.php -->
 
         <!-- Bootstrap Bundle (includes Popper) -->
