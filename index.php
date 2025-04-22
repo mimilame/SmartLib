@@ -2,7 +2,8 @@
 	include 'database_connection.php';
 	include 'function.php';	
 	include 'header.php';
-	
+	validate_session();
+
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
 	$statement = $connect->prepare($query);

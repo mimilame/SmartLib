@@ -351,6 +351,72 @@ function sweet_alert($type, $message)
     ';
 }
 
+function validate_session() {
+	// Start session if not already started
+	if (session_status() === PHP_SESSION_NONE) {
+		session_start();
+	}
+
+	// Check for session timeout (optional - set to 30 minutes)
+	if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
+		// Session expired, destroy it
+		session_unset();
+		session_destroy();
+		session_start();
+		$_SESSION['swal_type'] = 'warning';
+		$_SESSION['swal_title'] = 'Session Expired';
+		$_SESSION['swal_text'] = 'Your session has expired. Please log in again.';
+		header("Location: " . base_url() . "index.php");
+		exit();
+	}
+
+	// Update last activity time
+	$_SESSION['last_activity'] = time();
+
+	// Check if user is logged in but accessing the wrong section
+	if (isset($_SESSION['role_id'])) {
+		$current_path = $_SERVER['PHP_SELF'];
+		$public_pages = ['/index.php', '/book.php', '/about_us.php', '/faqs.php'];
+		$current_file = basename($current_path);
+		
+		// Detect which section user is trying to access
+		$accessing_admin = (strpos($current_path, '/admin/') !== false);
+		$accessing_user = (strpos($current_path, '/user/') !== false);
+		$accessing_guest = (strpos($current_path, '/guest/') !== false);
+		
+		// Redirect if user is in the wrong section
+		if ($accessing_admin && !in_array($_SESSION['role_id'], [1, 2])) {
+			$_SESSION['swal_type'] = 'error';
+			$_SESSION['swal_title'] = 'Access Denied';
+			$_SESSION['swal_text'] = "You don't have permission to access the admin area.";
+			header("Location: " . get_role_landing_page($_SESSION['role_id']));
+			exit();
+		}
+		
+		if ($accessing_user && !in_array($_SESSION['role_id'], [3, 4])) {
+			$_SESSION['swal_type'] = 'error';
+			$_SESSION['swal_title'] = 'Access Denied';
+			$_SESSION['swal_text'] = "You don't have permission to access the user area.";
+			header("Location: " . get_role_landing_page($_SESSION['role_id']));
+			exit();
+		}
+		
+		if ($accessing_guest && $_SESSION['role_id'] != 5) {
+			$_SESSION['swal_type'] = 'error';
+			$_SESSION['swal_title'] = 'Access Denied';
+			$_SESSION['swal_text'] = "You don't have permission to access the guest area.";
+			header("Location: " . get_role_landing_page($_SESSION['role_id']));
+			exit();
+		}
+		
+		// If accessing index.php while logged in, redirect to proper landing page
+		if (isset($_SESSION['role_id']) && in_array('/' . $current_file, $public_pages)) {
+			header("Location: " . get_role_landing_page($_SESSION['role_id']));
+			exit();
+		}
+	}
+}
+
 function get_user_role()
 {
     // Check if no session variables are set
@@ -2046,60 +2112,25 @@ function Timezone_list()
 
 
 function getBookImagePath($book) {
-    $default_image = '../asset/img/book_placeholder.png';
-    $asset_dir = '../asset/img/';
-    $upload_dir = '../upload/';
-    $book_img = $book['book_img'] ?? '';
-
-    // If empty, use default
-    if (empty($book_img)) {
-        return $default_image;
+    $book_img = $book['book_img'];
+    
+    // If there's an image specified in the database, use it without checking file_exists
+    if (!empty($book_img)) {
+        return '../upload/' . $book_img;
     }
-
-    // Normalize filename (just the basename in case a path is stored)
-    $filename = basename($book_img);
-
-    // Check if image exists in asset dir
-    if (file_exists($asset_dir . $filename)) {
-        return $asset_dir . $filename;
-    }
-
-    // Check if image exists in upload dir
-    if (file_exists($upload_dir . $filename)) {
-        return $upload_dir . $filename;
-    }
-
-    // If image was provided but doesn't exist, fallback to default
-    return $default_image;
+    
+    // Otherwise use the default
+    return '../asset/img/book_placeholder.png';
 }
 function getAuthorImagePath($author) {
-    $default_image = '../asset/img/author.jpg';
-    $asset_dir = '../asset/img/';
-    $upload_dir = '../upload/';
-    
-    // Handle if an array is passed or just the filename
-    $author_img = is_array($author) ? ($author['author_profile'] ?? '') : $author;
-    
+	$author_profile = $author['author_profile'];
     // If empty, use default
-    if (empty($author_img)) {
-        return $default_image;
-    }
-    
-    // Normalize filename (just the basename in case a path is stored)
-    $filename = basename($author_img);
-    
-    // Check if image exists in asset dir
-    if (file_exists($asset_dir . $filename)) {
-        return $asset_dir . $filename;
-    }
-    
-    // Check if image exists in upload dir
-    if (file_exists($upload_dir . $filename)) {
-        return $upload_dir . $filename;
+    if (!empty($author_profile)) {
+        return '../upload/' . $author_profile;
     }
     
     // If image was provided but doesn't exist, fallback to default
-    return $default_image;
+    return '../asset/img/author.jpg';
 }
 function getUserImagePath($user) {
     $default_image = '../asset/img/user.jpg'; // You can change this to your default user image
@@ -2461,13 +2492,18 @@ function groupAuthorTopBooks($authorTopBooks, $booksPerAuthor = 3) {
     }
     return $authorBooksMap;
 }
-// Function to get paginated books - add this to function.php
+// Function to get paginated books 
 function getPaginatedBooks($connect, $limit = 10, $offset = 0, $category_id = null) {
     $params = [];
-    $query = "SELECT b.*, c.category_name 
-              FROM lms_book b
-              LEFT JOIN lms_category c ON b.category_id = c.category_id
-              WHERE b.book_status = 'Enable'";
+    $query = "SELECT b.*, c.category_name, 
+			GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+			LEFT JOIN lms_author a ON ba.author_id = a.author_id
+			WHERE b.book_status = 'Enable'
+			GROUP BY b.book_id
+			";
     
     if ($category_id !== null) {
         $query .= " AND b.category_id = :category_id";

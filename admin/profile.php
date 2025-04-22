@@ -68,12 +68,12 @@ if (isset($_POST['edit_profile'])) {
     if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] == 0) {
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
         $filename = $_FILES['profile_image']['name'];
-        $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
 
-        if (!in_array($file_ext, $allowed)) {
+        if (!in_array($ext, $allowed)) {
             $error .= '<li>Only JPG, JPEG, PNG, and GIF files are allowed</li>';
         } else {
-            $new_filename = time() . '-' . rand(1000, 99999) . '.' . $file_ext;
+            $new_filename = 'admin_' . time() . '.' . $ext;
             $upload_path = '../upload/' . $new_filename;
             
             if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_path)) {
