@@ -2195,15 +2195,28 @@ function getMonthlyStats($connect) {
 
 
 function getPopularBooks($connect, $limit = 10) {
-    return $connect->query("
-        SELECT ib.book_id, b.book_name, COUNT(ib.book_id) AS issue_count 
+    $query = "
+        SELECT 
+            b.book_id, 
+            b.book_name, 
+            b.book_img, 
+            b.book_author, 
+            b.book_no_of_copy,
+            COUNT(ib.issue_book_id) AS issue_count 
         FROM lms_issue_book ib 
         INNER JOIN lms_book b ON ib.book_id = b.book_id 
-        GROUP BY ib.book_id, b.book_name 
+        WHERE ib.issue_book_status IN ('Issued', 'Returned', 'Overdue') 
+        GROUP BY b.book_id 
         ORDER BY issue_count DESC 
-        LIMIT $limit
-    ")->fetchAll(PDO::FETCH_ASSOC);
+        LIMIT :limit
+    ";
+    $stmt = $connect->prepare($query);
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
 
 
 function getCategoryStats($connect) {
@@ -2502,6 +2515,44 @@ function getPaginatedBooks($connect, $limit = 10, $offset = 0, $category_id = nu
 			LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
 			LEFT JOIN lms_author a ON ba.author_id = a.author_id
 			WHERE b.book_status = 'Enable'
+			GROUP BY b.book_id
+			";
+    
+    if ($category_id !== null) {
+        $query .= " AND b.category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $query .= " ORDER BY b.book_id DESC LIMIT :limit OFFSET :offset";
+    $params[':limit'] = $limit;
+    $params[':offset'] = $offset;
+    
+    $statement = $connect->prepare($query);
+    
+    foreach ($params as $key => $value) {
+        if ($key === ':limit' || $key === ':offset') {
+            $statement->bindValue($key, $value, PDO::PARAM_INT);
+        } else {
+            $statement->bindValue($key, $value);
+        }
+    }
+    
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+// Function to get paginated books 
+function getRatedBooks($connect, $limit = 10, $offset = 0, $category_id = null) {
+    $params = [];
+    $query = "SELECT b.*, c.category_name, 
+			GROUP_CONCAT(a.author_name SEPARATOR ', ') as authors, 
+            AVG(r.rating) AS avg_rating,
+            COUNT(r.review_id) AS total_reviews
+			FROM lms_book b
+			LEFT JOIN lms_category c ON b.category_id = c.category_id
+			LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+			LEFT JOIN lms_author a ON ba.author_id = a.author_id
+			LEFT JOIN lms_book_review r ON b.book_id = r.book_id 
+			WHERE b.book_status = 'Enable' AND r.status = 'approved'
 			GROUP BY b.book_id
 			";
     

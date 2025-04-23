@@ -207,59 +207,59 @@
             <nav class="nav flex-column p-2">
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
+                    <i class="fas fa-tachometer-alt me-2"></i>
                     <span class="nav-text">Dashboard</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'category.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/category.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Category">
-                    <i class="fas fa-folder"></i>
+                    <i class="fas fa-folder me-2"></i>
                     <span class="nav-text">Category</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'author.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/author.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Author">
-                    <i class="fas fa-pen-fancy"></i>
+                    <i class="fas fa-pen-fancy me-2"></i>
                     <span class="nav-text">Author</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'location_rack.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/location_rack.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Location Rack">
-                    <i class="fas fa-map-marker-alt"></i>
+                    <i class="fas fa-map-marker-alt me-2"></i>
                     <span class="nav-text">Location Rack</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Book">
-                    <i class="fas fa-book"></i>
+                    <i class="fas fa-book me-2"></i>
                     <span class="nav-text">Book</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/issue_book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Issue Book">
-                    <i class="fas fa-bookmark"></i>
+                    <i class="fas fa-bookmark me-2"></i>
                     <span class="nav-text">Issue Book</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'return_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/return_book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Return Book">
-                    <i class="fas fa-book-reader"></i>
+                    <i class="fas fa-book-reader me-2"></i>
                     <span class="nav-text">Return Book</span>
                 </a>
                 <?php if ($role_id == 1): ?>
                     <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'librarian.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/librarian.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                     data-bs-title="Librarian">
-                        <i class="fas fa-user-tie"></i>
+                        <i class="fas fa-user-tie me-2"></i>
                         <span class="nav-text">Librarian</span>
                     </a>
                     <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'user.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/user.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                     data-bs-title="Users">
-                        <i class="fas fa-users"></i>
+                        <i class="fas fa-users me-2"></i>
                         <span class="nav-text">Users</span>
                     </a>
                 <?php endif; ?>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'report.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/report.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Reports">
-                    <i class="fas fa-chart-bar"></i>
+                    <i class="fas fa-chart-bar me-2"></i>
                     <span class="nav-text">Reports</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/fines.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Fines">
-                    <i class="fas fa-dollar-sign"></i>
+                    <i class="fas fa-dollar-sign me-2"></i>
                     <span class="nav-text">Fines</span>
                 </a>
             </nav>
@@ -277,15 +277,15 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="<?php echo $profile_img; ?>" alt="Profile Image" class="rounded-circle" width="40" height="40">
-                                <span class="d-none d-md-inline-block ms-1">
+                                <span class="d-none d-md-inline-block ms-3">
                                     <?php echo htmlspecialchars($user_name); ?>
                                 </span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow">
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/profile.php"><i class="fas fa-user-edit fa-fw me-2"></i>Profile</a></li>
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/setting.php"><i class="fas fa-cog fa-fw me-2"></i>Settings</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/profile.php"><i class="fas fa-user-edit fa-fw me-2 me-2"></i>Profile</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/setting.php"><i class="fas fa-cog fa-fw me-2 me-2"></i>Settings</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/logout.php"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>admin/logout.php"><i class="fas fa-sign-out-alt fa-fw me-2 me-2"></i>Logout</a></li>
                             </ul>
                         </li>
                     </ul>
@@ -309,17 +309,17 @@
             <nav class="nav flex-column p-2">
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/index.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
+                    <i class="fas fa-tachometer-alt me-2"></i>
                     <span class="nav-text">Dashboard</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'search_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/search_book.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Search Book">
-                    <i class="fas fa-search"></i>
+                    <i class="fas fa-search me-2"></i>
                     <span class="nav-text">Search Book</span>
                 </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'issue_book_details.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/issue_book_details.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="Issue Book Details">
-                    <i class="fas fa-book-open"></i>
+                    <i class="fas fa-book-open me-2"></i>
                     <span class="nav-text">Issue Book Details</span>
                 </a>
             </nav>
@@ -337,15 +337,15 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <img src="<?php echo $profile_img; ?>" alt="Profile Image" class="rounded-circle" width="40" height="40">
-                                <span class="d-none d-md-inline-block ms-1">
+                                <span class="d-none d-md-inline-block ms-3">
                                     <?php echo htmlspecialchars($user_name); ?>
                                 </span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end shadow">
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/profile.php"><i class="fas fa-user-edit fa-fw me-2"></i>Profile</a></li>
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/setting.php"><i class="fas fa-cog fa-fw me-2"></i>Settings</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/profile.php"><i class="fas fa-user-edit fa-fw me-2 me-2"></i>Profile</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/setting.php"><i class="fas fa-cog fa-fw me-2 me-2"></i>Settings</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/logout.php"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+                                <li><a class="dropdown-item" href="<?php echo base_url(); ?>user/logout.php"><i class="fas fa-sign-out-alt fa-fw me-2 me-2"></i>Logout</a></li>
                             </ul>
                         </li>
                     </ul>
@@ -396,11 +396,12 @@
 			<ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
 				<li><a href=" <?php echo base_url(); ?>index.php" class="nav-link px-2 link-secondary text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'home.php') ? 'active' : ''; ?>">Home</a></li>
 				<li><a href="<?php echo base_url(); ?>book.php" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'book.php') ? 'active' : ''; ?>">Books</a></li>
+                <li><a href="<?php echo base_url(); ?>author" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'author.php') ? 'active' : ''; ?>">Authors</a></li>
 				<li><a href="<?php echo base_url(); ?>about_us" class="nav-link px-2 link-dark text-light <?php echo (basename($_SERVER['PHP_SELF']) == 'about_us.php') ? 'active' : ''; ?>">About Us</a></li>
 			</ul>
 
 			<div class="col-md-3 text-end d-flex justify-content-end">
-				<button type="button" class="logbtn btn btn-outline-light me-3 text-secondary">Login</button>
+				<button type="button" class="logbtn btn btn-outline-light bg-light me-3 text-secondary">Login</button>
 				<button type="button" class="regbtn btn btn-warning text-secondary me-4">Sign-up</button>
 			</div>
 		</header>
@@ -416,7 +417,7 @@
             preloader.style.opacity = '0';
             setTimeout(function () {
                 preloader.style.display = 'none';
-            }, 2000); // 2000ms = 2 seconds delay
+            }, 500); 
         }
     });
 
@@ -523,7 +524,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                 <div class="d-inline-flex flex-column align-items-center">
-                                    <i class="fas fa-book-open text-warning fa-3x"></i>
+                                    <i class="fas fa-book-open text-warning fa-3x me-2"></i>
                                     <span class="mt-2">Over 500 books</span>
                                 </div>
                                 </div>
@@ -531,7 +532,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                 <div class="d-inline-flex flex-column align-items-center">
-                                    <i class="fas fa-laptop-code text-warning fa-3x"></i>
+                                    <i class="fas fa-laptop-code text-warning fa-3x me-2"></i>
                                     <span class="mt-2">Digital resources</span>
                                 </div>
                                 </div>
@@ -539,7 +540,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                 <div class="d-inline-flex flex-column align-items-center">
-                                    <i class="fas fa-newspaper text-warning fa-3x"></i>
+                                    <i class="fas fa-newspaper text-warning fa-3x me-2"></i>
                                     <span class="mt-2">Academic journals</span>
                                 </div>
                                 </div>
@@ -547,7 +548,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                 <div class="d-inline-flex flex-column align-items-center">
-                                    <i class="fas fa-flask text-warning fa-3x"></i>
+                                    <i class="fas fa-flask text-warning fa-3x me-2"></i>
                                     <span class="mt-2">Research materials</span>
                                 </div>
                                 </div>
@@ -569,7 +570,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                     <div class="d-inline-flex flex-column align-items-center">
-                                        <i class="fas fa-search text-warning fa-3x"></i>
+                                        <i class="fas fa-search text-warning fa-3x me-2"></i>
                                         <span class="mt-2">Search Availability</span>
                                     </div>
                                 </div>
@@ -577,7 +578,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                     <div class="d-inline-flex flex-column align-items-center">
-                                        <i class="fas fa-tasks text-warning fa-3x"></i>
+                                        <i class="fas fa-tasks text-warning fa-3x me-2"></i>
                                         <span class="mt-2">Manage Issued Books</span>
                                     </div>
                                 </div>
@@ -585,7 +586,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                     <div class="d-inline-flex flex-column align-items-center">
-                                        <i class="fas fa-bell text-warning fa-3x"></i>
+                                        <i class="fas fa-bell text-warning fa-3x me-2"></i>
                                         <span class="mt-2">Return Due Reminders</span>
                                     </div>
                                 </div>
@@ -593,7 +594,7 @@
                             <li class="col-md-5 card mb-4 bg-dark text-light align-items-center">
                                 <div class="card-body">
                                     <div class="d-inline-flex flex-column align-items-center">
-                                        <i class="fas fa-receipt text-warning fa-3x"></i>
+                                        <i class="fas fa-receipt text-warning fa-3x me-2"></i>
                                         <span class="mt-2">Library Transactions</span>
                                     </div>
                                 </div>

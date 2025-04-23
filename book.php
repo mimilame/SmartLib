@@ -69,50 +69,38 @@ $total_pages = ceil($total_books / $limit);
         </div>
     </div>
 
-    <!-- Book Grid -->
-    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-4 gap-5" id="book-grid">
-        <?php foreach ($all_books as $book): 
+    <!-- Updated Book Grid -->
+    <div class="d-flex flex-wrap justify-content-center gap-3" id="book-grid">
+        <?php foreach ($all_books as $book):
             $base_url = base_url();
-            // Get book cover image using the utility function
             $bookImgPath = getBookImagePath($book);
-							
-            // Remove the leading "../" from the path for browser display
             $bookImgUrl = str_replace('../', $base_url, $bookImgPath);
             
-            // Get authors
             $authors = getBookAuthors($connect, $book['book_id']);
             $author_names = array_column($authors, 'author_name');
             $author_string = implode(', ', $author_names);
             
-            // Check availability using the utility function
             $availability = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
             $is_available = $availability['is_available'];
-            $available_copies = $availability['available_copies'];
         ?>
-        <div class="col books" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
-            <div class="card h-100 book-item shadow-sm">
-                <div class="position-relative">
-                    <img src="<?php echo $bookImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
-                    <img src="<?php echo $bookImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 220px; object-fit: cover;">
-                    <div class="position-absolute top-0 start-0 m-2">
-                        <span class="badge <?php echo $is_available ? 'bg-success' : 'bg-danger'; ?>">
-                            <?php echo $is_available ? 'Available' : 'Unavailable'; ?>
-                        </span>
-                    </div>
-                    <div class="position-absolute top-0 end-0 m-2">
-                        <span class="badge bg-secondary"><?php echo htmlspecialchars($book['category_name']); ?></span>
-                    </div>
+        <div class="book-card book-card-wrapper" data-id="<?php echo $book['book_id']; ?>" data-isbn="<?php echo htmlspecialchars($book['book_isbn_number']); ?>">
+            <div class="card book-item shadow-sm h-100">
+                <div class="position-relative overflow-hidden">
+                    <img src="<?php echo $bookImgUrl; ?>" class="card-img-top book-cover" alt="<?php echo htmlspecialchars($book['book_name']); ?>">
+                    <span class="availability-badge <?php echo $is_available ? 'bg-success' : 'bg-danger'; ?>">
+                        <?php echo $is_available ? 'Available' : 'Unavailable'; ?>
+                    </span>
+                    <span class="category-badge">
+                        <?php echo htmlspecialchars($book['category_name']); ?>
+                    </span>
                 </div>
                 <div class="card-body d-flex flex-column">
-                    <h5 class="card-title text-truncate"><?php echo htmlspecialchars($book['book_name']); ?></h5>
-                    <p class="card-text text-muted small text-truncate">by <?php echo htmlspecialchars($author_string); ?></p>
-                    <div class="mt-auto pt-2 d-flex justify-content-between align-items-center">
-                        <button class="btn btn-sm btn-primary view-book-btn" data-id="<?php echo $book['book_id']; ?>">
+                    <span class="bk-title"><?php echo htmlspecialchars($book['book_name']); ?></span>
+                    <p class="book-author">by <?php echo htmlspecialchars($author_string); ?></p>
+                    <div class="card-footer-area d-flex justify-content-end align-items-center mt-auto">
+                        <button class="btn btn-primary view-book-btn" data-id="<?php echo $book['book_id']; ?>">
                             View Details
                         </button>
-                        <div class="text-end small">
-                            <i class="bi bi-book me-1"></i><?php echo $available_copies; ?>/<?php echo $book['book_no_of_copy']; ?>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -172,7 +160,7 @@ $total_pages = ceil($total_books / $limit);
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Book card click handlers
-    const bookCards = document.querySelectorAll('.books');
+    const bookCards = document.querySelectorAll('.book-card');
     const viewButtons = document.querySelectorAll('.view-book-btn');
     const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
     
@@ -254,11 +242,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search-books');
     searchInput.addEventListener('keyup', function() {
         const searchTerm = this.value.toLowerCase().trim();
-        const bookCards = document.querySelectorAll('.book');
+        const bookCards = document.querySelectorAll('.book-card');
         
         bookCards.forEach(card => {
-            const bookTitle = card.querySelector('.card-title').textContent.toLowerCase();
-            const bookAuthor = card.querySelector('.card-text').textContent.toLowerCase();
+            const bookTitle = card.querySelector('.bk-title').textContent.toLowerCase();
+            const bookAuthor = card.querySelector('.book-author').textContent.toLowerCase();
+
             const bookIsbn = card.dataset.isbn.toLowerCase();
             
             if (bookTitle.includes(searchTerm) || 
@@ -273,38 +262,73 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sort functionality
     const sortSelect = document.getElementById('sort-books');
-    sortSelect.addEventListener('change', function() {
-        const sortValue = this.value;
-        const bookGrid = document.getElementById('book-grid');
-        const bookCards = Array.from(document.querySelectorAll('.book'));
-        
-        // Sort books based on selected option
-        bookCards.sort((a, b) => {
-            const titleA = a.querySelector('.card-title').textContent;
-            const titleB = b.querySelector('.card-title').textContent;
-            const idA = parseInt(a.dataset.id);
-            const idB = parseInt(b.dataset.id);
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const sortValue = this.value;
+            const bookGrid = document.getElementById('book-grid');
             
-            switch (sortValue) {
-                case 'title-asc':
-                    return titleA.localeCompare(titleB);
-                case 'title-desc':
-                    return titleB.localeCompare(titleA);
-                case 'newest':
-                    return idB - idA;
-                case 'oldest':
-                    return idA - idB;
-                // Add other sort options as needed
-                default:
-                    return 0;
+            // Fixed: Class selector should match your HTML structure
+            const bookCards = Array.from(document.querySelectorAll('.book-card-wrapper'));
+            
+            if (bookCards.length === 0) {
+                console.log('No books found with selector .book-card-wrapper');
+                return;
             }
+            
+            console.log(`Sorting ${bookCards.length} books by: ${sortValue}`);
+            
+            // Sort books based on selected option
+            bookCards.sort((a, b) => {
+                // Fixed: Consistent class selectors and comparing appropriate values
+                const titleA = a.querySelector('.book-title')?.textContent || '';
+                const titleB = b.querySelector('.book-title')?.textContent || '';
+                
+                // Fixed: Use title for title comparisons (was comparing title to author)
+                const authorA = a.querySelector('.book-author')?.textContent || '';
+                const authorB = b.querySelector('.book-author')?.textContent || '';
+                
+                const idA = parseInt(a.dataset.id || '0');
+                const idB = parseInt(b.dataset.id || '0');
+                
+                switch (sortValue) {
+                    case 'title-asc':
+                        return titleA.localeCompare(titleB);
+                    case 'title-desc':
+                        return titleB.localeCompare(titleA);
+                    case 'newest':
+                        return idB - idA;
+                    case 'oldest':
+                        return idA - idB;
+                    case 'popular':
+                        // Extract available and total copies for popularity calculation
+                        const availableA = parseInt(a.querySelector('.copy-count')?.textContent.match(/(\d+)\/\d+/)?.[1] || '0');
+                        const totalA = parseInt(a.querySelector('.copy-count')?.textContent.match(/\d+\/(\d+)/)?.[1] || '1');
+                        const availableB = parseInt(b.querySelector('.copy-count')?.textContent.match(/(\d+)\/\d+/)?.[1] || '0');
+                        const totalB = parseInt(b.querySelector('.copy-count')?.textContent.match(/\d+\/(\d+)/)?.[1] || '1');
+                        
+                        // Calculate checkout ratio (higher = more popular)
+                        const popularityA = (totalA - availableA) / totalA;
+                        const popularityB = (totalB - availableB) / totalB;
+                        
+                        return popularityB - popularityA;
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Fixed: Clear grid before appending sorted cards
+            while (bookGrid.firstChild) {
+                bookGrid.removeChild(bookGrid.firstChild);
+            }
+            
+            // Reappend sorted cards
+            bookCards.forEach(card => {
+                bookGrid.appendChild(card);
+            });
+            
+            console.log('Sorting complete');
         });
-        
-        // Reappend sorted cards
-        bookCards.forEach(card => {
-            bookGrid.appendChild(card);
-        });
-    });
+    }
 });
 </script>
 

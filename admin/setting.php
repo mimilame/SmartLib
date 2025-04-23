@@ -172,9 +172,8 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 }
 
 // Get General Settings
-$query = "SELECT * FROM lms_setting LIMIT 1";
-$result = $connect->query($query);
-$settings = $result->fetch(PDO::FETCH_ASSOC);
+$settings = getLibrarySettings($connect);
+$library_hours = $settings['library_hours'];
 
 // Get Library Features
 $query = "SELECT * FROM lms_library_features ORDER BY feature_id ASC";
@@ -312,28 +311,28 @@ document.addEventListener('DOMContentLoaded', function() {
 					<li class="nav-item col-xl-12" role="presentation">
 						<a class="nav-link <?= $active_tab === 'general' ? 'active bg-white text-primary' : 'text-white' ?>" 
 						href="setting.php?tab=general" role="tab">
-							<i class="fas fa-building"></i>
+							<i class="fas fa-building me-3"></i>
 							General Settings
 						</a>
 					</li>
 					<li class="nav-item col-xl-12" role="presentation">
 						<a class="nav-link <?= $active_tab === 'features' ? 'active bg-white text-primary' : 'text-white' ?>" 
 						href="setting.php?tab=features" role="tab">
-							<i class="fas fa-map-marked-alt"></i>
+							<i class="fas fa-map-marked-alt me-3"></i>
 							Library Features
 						</a>
 					</li>
 					<li class="nav-item col-xl-12" role="presentation">
 						<a class="nav-link <?= $active_tab === 'appearance' ? 'active bg-white text-primary' : 'text-white' ?>" 
 						href="setting.php?tab=appearance" role="tab">
-							<i class="fas fa-palette"></i>
+							<i class="fas fa-palette me-3"></i>
 							Appearance
 						</a>
 					</li>
 					<li class="nav-item col-xl-12" role="presentation">
 						<a class="nav-link <?= $active_tab === 'notifications' ? 'active bg-white text-primary' : 'text-white' ?>" 
 						href="setting.php?tab=notifications" role="tab">
-							<i class="fas fa-bell"></i>
+							<i class="fas fa-bell me-3  "></i>
 							Notifications
 						</a>
 					</li>
@@ -504,21 +503,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <?php foreach ($days as $day): ?>
+                                                            <?php foreach ($days as $day): 
+                                                                // Format the time values properly for the time input
+                                                                $open_time = !empty($library_hours[$day]['open']) ? 
+                                                                    substr($library_hours[$day]['open'], 0, 5) : '';
+                                                                $close_time = !empty($library_hours[$day]['close']) ? 
+                                                                    substr($library_hours[$day]['close'], 0, 5) : '';
+                                                            ?>
                                                             <tr>
                                                                 <td class="align-middle fw-medium"><?= $day ?></td>
                                                                 <td>
                                                                     <div class="input-group">
                                                                         <span class="input-group-text"><i class="fas fa-door-open"></i></span>
-                                                                        <input type="time" name="library_hours[<?= $day ?>][open]" class="form-control" 
-                                                                            value="<?= $open_hours[$day]['open'] ?? '' ?>">
+                                                                        <input type="time" name="library_hours[<?= $day ?>][open]" 
+                                                                            class="form-control" value="<?= $open_time ?>">
                                                                     </div>
                                                                 </td>
                                                                 <td>
                                                                     <div class="input-group">
                                                                         <span class="input-group-text"><i class="fas fa-door-closed"></i></span>
-                                                                        <input type="time" name="library_hours[<?= $day ?>][close]" class="form-control" 
-                                                                            value="<?= $open_hours[$day]['close'] ?? '' ?>">
+                                                                        <input type="time" name="library_hours[<?= $day ?>][close]" 
+                                                                            class="form-control" value="<?= $close_time ?>">
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -1464,12 +1469,6 @@ document.addEventListener('DOMContentLoaded', function() {
            
            form.classList.add('was-validated');
        }, false);
-   });
-   
-   // Initialize tooltips
-   const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-   const tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-       return new bootstrap.Tooltip(tooltipTriggerEl);
    });
    
    // DataTable initialization for features table

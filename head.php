@@ -10,9 +10,13 @@
         <link rel="canonical" href="">
 
         <!-- head.php -->
-        <!-- Bootstrap CSS -->
+         
+        <!-- ICONS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+        <!-- CORE FRAMEWORK CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
 
         <!-- DataTables CSS -->
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
@@ -22,23 +26,24 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
 
-        <!-- Custom Styles -->
-        <link rel="stylesheet" href="../asset/css/styles.css">
-        <link rel="stylesheet" href="asset/css/styles.css">
+        <!-- Flickity CSS -->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.css">
 
-        <!-- FontAwesome -->
+        <!-- CUSTOM STYLES (always last) -->
+        <link rel="stylesheet" href="../asset/css/styles.css">
+        <link rel="stylesheet" href="asset/css/styles.css"> <!-- Only use one if possible based on directory structure -->
+
+        <!-- CORE JS LIBRARIES -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+        <!-- PLUGIN JS LIBRARIES -->
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- (You had two chart.js links – removed the redundant one) -->
+
+        <!-- FontAwesome JS (if needed for dynamic icon loading) -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 
-        <!-- jQuery (Needed for DataTables and Select2) -->
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
-
-       <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.min.js" ></script>
-       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         
         <!-- Favicons -->

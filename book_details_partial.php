@@ -56,8 +56,10 @@ $author_names = array_map(function($author) {
 }, $authors);
 $author_string = implode(', ', $author_names);
 
-// Get book cover image
-$book_img = getBookImagePath($book);
+$base_url = base_url();
+$bookImgPath = getBookImagePath($book);
+$bookImgUrl = str_replace('../', $base_url, $bookImgPath);
+
 // Get book availability status
 $availability = getBookAvailability($connect, $book_id, $book['book_no_of_copy']);
 $borrowed_copies = $availability['borrowed_copies'];
@@ -74,7 +76,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
         <div class="col-md-4 bg-light">
             <div class="sticky-top" style="top: 1rem;">
                 <div class="p-4 text-center">
-                    <img src="<?php echo $book_img; ?>" alt="<?php echo htmlspecialchars($book['book_name']); ?>" class="img-fluid rounded shadow" style="max-height: 400px;">
+                    <img src="<?php echo $bookImgUrl; ?>" alt="<?php echo htmlspecialchars($book['book_name']); ?>" class="img-fluid rounded shadow" style="max-height: 400px;">
                     
                     <div class="mt-4">
                         <div class="d-flex justify-content-between mb-2">
@@ -231,8 +233,13 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                             $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_profile'] : 'asset/img/author.png';
                                             ?>
                                             <img src="<?php echo $author_img; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="rounded-circle me-3" style="width: 80px; height: 80px; object-fit: cover;">
-                                            <div>
-                                                <h5 class="card-title"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                                            <div class="w-100">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <h5 class="card-title"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                                                    <a href="author.php?id=<?php echo $author['author_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                        <i class="bi bi-info-circle me-1"></i>More Details
+                                                    </a>
+                                                </div>
                                                 <?php if (!empty($author['author_bio'])): ?>
                                                     <p class="card-text"><?php echo nl2br(htmlspecialchars($author['author_bio'])); ?></p>
                                                 <?php else: ?>

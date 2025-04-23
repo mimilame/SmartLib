@@ -96,6 +96,8 @@
         <!-- Bootstrap Bundle (includes Popper) -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+        <!-- jQuery (needed for many plugins like DataTables and Select2) -->
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
         <!-- DataTables JS -->
         <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
@@ -108,11 +110,13 @@
         <!-- Chart.js -->
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+        <!-- Flickity -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/flickity/1.0.0/flickity.pkgd.js"></script>
 
-        <!-- Custom Scripts -->
+        <!-- Custom Scripts (Load these last to avoid conflicts and ensure all libs are loaded first) -->
         <script src="../asset/js/scripts.js"></script>
-        <script src="asset/js/scripts.js"></script>
+        <script src="asset/js/scripts.js"></script> <!-- Avoid duplication if this is the same as the line above -->
+
 
         <!-- Initialize DataTables & Select2 -->
         <script>

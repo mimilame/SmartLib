@@ -35,7 +35,7 @@
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
 			<?php
 				// Query to fetch all books
-				$books = getPaginatedBooks($connect, 10, 0); // Use the function instead of direct query
+				$books = getRatedBooks($connect, 10, 0); // Use the function instead of direct query
 				$base_url = base_url();
 				// Color classes for alternating styles
 				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];
