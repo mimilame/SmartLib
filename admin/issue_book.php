@@ -571,7 +571,7 @@
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST" class="needs-validation" novalidate>
+                    <form method="POST" class="needs-validation edit-form" novalidate>
                         <input type="hidden" name="issue_book_id" value="<?= $issue['issue_book_id'] ?>">
 
                         <div class="row">
@@ -674,16 +674,19 @@
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-md-6">
-                                                <div class="mb-3">
-                                                    <label for="issue_date" class="form-label fw-bold">Issue Date</label>
-                                                    <input type="date" id="issue_date" name="issue_date" class="form-control" value="<?= $issue['issue_date'] ?>" readonly>
-                                                    <small class="text-muted">Issue date cannot be changed</small>
-                                                </div>
+                                            <div class="mb-3">
+                                                 <label for="issue_date" class="form-label fw-bold">Issue Date</label>
+                                                    <input type="date" id="issue_date" name="issue_date" class="form-control" 
+                                                              value="<?= date('Y-m-d', strtotime($issue['issue_date'])) ?>" readonly>
+                                                         <small class="text-muted">Issue date cannot be changed</small>
                                             </div>
+                                            </div>
+                                            
                                             <div class="col-md-6">
                                                 <div class="mb-3">
                                                     <label for="expected_return_date" class="form-label fw-bold">Expected Return Date</label>
-                                                    <input type="date" id="expected_return_date" name="expected_return_date" class="form-control" value="<?= $issue['expected_return_date'] ?>" required>
+                                                    <input type="date" id="expected_return_date" name="expected_return_date" class="form-control" 
+                                                    value="<?= date('Y-m-d', strtotime($issue['expected_return_date'])) ?>" required>
                                                     <div class="invalid-feedback">Please enter an expected return date.</div>
                                                 </div>
                                             </div>
@@ -1136,9 +1139,13 @@
         const today = new Date().toISOString().split('T')[0];
         
         if (document.getElementById('issue_date')) {
-            document.getElementById('issue_date').min = today;
-            document.getElementById('issue_date').value = today;
-        }
+    document.getElementById('issue_date').min = today;
+    // Only set the value to today if it's a new record, not when editing
+if (document.getElementById('issue_date') && !document.querySelector('form.edit-form')) {
+    document.getElementById('issue_date').min = today;
+    document.getElementById('issue_date').value = today;
+}
+}
 
 
         // Form validation

@@ -460,18 +460,16 @@ $author = $statement->fetchAll(PDO::FETCH_ASSOC);
     else: ?>
 
     <!-- author List -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <div class="row">
-                <div class="col col-md-6">
-                    <i class="fas fa-table me-1"></i> Author List
+    <div class="card hadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Author List</h5>
+                <?php if (!isset($_GET['action'])): ?>            
+                        <a href="author.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add Author
+                        </a>
+                    <?php endif; ?>
                 </div>
-                <div class="col col-md-6">
-                    <a href="author.php?action=add" class="btn btn-success btn-sm float-end">
-                        <i class="fas fa-plus-circle me-1"></i> Add Author
-                    </a>
-                </div>
-            </div>
         </div>
 
         <div class="card-body">

@@ -945,18 +945,19 @@
 
 	<!-- Book List -->
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col col-md-6">
-                        <i class="fas fa-table me-1"></i> Book Management
-                    </div>
-                    <div class="col col-md-6">
-                        <a href="book.php?action=add" class="btn btn-success btn-sm float-end"><i class="fas fa-plus-circle me-2"></i>Add Book</a>
-                    </div>
+    <div class="card shadow-sm border-0">
+			<div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Book List</h5>                      
+                    <?php if (!isset($_GET['action'])): ?>            
+                        <a href="book.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add New Book
+                        </a>
+                    <?php endif; ?>
                 </div>
+
             </div>
-            <div class="card-body" style="overflow-x: auto;">
+            <div class="card-body">
                 <div class="table-responsive">
                     <table id="dataTable" class="display nowrap" style="width:100%">
                         <thead>
@@ -1085,8 +1086,8 @@ $(document).ready(function () {
         },
 
         columnDefs: [
-            { responsivePriority: 1, targets: [0, 1, 10]}, // Book ID, Title, Actions
-            { responsivePriority: 2, targets: [4, 6, 7] } 
+            { responsivePriority: 1, targets: [0, 1, 2, 3, 6, 7, 10]}, // Book ID, Title, Actions
+            { responsivePriority: 2, targets: [4, 5, 8, 9] } 
         ],
 
         drawCallback: function () {
