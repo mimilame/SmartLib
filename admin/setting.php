@@ -173,7 +173,6 @@ if (isset($_GET["action"], $_GET['status'], $_GET['code']) && $_GET["action"] ==
 
 // Get General Settings
 $settings = getLibrarySettings($connect);
-$library_hours = $settings['library_hours'];
 
 // Get Library Features
 $query = "SELECT * FROM lms_library_features ORDER BY feature_id ASC";
@@ -218,66 +217,66 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
 
 <!-- Alert Messages -->
 <?php if ($message): ?>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    <?php if ($message === 'general_success'): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Settings Updated',
-            text: 'Library settings have been successfully updated.',
-            confirmButtonColor: '#4361ee',
-            confirmButtonText: 'Great!',
-            timer: 2000,
-            timerProgressBar: true
-        });
-    <?php elseif ($message === 'feature_add'): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Feature Added',
-            text: 'The library feature was added successfully!',
-            confirmButtonColor: '#4361ee',
-            confirmButtonText: 'Done',
-            timer: 2000,
-            timerProgressBar: true
-        });
-    <?php elseif ($message === 'feature_edit'): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Feature Updated',
-            text: 'The library feature was updated successfully!',
-            confirmButtonColor: '#4361ee',
-            confirmButtonText: 'Done',
-            timer: 2000,
-            timerProgressBar: true
-        });
-    <?php elseif ($message === 'feature_enable'): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Feature Enabled',
-            text: 'The library feature has been successfully enabled.',
-            confirmButtonColor: '#4361ee',
-            confirmButtonText: 'Done',
-            timer: 2000,
-            timerProgressBar: true
-        });
-    <?php elseif ($message === 'feature_disable'): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Feature Disabled',
-            text: 'The library feature has been successfully disabled.',
-            confirmButtonColor: '#4361ee',
-            confirmButtonText: 'Done',
-            timer: 2000,
-            timerProgressBar: true
-        });
-    <?php endif; ?>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if ($message === 'general_success'): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Settings Updated',
+                    text: 'Library settings have been successfully updated.',
+                    confirmButtonColor: '#4361ee',
+                    confirmButtonText: 'Great!',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            <?php elseif ($message === 'feature_add'): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Feature Added',
+                    text: 'The library feature was added successfully!',
+                    confirmButtonColor: '#4361ee',
+                    confirmButtonText: 'Done',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            <?php elseif ($message === 'feature_edit'): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Feature Updated',
+                    text: 'The library feature was updated successfully!',
+                    confirmButtonColor: '#4361ee',
+                    confirmButtonText: 'Done',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            <?php elseif ($message === 'feature_enable'): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Feature Enabled',
+                    text: 'The library feature has been successfully enabled.',
+                    confirmButtonColor: '#4361ee',
+                    confirmButtonText: 'Done',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            <?php elseif ($message === 'feature_disable'): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Feature Disabled',
+                    text: 'The library feature has been successfully disabled.',
+                    confirmButtonColor: '#4361ee',
+                    confirmButtonText: 'Done',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            <?php endif; ?>
 
-    // Clean URL after alert
-    if (window.history.replaceState) {
-        window.history.replaceState(null, null, 'setting.php?tab=<?= $active_tab ?>');
-    }
-});
-</script>
+            // Clean URL after alert
+            if (window.history.replaceState) {
+                window.history.replaceState(null, null, 'setting.php?tab=<?= $active_tab ?>');
+            }
+        });
+    </script>
 <?php endif; ?>
 
 <main class="container-fluid py-4 px-lg-5 px-3">
@@ -503,12 +502,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <?php foreach ($days as $day): 
-                                                                // Format the time values properly for the time input
-                                                                $open_time = !empty($library_hours[$day]['open']) ? 
-                                                                    substr($library_hours[$day]['open'], 0, 5) : '';
-                                                                $close_time = !empty($library_hours[$day]['close']) ? 
-                                                                    substr($library_hours[$day]['close'], 0, 5) : '';
+                                                            <?php $library_hours = $settings['library_hours'] ?? [];
+                                                                foreach ($days as $day): 
+                                                                    // Format the time values properly for the time input
+                                                                    $open_time = !empty($library_hours[$day]['open']) ? 
+                                                                        substr($library_hours[$day]['open'], 0, 5) : '';
+                                                                    $close_time = !empty($library_hours[$day]['close']) ? 
+                                                                        substr($library_hours[$day]['close'], 0, 5) : '';
                                                             ?>
                                                             <tr>
                                                                 <td class="align-middle fw-medium"><?= $day ?></td>

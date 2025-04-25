@@ -219,7 +219,7 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
+<main class="py-4" style="min-height: 700px;">
     <h1 class="my-3">User Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>

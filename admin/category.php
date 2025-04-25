@@ -114,7 +114,7 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <div class="d-flex justify-content-between align-items-center my-4">
         <h1 class="">Category Management</h1>
     </div>

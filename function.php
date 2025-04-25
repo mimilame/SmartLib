@@ -2599,28 +2599,62 @@ function countTotalBooks($connect, $category_id = null) {
     $result = $statement->fetch(PDO::FETCH_ASSOC);
     return $result['total'];
 }
+function countTotalAuthors($connect) {
+    $query = "SELECT COUNT(*) as total 
+              FROM lms_author 
+              WHERE author_status = 'Enable'";
+    
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    return $result['total'];
+}
 
 // Function to get books by author - add this to function.php
-function getBooksByAuthor($connect, $author_id, $limit = 5) {
-    $query = "SELECT b.* 
-              FROM lms_book b
-              JOIN lms_book_author ba ON b.book_id = ba.book_id
-              WHERE ba.author_id = :author_id
-              AND b.book_status = 'Enable'
-              ORDER BY b.book_id DESC
-              LIMIT :limit";
-              
+function getBooksByAuthor($connect, $author_id, $limit = 0) {
+    $limit_clause = $limit > 0 ? "LIMIT " . intval($limit) : "";
+    
+    $query = "
+        SELECT b.*, c.category_name,
+               IFNULL(AVG(r.rating), 0) as avg_rating,
+               COUNT(DISTINCT r.review_id) as review_count
+        FROM lms_book b
+        INNER JOIN lms_book_author ba ON b.book_id = ba.book_id
+        LEFT JOIN lms_category c ON b.category_id = c.category_id
+        LEFT JOIN lms_book_review r ON b.book_id = r.book_id AND r.status = 'Enable'
+        WHERE ba.author_id = :author_id
+        AND b.book_status = 'Enable'
+        GROUP BY b.book_id
+        ORDER BY b.book_added_on DESC
+        $limit_clause
+    ";
+    
     $statement = $connect->prepare($query);
     $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
-    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
     $statement->execute();
     
     return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
-
+function getAllAuthors($connect) {
+    $query = "
+        SELECT *
+        FROM 
+            lms_author
+        WHERE 
+            author_status = 'Enable'
+        ORDER BY 
+            author_name ASC
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
 // Function to get all categories - add this to function.php
 function getAllCategories($connect) {
-    $query = "SELECT category_id, category_name 
+    $query = "SELECT *
               FROM lms_category 
               WHERE category_status = 'Enable' 
               ORDER BY category_name";
@@ -2765,24 +2799,41 @@ function getBookAuthors($connect, $book_id) {
 	
 	return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
-function getBookAvailability($connect, $book_id, $total_copies) {
-    $query = "SELECT COUNT(*) as borrowed_copies 
-             FROM lms_issue_book 
-             WHERE book_id = :book_id 
-             AND (issue_book_status = 'Issue' OR issue_book_status = 'Not Return')";
-    $statement = $connect->prepare($query);
-    $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
-    $statement->execute();
-    $result = $statement->fetch(PDO::FETCH_ASSOC);
+// Function to get book availability information
+function getBookAvailability($connect, $book_id) {
+    // First get the total number of copies from the book table
+    $book_query = "SELECT book_no_of_copy FROM lms_book WHERE book_id = :book_id";
+    $book_statement = $connect->prepare($book_query);
+    $book_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $book_statement->execute();
+    $book_result = $book_statement->fetch(PDO::FETCH_ASSOC);
     
-    $borrowed_copies = $result['borrowed_copies'];
+    // Get the total copies from the result
+    $total_copies = $book_result ? (int)$book_result['book_no_of_copy'] : 0;
+    
+    // Count how many copies are currently issued or not returned
+    $issued_query = "SELECT COUNT(*) as borrowed_copies 
+                    FROM lms_issue_book 
+                    WHERE book_id = :book_id AND 
+                    (issue_book_status = 'Issued' OR issue_book_status = 'Overdue' OR issue_book_status = 'Not Return')";
+    $issued_statement = $connect->prepare($issued_query);
+    $issued_statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $issued_statement->execute();
+    $issued_result = $issued_statement->fetch(PDO::FETCH_ASSOC);
+    
+    // Calculate borrowed and available copies
+    $borrowed_copies = $issued_result ? (int)$issued_result['borrowed_copies'] : 0;
     $available_copies = $total_copies - $borrowed_copies;
-    $is_available = $available_copies > 0;
     
+    // Return a comprehensive availability information array
     return [
+        'total_copies' => $total_copies,
         'borrowed_copies' => $borrowed_copies,
         'available_copies' => $available_copies,
-        'is_available' => $is_available
+        'is_available' => ($available_copies > 0),
+        'availability_status' => ($available_copies > 0) ? 'Available' : 'Not Available',
+        'availability_text' => $available_copies . ' / ' . $total_copies . ' Copies Available',
+        'availability_percentage' => ($total_copies > 0) ? round(($available_copies / $total_copies) * 100) : 0
     ];
 }
 function getBookBorrowCount($connect, $book_id) {
@@ -2830,6 +2881,69 @@ function getSimilarBooksByCategory($connect, $category_id, $current_book_id, $li
 	$statement->execute();
 	
 	return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+function getSimilarAuthors($connect, $author_id, $limit = 4) {
+    // Get categories this author writes in
+    $query = "
+        SELECT DISTINCT c.category_id 
+        FROM lms_book b
+        INNER JOIN lms_book_author ba ON b.book_id = ba.book_id
+        INNER JOIN lms_category c ON b.category_id = c.category_id
+        WHERE ba.author_id = :author_id 
+        AND b.book_status = 'Enable'
+        AND c.category_status = 'Enable'
+    ";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $categories = $statement->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (empty($categories)) {
+        return [];
+    }
+    
+    // Build IN clause for categories
+    $category_placeholders = implode(',', array_fill(0, count($categories), '?'));
+    
+    // Find authors who write in the same categories but are not the current author
+    $query = "
+        SELECT 
+            a.author_id,
+            a.author_name,
+            a.author_profile,
+            COUNT(DISTINCT b.book_id) AS book_count
+        FROM 
+            lms_author a
+        INNER JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        INNER JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        WHERE 
+            a.author_id != :author_id
+            AND a.author_status = 'Enable'
+            AND b.book_status = 'Enable'
+            AND b.category_id IN ($category_placeholders)
+        GROUP BY 
+            a.author_id, a.author_name, a.author_profile
+        ORDER BY 
+            book_count DESC
+        LIMIT :limit
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    
+    // Bind each category ID to the placeholders
+    foreach ($categories as $i => $category_id) {
+        $statement->bindValue($i + 1, $category_id, PDO::PARAM_INT);
+    }
+    
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $similar_authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    return $similar_authors;
 }
 
 // Function to get books by the same author
@@ -2911,7 +3025,19 @@ function getBookById($connect, $book_id) {
     $statement->execute();
     return $statement->fetch(PDO::FETCH_ASSOC);
 }
-
+function getAuthorById($connect, $author_id) {
+    $query = "
+        SELECT * FROM lms_author 
+        WHERE author_id = :author_id 
+        AND author_status = 'Enable'
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetch(PDO::FETCH_ASSOC);
+}
 // Get highest rated books - modified to use ISBN and ensure book is enabled
 function getHighestRatedBooks($connect, $limit = 5) {
     $query = "SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_author, 
@@ -3409,20 +3535,14 @@ function isAfterLibraryHours($return_date_time) {
     return false; // Return time is within library hours
 }
 
+
 function getLibrarySettings($connect) {
-    $settings_query = "SELECT 
-        library_total_book_issue_day, 
-        library_issue_total_book_per_user, 
-        library_open_hours,
-        library_one_day_fine,
-        library_max_fine_per_book
-    FROM lms_setting LIMIT 1";
-    
+    $settings_query = "SELECT * FROM lms_setting LIMIT 1";
     $settings_stmt = $connect->query($settings_query);
-    $settings = $settings_stmt->fetch(PDO::FETCH_ASSOC);
+    $db_settings = $settings_stmt->fetch(PDO::FETCH_ASSOC);
     
     // Parse library open hours from JSON
-    $hours_json = $settings['library_open_hours'] ?? null;
+    $hours_json = $db_settings['library_open_hours'] ?? null;
     $library_hours = [];
 
     if ($hours_json) {
@@ -3454,13 +3574,10 @@ function getLibrarySettings($connect) {
     }
 
     
-    return [
-        'loan_days' => $settings['library_total_book_issue_day'] ?? 7,
-        'max_books_per_user' => $settings['library_issue_total_book_per_user'] ?? 2,
-        'library_hours' => $library_hours,
-        'fine_rate_per_day' => $settings['library_one_day_fine'] ?? 5,
-        'max_fine_per_book' => $settings['library_max_fine_per_book'] ?? 500
-    ];
+    // Return the original settings and add the processed library_hours
+    $db_settings['library_hours'] = $library_hours;
+    
+    return $db_settings;
 }
 
 function isLibraryClosed($date_str, $library_hours) {
@@ -3599,4 +3716,658 @@ function checkAndUpdateOverdueBooks($connect, $settings) {
             ]);
         }
     }
+}
+
+
+// Function to get books with optimized sorting options
+function getSortedBooks($connect, $limit = 10, $offset = 0, $category_id = null, $sort_option = 'newest') {
+    $params = [];
+    
+    // Base query with all necessary joins
+    $query = "SELECT b.*, c.category_name, 
+              COUNT(DISTINCT ib.issue_book_id) AS borrow_count,
+              GROUP_CONCAT(DISTINCT a.author_name SEPARATOR ', ') as authors,
+              AVG(r.rating) AS avg_rating,
+              COUNT(DISTINCT r.review_id) AS review_count
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+              LEFT JOIN lms_author a ON ba.author_id = a.author_id
+              LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+              LEFT JOIN lms_book_review r ON b.book_id = r.book_id AND r.status = 'approved'
+              WHERE b.book_status = 'Enable'";
+    
+    // Add category filter if specified
+    if ($category_id !== null) {
+        $query .= " AND b.category_id = :category_id";
+        $params[':category_id'] = $category_id;
+    }
+    
+    $query .= " GROUP BY b.book_id";
+    
+    // Add sorting options
+    switch ($sort_option) {
+        case 'oldest':
+            $query .= " ORDER BY b.book_added_on ASC";
+            break;
+        case 'title-asc':
+            $query .= " ORDER BY b.book_name ASC";
+            break;
+        case 'title-desc':
+            $query .= " ORDER BY b.book_name DESC";
+            break;
+        case 'popular':
+            $query .= " ORDER BY borrow_count DESC";
+            break;
+        case 'rating':
+            $query .= " ORDER BY avg_rating DESC, review_count DESC";
+            break;
+        case 'newest':
+        default:
+            $query .= " ORDER BY b.book_added_on DESC";
+            break;
+    }
+    
+    // Add pagination
+    $query .= " LIMIT :limit OFFSET :offset";
+    $params[':limit'] = $limit;
+    $params[':offset'] = $offset;
+    
+    $statement = $connect->prepare($query);
+    
+    // Bind parameters
+    foreach ($params as $key => $value) {
+        if ($key === ':limit' || $key === ':offset') {
+            $statement->bindValue($key, $value, PDO::PARAM_INT);
+        } else {
+            $statement->bindValue($key, $value);
+        }
+    }
+    
+    $statement->execute();
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add availability information for each book
+    foreach ($books as &$book) {
+        $book['availability'] = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
+        $book['authors_array'] = getBookAuthors($connect, $book['book_id']);
+    }
+    
+    return $books;
+}
+
+// Function to search books
+function searchBooks($connect, $search_term, $limit = 10, $offset = 0) {
+    $search_term = "%$search_term%";
+    
+    $query = "SELECT b.*, c.category_name, 
+              GROUP_CONCAT(DISTINCT a.author_name SEPARATOR ', ') as authors
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+              LEFT JOIN lms_author a ON ba.author_id = a.author_id
+              WHERE b.book_status = 'Enable' 
+              AND (
+                  b.book_name LIKE :search_term OR
+                  b.book_isbn_number LIKE :search_term OR
+                  a.author_name LIKE :search_term
+              )
+              GROUP BY b.book_id
+              ORDER BY b.book_name
+              LIMIT :limit OFFSET :offset";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':search_term', $search_term, PDO::PARAM_STR);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add availability information for each book
+    foreach ($books as &$book) {
+        $book['availability'] = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
+    }
+    
+    return $books;
+}
+
+// Function to get related books by category or author
+function getRelatedBooks($connect, $book_id, $limit = 4) {
+    $book = getBookDetails($connect, $book_id);
+    $authors = getBookAuthors($connect, $book_id);
+    $author_ids = array_column($authors, 'author_id');
+    
+    // Placeholder for author IDs in query
+    $authorPlaceholders = implode(',', array_fill(0, count($author_ids), '?'));
+    $params = $author_ids;
+    
+    // If no authors, default to category only
+    if (empty($author_ids)) {
+        $query = "SELECT b.*, c.category_name
+                  FROM lms_book b
+                  LEFT JOIN lms_category c ON b.category_id = c.category_id
+                  WHERE b.book_status = 'Enable'
+                  AND b.category_id = ?
+                  AND b.book_id != ?
+                  ORDER BY RAND()
+                  LIMIT ?";
+        $params = [$book['category_id'], $book_id, $limit];
+    } else {
+        // Get books by same author(s) or category
+        $query = "SELECT b.*, c.category_name
+                  FROM lms_book b
+                  LEFT JOIN lms_category c ON b.category_id = c.category_id
+                  LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+                  WHERE b.book_status = 'Enable'
+                  AND (
+                      ba.author_id IN ($authorPlaceholders)
+                      OR b.category_id = ?
+                  )
+                  AND b.book_id != ?
+                  GROUP BY b.book_id
+                  ORDER BY RAND()
+                  LIMIT ?";
+        
+        $params[] = $book['category_id'];
+        $params[] = $book_id;
+        $params[] = $limit;
+    }
+    
+    $statement = $connect->prepare($query);
+    
+    // Bind parameters
+    for ($i = 0; $i < count($params); $i++) {
+        $statement->bindValue($i + 1, $params[$i]);
+    }
+    
+    $statement->execute();
+    $related_books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add availability information for each book
+    foreach ($related_books as &$related_book) {
+        $related_book['availability'] = getBookAvailability(
+            $connect, 
+            $related_book['book_id'], 
+            $related_book['book_no_of_copy']
+        );
+    }
+    
+    return $related_books;
+}
+
+// Function to get featured books
+function getFeaturedBooks($connect, $limit = 8) {
+    $query = "SELECT b.*, c.category_name, 
+              COUNT(ib.issue_book_id) AS borrow_count
+              FROM lms_book b
+              LEFT JOIN lms_category c ON b.category_id = c.category_id
+              LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE b.book_status = 'Enable'
+              GROUP BY b.book_id
+              ORDER BY borrow_count DESC, b.book_added_on DESC
+              LIMIT ?";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(1, $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $featured_books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add availability and authors to each book
+    foreach ($featured_books as &$book) {
+        $book['availability'] = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
+        $book['authors'] = getBookAuthors($connect, $book['book_id']);
+    }
+    
+    return $featured_books;
+}
+
+
+// Function to get trending authors
+function getTrendingAuthors($connect, $time_period = 'weekly', $limit = 10) {
+    // Select correct date interval based on time period
+    $date_interval = "";
+    switch ($time_period) {
+        case 'yearly':
+            $date_interval = "DATE_SUB(CURDATE(), INTERVAL 1 YEAR)";
+            break;
+        case 'monthly':
+            $date_interval = "DATE_SUB(CURDATE(), INTERVAL 1 MONTH)";
+            break;
+        case 'weekly':
+        default:
+            $date_interval = "DATE_SUB(CURDATE(), INTERVAL 1 WEEK)";
+            break;
+    }
+    
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                COUNT(DISTINCT ib.issue_book_id) AS borrow_count
+              FROM 
+                lms_author a
+              JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              JOIN 
+                lms_book b ON ba.book_id = b.book_id
+              JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                a.author_status = 'Enable'
+                AND ib.issue_date >= $date_interval
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile
+              ORDER BY 
+                borrow_count DESC, a.author_name
+              LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Function to get featured authors with their books
+function getFeaturedAuthors($connect, $limit = 3) {
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                COUNT(DISTINCT b.book_id) as book_count,
+                COUNT(DISTINCT ib.issue_book_id) as total_borrows
+              FROM 
+                lms_author a
+              JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              JOIN 
+                lms_book b ON ba.book_id = b.book_id
+              LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                a.author_status = 'Enable' AND
+                b.book_status = 'Enable'
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile
+              ORDER BY 
+                total_borrows DESC
+              LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $featured_authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // For each author, get their popular books
+    foreach ($featured_authors as &$author) {
+        $author['popular_books'] = getPopularBooksByAuthor($connect, $author['author_id'], 4);
+    }
+    
+    return $featured_authors;
+}
+
+// Function to get popular books by an author
+function getPopularBooksByAuthor($connect, $author_id, $limit = 4) {
+    $query = "SELECT 
+                b.*,
+                c.category_name,
+                COUNT(ib.issue_book_id) as borrow_count
+              FROM 
+                lms_book b
+              JOIN 
+                lms_book_author ba ON b.book_id = ba.book_id
+              LEFT JOIN 
+                lms_category c ON b.category_id = c.category_id
+              LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                ba.author_id = :author_id AND
+                b.book_status = 'Enable'
+              GROUP BY 
+                b.book_id, c.category_name
+              ORDER BY 
+                borrow_count DESC
+              LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $books = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Add availability information
+    foreach ($books as &$book) {
+        $book['availability'] = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
+    }
+    
+    return $books;
+}
+// Function to get authors grouped by first letter for alphabetical browsing
+function getAuthorsByAlphabet($connect) {
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                UPPER(LEFT(a.author_name, 1)) as first_letter,
+                COUNT(DISTINCT ba.book_id) as book_count,
+                COUNT(DISTINCT ib.issue_book_id) as borrow_count
+              FROM 
+                lms_author a
+              LEFT JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              LEFT JOIN 
+                lms_book b ON ba.book_id = b.book_id AND b.book_status = 'Enable'
+              LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                a.author_status = 'Enable'
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile, first_letter
+              ORDER BY 
+                a.author_name";
+    
+    $statement = $connect->prepare($query);
+    $statement->execute();
+    $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Group authors by first letter
+    $grouped_authors = [];
+    foreach ($authors as $author) {
+        $letter = $author['first_letter'];
+        if (!isset($grouped_authors[$letter])) {
+            $grouped_authors[$letter] = [];
+        }
+        $grouped_authors[$letter][] = $author;
+    }
+    
+    // Sort by letter
+    ksort($grouped_authors);
+    
+    return $grouped_authors;
+}
+
+// Function to get personalized author recommendations based on user borrowing history
+function getAuthorRecommendations($connect, $user_id, $limit = 5) {
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                COUNT(DISTINCT b.book_id) as book_count
+              FROM 
+                lms_author a
+              JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              JOIN 
+                lms_book b ON ba.book_id = b.book_id
+              WHERE 
+                a.author_status = 'Enable' AND
+                b.book_status = 'Enable' AND
+                a.author_id IN (
+                  SELECT DISTINCT ba2.author_id
+                  FROM lms_book_author ba2
+                  JOIN lms_book b2 ON ba2.book_id = b2.book_id
+                  JOIN lms_category c ON b2.category_id = c.category_id
+                  WHERE c.category_id IN (
+                    SELECT DISTINCT b3.category_id
+                    FROM lms_issue_book ib
+                    JOIN lms_book b3 ON ib.book_id = b3.book_id
+                    WHERE ib.user_id = :user_id
+                  )
+                  AND ba2.author_id NOT IN (
+                    SELECT DISTINCT ba3.author_id
+                    FROM lms_issue_book ib
+                    JOIN lms_book b4 ON ib.book_id = b4.book_id
+                    JOIN lms_book_author ba3 ON b4.book_id = ba3.book_id
+                    WHERE ib.user_id = :user_id
+                  )
+                )
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile
+              ORDER BY 
+                book_count DESC
+              LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    
+    $recommendations = $statement->fetchAll(PDO::FETCH_ASSOC);
+    
+    // For each recommended author, get their most popular book
+    foreach ($recommendations as &$author) {
+        $author['popular_books'] = getPopularBooksByAuthor($connect, $author['author_id'], 1);
+    }
+    
+    return $recommendations;
+}
+function getAuthorBorrowStats($connect, $author_id) {
+    // Initialize stats array
+    $stats = [
+        'total_borrows' => 0,
+        'monthly_borrows' => 0,
+        'half_year_borrows' => 0,
+        'yearly_borrows' => 0,
+        'avg_rating' => 0,
+        'demographics' => [
+            ['group' => 'Students', 'percentage' => 60],
+            ['group' => 'Faculty', 'percentage' => 25],
+            ['group' => 'Staff', 'percentage' => 15],
+        ],
+    ];
+    
+    // Get total borrows
+    $query = "
+        SELECT COUNT(ib.issue_book_id) as total_borrows
+        FROM lms_issue_book ib
+        INNER JOIN lms_book_author ba ON ib.book_id = ba.book_id
+        WHERE ba.author_id = :author_id
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $stats['total_borrows'] = $result['total_borrows'] ?? 0;
+    
+    // Get monthly borrows
+    $query = "
+        SELECT COUNT(ib.issue_book_id) as monthly_borrows
+        FROM lms_issue_book ib
+        INNER JOIN lms_book_author ba ON ib.book_id = ba.book_id
+        WHERE ba.author_id = :author_id
+        AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $stats['monthly_borrows'] = $result['monthly_borrows'] ?? 0;
+    
+    // Get half year borrows
+    $query = "
+        SELECT COUNT(ib.issue_book_id) as half_year_borrows
+        FROM lms_issue_book ib
+        INNER JOIN lms_book_author ba ON ib.book_id = ba.book_id
+        WHERE ba.author_id = :author_id
+        AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $stats['half_year_borrows'] = $result['half_year_borrows'] ?? 0;
+    
+    // Get yearly borrows
+    $query = "
+        SELECT COUNT(ib.issue_book_id) as yearly_borrows
+        FROM lms_issue_book ib
+        INNER JOIN lms_book_author ba ON ib.book_id = ba.book_id
+        WHERE ba.author_id = :author_id
+        AND ib.issue_date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $stats['yearly_borrows'] = $result['yearly_borrows'] ?? 0;
+    
+    // Get average rating
+    $query = "
+        SELECT AVG(r.rating) as avg_rating
+        FROM lms_book_review r
+        INNER JOIN lms_book_author ba ON r.book_id = ba.book_id
+        WHERE ba.author_id = :author_id
+        AND r.status = 'Enable'
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    $stats['avg_rating'] = round($result['avg_rating'] ?? 0, 1);
+    
+    // Get most popular book
+    $query = "
+        SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_img, 
+               COUNT(ib.issue_book_id) as borrow_count
+        FROM lms_book b
+        INNER JOIN lms_book_author ba ON b.book_id = ba.book_id
+        LEFT JOIN lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE ba.author_id = :author_id
+        AND b.book_status = 'Enable'
+        GROUP BY b.book_id
+        ORDER BY borrow_count DESC
+        LIMIT 1
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result) {
+        $stats['most_popular_book'] = $result;
+    }
+    
+    // Get highest rated book
+    $query = "
+        SELECT b.book_id, b.book_name, b.book_isbn_number, b.book_img,
+               AVG(r.rating) as avg_rating,
+               COUNT(r.review_id) as review_count
+        FROM lms_book b
+        INNER JOIN lms_book_author ba ON b.book_id = ba.book_id
+        INNER JOIN lms_book_review r ON b.book_id = r.book_id
+        WHERE ba.author_id = :author_id
+        AND b.book_status = 'Enable'
+        AND r.status = 'Enable'
+        GROUP BY b.book_id
+        ORDER BY avg_rating DESC
+        LIMIT 1
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':author_id', $author_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result) {
+        $stats['highest_rated_book'] = $result;
+    }
+    
+    return $stats;
+}
+function searchAuthors($connect, $search_term, $limit = 10, $offset = 0) {
+    $search_term = "%$search_term%";
+    
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                COUNT(DISTINCT ba.book_id) as book_count,
+                COUNT(DISTINCT ib.issue_book_id) as borrow_count
+              FROM 
+                lms_author a
+              LEFT JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              LEFT JOIN 
+                lms_book b ON ba.book_id = b.book_id
+              LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                a.author_status = 'Enable' AND
+                a.author_name LIKE :search_term
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile
+              ORDER BY 
+                a.author_name
+              LIMIT :limit OFFSET :offset";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':search_term', $search_term, PDO::PARAM_STR);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function getSortedAuthors($connect, $limit = 10, $offset = 0, $sort_option = 'name-asc') {
+    $query = "SELECT 
+                a.author_id,
+                a.author_name,
+                a.author_profile,
+                COUNT(DISTINCT ba.book_id) as book_count,
+                COUNT(DISTINCT ib.issue_book_id) as borrow_count
+              FROM 
+                lms_author a
+              LEFT JOIN 
+                lms_book_author ba ON a.author_id = ba.author_id
+              LEFT JOIN 
+                lms_book b ON ba.book_id = b.book_id AND b.book_status = 'Enable'
+              LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
+              WHERE 
+                a.author_status = 'Enable'
+              GROUP BY 
+                a.author_id, a.author_name, a.author_profile";
+    
+    // Add sorting options
+    switch ($sort_option) {
+        case 'name-desc':
+            $query .= " ORDER BY a.author_name DESC";
+            break;
+        case 'popular':
+            $query .= " ORDER BY borrow_count DESC, a.author_name ASC";
+            break;
+        case 'books-count':
+            $query .= " ORDER BY book_count DESC, a.author_name ASC";
+            break;
+        case 'name-asc':
+        default:
+            $query .= " ORDER BY a.author_name ASC";
+            break;
+    }
+    
+    // Add pagination
+    $query .= " LIMIT :limit OFFSET :offset";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -1,984 +1,320 @@
 <?php
-	include 'database_connection.php';
-	include 'function.php';	
-	include 'header.php';
-	validate_session();
-?>
-<style>
-    :root {
-        --primary-color: #3d5a80;
-        --secondary-color: #98c1d9;
-        --accent-color: #ee6c4d;
-        --dark-color: #293241;
-        --light-color: #e0fbfc;
-        --gray-color: #6c757d;
-        --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        --transition: all 0.3s ease;
-    }
-    
-    /* Base Styles */
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: #f8f9fa;
-        color: var(--dark-color);
-        line-height: 1.6;
-    }
-    
-    .container-fluid {
-        max-width: 1400px;
-        margin: 0 auto;
-    }
-    
-    h2 {
-        font-weight: 700;
-        margin-bottom: 1.5rem;
-        position: relative;
-        display: inline-block;
-    }
-    
-    h2::after {
-        content: '';
-        position: absolute;
-        bottom: -10px;
-        left: 0;
-        width: 60px;
-        height: 4px;
-        background: var(--accent-color);
-        border-radius: 2px;
-    }
-    
-    .section {
-        margin-bottom: 4rem;
-        position: relative;
-    }
-    
-    /* Hero Section */
-    .hero-section {
-        position: relative;
-        border-radius: 16px;
-        overflow: hidden;
-        margin-bottom: 3rem;
-        height: 300px;
-        box-shadow: var(--shadow);
-    }
-    
-    .hero-bg {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        z-index: 1;
-        filter: brightness(0.7);
-        transition: var(--transition);
-    }
-    
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 0 3rem;
-    }
-    
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    .hero-subtitle {
-        font-size: 1.2rem;
-        color: white;
-        margin-bottom: 1.5rem;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-    
-    .search-container {
-        max-width: 600px;
-        position: relative;
-    }
-    
-    .search-input {
-        width: 100%;
-        padding: 1rem 1.5rem;
-        border-radius: 50px;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        font-size: 1rem;
-        transition: var(--transition);
-    }
-    
-    .search-input:focus {
-        outline: none;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-    
-    .search-btn {
-        position: absolute;
-        right: 8px;
-        top: 8px;
-        border-radius: 50px;
-        padding: 0.5rem 1.5rem;
-        border: none;
-        background: var(--primary-color);
-        color: white;
-        font-weight: 600;
-        transition: var(--transition);
-    }
-    
-    .search-btn:hover {
-        background: var(--dark-color);
-        transform: translateY(-2px);
-    }
-    
-    /* Author Grid */
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    
-    .see-all {
-        font-weight: 600;
-        color: var(--primary-color);
-        text-decoration: none;
-        transition: var(--transition);
-    }
-    
-    .see-all:hover {
-        color: var(--accent-color);
-    }
-    
-    .author-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 1.5rem;
-        margin-top: 1.5rem;
-    }
-    
-    .author-card {
-        background: white;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: var(--shadow);
-        transition: var(--transition);
-        position: relative;
-    }
-    
-    .author-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-    
-    .author-img-container {
-        height: 240px;
-        overflow: hidden;
-        position: relative;
-    }
-    
-    .author-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: var(--transition);
-    }
-    
-    .author-card:hover .author-img {
-        transform: scale(1.05);
-    }
-    
-    .author-info {
-        padding: 1.2rem;
-        position: relative;
-    }
-    
-    .author-name {
-        font-weight: 700;
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-        color: var(--dark-color);
-    }
-    
-    .author-stats {
-        color: var(--gray-color);
-        font-size: 0.9rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    
-    .book-count {
-        color: var(--accent-color);
-        font-weight: 700;
-    }
-    
-    .borrow-count {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-    
-    .borrow-count i {
-        color: var(--primary-color);
-    }
-    
-    .author-badge {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        background: var(--accent-color);
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 50px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        z-index: 10;
-    }
-    
-    /* Tabs for Time Periods */
-    .tabs-container {
-        position: relative;
-        margin-bottom: 2rem;
-    }
-    
-    .tabs {
-        display: flex;
-        margin-bottom: 2rem;
-        border-bottom: 1px solid #eee;
-        justify-content: center;
-    }
-    
-    .tab {
-        padding: 1rem 1.5rem;
-        cursor: pointer;
-        border: none;
-        background: none;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--gray-color);
-        position: relative;
-        transition: var(--transition);
-    }
-    
-    .tab:hover {
-        color: var(--primary-color);
-    }
-    
-    .tab.active {
-        color: var(--accent-color);
-    }
-    
-    .tab.active::after {
-        content: '';
-        position: absolute;
-        bottom: -1px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 40px;
-        height: 3px;
-        background: var(--accent-color);
-        border-radius: 3px 3px 0 0;
-    }
-    
-    /* Top Authors Table */
-    .author-table-container {
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--shadow);
-        overflow: hidden;
-    }
-    
-    .author-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    
-    .author-table th, .author-table td {
-        padding: 1rem 1.5rem;
-        text-align: left;
-    }
-    
-    .author-table th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        color: var(--dark-color);
-    }
-    
-    .author-table tr {
-        border-bottom: 1px solid #eee;
-        transition: var(--transition);
-    }
-    
-    .author-table tr:last-child {
-        border-bottom: none;
-    }
-    
-    .author-table tr:hover {
-        background-color: #f8f9fa;
-    }
-    
-    .rank {
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: var(--light-color);
-        color: var(--dark-color);
-    }
-    
-    .rank-1 {
-        background: #ffd700;
-        color: #333;
-    }
-    
-    .rank-2 {
-        background: #c0c0c0;
-        color: #333;
-    }
-    
-    .rank-3 {
-        background: #cd7f32;
-        color: white;
-    }
-    
-    .author-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        margin-right: 1rem;
-    }
-    
-    .table-author-name {
-        font-weight: 600;
-        color: var(--dark-color);
-    }
-    
-    .borrow-chip {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.3rem 0.8rem;
-        border-radius: 50px;
-        background: var(--light-color);
-        color: var(--primary-color);
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    
-    /* Author's Book Section */
-    .author-showcase {
-        margin: 3rem 0;
-    }
-    
-    .author-detail {
-        display: flex;
-        margin-bottom: 2rem;
-        padding: 2rem;
-        border-radius: 16px;
-        background: white;
-        box-shadow: var(--shadow);
-    }
-    
-    .author-detail-img-container {
-        flex-shrink: 0;
-        margin-right: 2rem;
-    }
-    
-    .author-detail-img {
-        width: 150px;
-        height: 150px;
-        border-radius: 16px;
-        object-fit: cover;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    
-    .author-detail-info {
-        flex: 1;
-    }
-    
-    .author-detail-name {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        color: var(--dark-color);
-    }
-    
-    .author-detail-meta {
-        display: flex;
-        gap: 1.5rem;
-        margin-bottom: 1rem;
-        color: var(--gray-color);
-    }
-    
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .meta-item i {
-        color: var(--accent-color);
-    }
-    
-    .meta-value {
-        font-weight: 600;
-        color: var(--primary-color);
-    }
-    
-    .book-list-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 1.5rem 0 1rem;
-    }
-    
-    .book-list-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: var(--dark-color);
-    }
-    
-    .book-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.5rem;
-    }
-    
-    .book-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-        transition: var(--transition);
-        border: 1px solid #eee;
-    }
-    
-    .book-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-    }
-    
-    .book-img-container {
-        height: 240px;
-        overflow: hidden;
-        position: relative;
-    }
-    
-    .book-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: var(--transition);
-    }
-    
-    .book-card:hover .book-img {
-        transform: scale(1.05);
-    }
-    
-    .book-info {
-        padding: 1.2rem;
-    }
-    
-    .book-title {
-        font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 0.5rem;
-        color: var(--dark-color);
-    }
-    
-    .book-meta {
-        display: flex;
-        justify-content: space-between;
-        font-size: 0.85rem;
-        margin-top: 0.8rem;
-    }
-    
-    .availability {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    }
-    
-    .available {
-        color: #38b000;
-    }
-    
-    .unavailable {
-        color: #d90429;
-    }
-    
-    .borrow-count {
-        color: var(--gray-color);
-    }
-    
-    /* Alphabetical Index */
-    .alpha-index {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 2rem;
-        justify-content: center;
-    }
-    
-    .alpha-index a {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: white;
-        color: var(--dark-color);
-        text-decoration: none;
-        font-weight: 600;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        transition: var(--transition);
-    }
-    
-    .alpha-index a:hover, .alpha-index a.active {
-        background: var(--primary-color);
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(61, 90, 128, 0.3);
-    }
-    
-    .alpha-section {
-        margin-top: 2rem;
-    }
-    
-    .alpha-header {
-        position: relative;
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        margin-bottom: 1.5rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #eee;
-    }
-    
-    /* Animation */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .fade-in {
-        animation: fadeIn 0.5s ease forwards;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 992px) {
-        .author-grid {
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        }
-        
-        .book-list {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        }
-        
-        .author-detail {
-            flex-direction: column;
-        }
-        
-        .author-detail-img-container {
-            margin-right: 0;
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: center;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .hero-title {
-            font-size: 2rem;
-        }
-        
-        .author-grid {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        }
-        
-        .book-list {
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        }
-        
-        .alpha-index a {
-            width: 30px;
-            height: 30px;
-            font-size: 0.9rem;
-        }
-        
-        .author-detail {
-            padding: 1.5rem;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .hero-content {
-            padding: 0 1.5rem;
-        }
-        
-        .author-grid {
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        }
-        
-        .book-list {
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        }
-        
-        .tabs {
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-        }
-        
-        .tab {
-            padding: 0.8rem 1rem;
-            white-space: nowrap;
-        }
-        
-        .author-table th, .author-table td {
-            padding: 0.8rem;
-        }
-    }
-    
-    /* Dark mode */
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --primary-color: #98c1d9;
-            --dark-color: #f8f9fa;
-            --light-color: #293241;
-            --gray-color: #adb5bd;
-        }
-        
-        body {
-            background-color: #121212;
-            color: var(--dark-color);
-        }
-        
-        .author-card, .book-card, .author-detail, .author-table-container {
-            background: #1e1e1e;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        }
-        
-        .book-card {
-            border-color: #333;
-        }
-        
-        .author-table th {
-            background-color: #252525;
-        }
-        
-        .author-table tr:hover {
-            background-color: #252525;
-        }
-        
-        .search-input {
-            background: #333;
-            color: white;
-        }
-        
-        .alpha-index a {
-            background: #1e1e1e;
-            color: #f8f9fa;
-        }
-    }
-</style>
+    // author.php - Consistent with book.php design
+    include 'database_connection.php';
+    include 'function.php';
+    include 'header.php';
+    validate_session();
 
-<!-- Main Content -->
-<div class="container-fluid py-4 mt-5 px-4">
-    <!-- Hero Section -->
-    <div class="hero-section">
-        <img src="asset/img/library-hero.jpg" class="hero-bg" alt="Library">
-        <div class="hero-content">
-            <h1 class="hero-title">Discover Our Authors</h1>
-            <p class="hero-subtitle">Explore the minds behind your favorite books</p>
-            <div class="search-container">
-                <input type="text" id="search-input" class="search-input" placeholder="Search for an author...">
-                <button class="search-btn" id="search-button">
-                    <i class="bi bi-search me-2"></i> Search
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Featured Authors Section -->
-    <div class="section">
-        <div class="section-header">
-            <h2 class="text-dark">Featured Authors</h2>
-            <a href="#all-authors" class="see-all">View All <i class="bi bi-arrow-right ms-1"></i></a>
-        </div>
-        <div class="author-grid">
-            <?php
-            $topAuthors = getTopAuthorsWithBooks($connect, 8);
-            foreach ($topAuthors as $index => $author) {
-                $authorImgPath = getAuthorImagePath($author);
-                $bookCount = count($author['books']);
-                $featuredBadge = ($index < 3) ? '<span class="author-badge">Featured</span>' : '';
-            ?>
-            <div class="author-card fade-in" style="animation-delay: <?php echo $index * 0.1; ?>s">
-                <?php echo $featuredBadge; ?>
-                <div class="author-img-container">
-                    <img src="<?php echo htmlspecialchars($authorImgPath); ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-img">
-                </div>
-                <div class="author-info">
-                    <div class="author-name"><?php echo htmlspecialchars($author['author_name']); ?></div>
-                    <div class="author-stats">
-                        <div><span class="book-count"><?php echo $bookCount; ?></span> books in collection</div>
-                        <div class="borrow-count">
-                            <i class="bi bi-book"></i> <?php echo $author['book_count']; ?> books
-                        </div>
+    // Get all authors
+    $all_authors = getAllAuthors($connect);
+    $base_url = base_url();    
+    // Handle search
+    $search_term = isset($_GET['search']) ? $_GET['search'] : '';
+
+    // Get pagination parameters
+    $limit = 20; // Number of authors per page
+    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+    $offset = ($page - 1) * $limit;
+
+    // Handle sorting
+    $sort_options = ['name-asc', 'name-desc', 'popular', 'books-count'];
+    $selected_sort = isset($_GET['sort']) && in_array($_GET['sort'], $sort_options) ? $_GET['sort'] : 'name-asc';
+
+    // Get authors based on filters
+    if (!empty($search_term)) {
+        $authors = searchAuthors($connect, $search_term, $limit, $offset);
+        $total_authors = count(searchAuthors($connect, $search_term, 1000000, 0)); // For pagination
+    } else {
+        $authors = getSortedAuthors($connect, $limit, $offset, $selected_sort);
+        $total_authors = countTotalAuthors($connect);
+    }
+
+    $total_pages = ceil($total_authors / $limit);
+
+    // Get featured authors
+    $featured_authors = getTopAuthorsWithBooks($connect, 5);
+?>
+
+<div class="container-fluid py-4 mt-5 px-5">
+    <!-- Hero Section - Consistent with book.php -->
+    <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
+        <img src="asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
+        <div class="card-img-overlay d-flex flex-column justify-content-center">
+            <div class="container">
+                <h1 class="display-4 fw-bold">Discover Our Authors</h1>
+                <p class="lead">Explore the minds behind your favorite books</p>
+                <div class="row g-3 align-items-center mt-2">
+                    <div class="col-12 col-md-6">
+                        <form action="author.php" method="GET" class="d-flex">
+                            <div class="input-group">
+                                <input type="text" name="search" id="search-authors" class="form-control form-control-lg" 
+                                    placeholder="Search authors by name..." 
+                                    value="<?php echo htmlspecialchars($search_term); ?>">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
-            <?php } ?>
         </div>
     </div>
-    
-    <?php
-    $active_tab = $_GET['tab'] ?? 'transactions';
-    $active_period = $_GET['period'] ?? 'weekly'; // Default period
-    ?>
-
-    <div class="section">
-        <h2 class="text-dark">Trending Authors</h2>
-
-        <div class="tabs-container">
-            <!-- Time Period Tabs -->
-            <div class="tabs mb-3">
-                <?php foreach (['weekly', 'monthly', 'yearly'] as $period): ?>
-                    <a href="report.php?period=<?= $period ?>" 
-                    class="tab btn <?= $active_period === $period ? 'btn-primary text-white' : 'btn-outline-secondary' ?>">
-                        <?= ucfirst($period === 'weekly' ? 'This Week' : ($period === 'monthly' ? 'This Month' : 'This Year')) ?>
-                    </a>
+    <div class="row">
+        <!-- Featured Authors Section with infinite carousel -->
+        <div class="col-md-6 mt-5">
+            <h2 class="mb-4">Featured Authors</h2>
+            <div class="featured-authors-carousel">            
+                <div class="authors-row">
+                    <!-- Original authors section -->
+                    <div class="authors-row-section original">
+                        <?php 
+                        foreach ($featured_authors as $index => $author):
+                            $authorImgPath = getAuthorImagePath($author);
+                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            $bookCount = count($author['books']);
+                        ?>
+                        <div class="featured-author">
+                            <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
+                                <div class="position-relative overflow-hidden">
+                                    <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img w-100 h-100" alt="<?php echo htmlspecialchars($author['author_name']); ?>" >
+                                    <?php if ($index < 5): ?>
+                                    <span class="author-badge badge bg-warning text-dark">
+                                        <i class="bi bi-star-fill"></i> Featured
+                                    </span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="card-body d-flex flex-column">
+                                    <h5 class="author-name"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                                    <p class="author-books">
+                                        <i class="bi bi-book"></i> <?php echo $bookCount; ?> books in collection
+                                    </p>
+                                    <div class="mt-auto text-end">
+                                        <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
+                                            View Profile
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    
+                    <!-- JS to update animation based on actual content -->
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Calculate number of items and adjust animation for authors carousel
+                        const authorItemWidth = document.querySelector('.featured-author').offsetWidth;
+                        const authorGapWidth = 20; // Same as gap in CSS
+                        const authorItemCount = document.querySelectorAll('.authors-row-section.original .featured-author').length;
+                        const authorTotalWidth = (authorItemWidth + authorGapWidth) * authorItemCount;
+                        
+                        // Update animation for authors carousel
+                        document.styleSheets[0].insertRule(`
+                            @keyframes authors-scroll {
+                                0% { transform: translateX(0); }
+                                100% { transform: translateX(-${authorTotalWidth}px); }
+                            }
+                        `, document.styleSheets[0].cssRules.length);
+                    });
+                    </script>
+                </div>
+            </div>
+        </div>
+        <!-- Trending Authors Section - Using Bootstrap styling -->
+        <div class="col-md-6 mt-5">
+            <!-- Time Period Tabs - Bootstrap styling -->
+            <ul class="nav nav-tabs mb-4" id="authorTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab">This Week</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab">This Month</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab">This Year</button>
+                </li>
+            </ul>
+            
+            <!-- Tab Content -->
+            <div class="tab-content" id="authorTabContent">
+                <?php
+                $authorTimeStats = getAuthorTimeStats($connect);
+                $formattedStats = formatAuthorTimeStats($authorTimeStats);
+                
+                $periods = ['weekly' => 'weekly', 'monthly' => 'monthly', 'yearly' => 'yearly'];
+                
+                foreach ($periods as $tabId => $period):
+                    $activeClass = $tabId === 'weekly' ? 'show active' : '';
+                ?>
+                <div class="tab-pane fade <?php echo $activeClass; ?>" id="<?php echo $tabId; ?>" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 80px">Rank</th>
+                                    <th>Author</th>
+                                    <th style="width: 120px">Borrows</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($formattedStats[$period] as $index => $author): 
+                                    $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
+                                    $authorImgPath = getAuthorImagePath($authorData);
+                                    $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                                    $rankClass = ($index < 3) ? "bg-" . ($index === 0 ? "warning" : ($index === 1 ? "secondary" : "danger")) : "";
+                                ?>
+                                <tr>
+                                    <td>
+                                        <span class="badge rounded-pill <?php echo $rankClass; ?> text-white fs-6">
+                                            <?php echo ($index + 1); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                                            <div><?php echo htmlspecialchars($author['author_name']); ?></div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary rounded-pill fs-6">
+                                            <?php echo $author['borrow_count']; ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <?php endforeach; ?>
             </div>
-
-            <!-- Author Statistics -->
-            <?php
-            $authorTimeStats = getAuthorTimeStats($connect);
-            $formattedStats = formatAuthorTimeStats($authorTimeStats);
-
-            foreach (['weekly', 'monthly', 'yearly'] as $period) {
-                $activeClass = $period === $active_period ? 'active' : 'd-none';
-                echo "<div class='time-stats $activeClass' id='{$period}-stats'>";
-                echo "<div class='author-table-container'>";
-                echo "<table class='author-table'>";
-                echo "<thead><tr><th width='80'>Rank</th><th>Author</th><th>Borrows</th></tr></thead><tbody>";
-
-                foreach ($formattedStats[$period] as $index => $author) {
-                    $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
-                    $authorImgPath = getAuthorImagePath($authorData);
-                    $rankClass = ($index < 3) ? "rank-" . ($index + 1) : "";
-
-                    echo "<tr>";
-                    echo "<td><div class='rank $rankClass'>" . ($index + 1) . "</div></td>";
-                    echo "<td>
-                            <div class='d-flex align-items-center'>
-                                <img src='" . htmlspecialchars($authorImgPath) . "' alt='" . htmlspecialchars($author['author_name']) . "' class='author-avatar'>
-                                <span class='table-author-name'>" . htmlspecialchars($author['author_name']) . "</span>
-                            </div>
-                        </td>";
-                    echo "<td><div class='borrow-chip'>" . $author['borrow_count'] . "</div></td>";
-                    echo "</tr>";
-                }
-
-                echo "</tbody></table></div></div>";
-            }
-            ?>
         </div>
     </div>
+    <!-- Search Results Header -->
+    <?php if (!empty($search_term)): ?>
+    <div class="alert alert-info">
+        <h4>Search Results for: "<?php echo htmlspecialchars($search_term); ?>"</h4>
+        <p>Found <?php echo $total_authors; ?> results</p>
+        <a href="author.php" class="btn btn-outline-primary">Clear Search</a>
+    </div>
+    <?php endif; ?>
 
-    
-    <!-- Top Author's Books Section -->
-    <div class="section author-showcase">
-        <h2 class="text-dark">Popular Authors' Works</h2>
-        
-        <?php
-        $authorTopBooks = getAuthorTopBooks($connect);
-        $authorBooksMap = groupAuthorTopBooks($authorTopBooks);
-        
-        // Group by author and time period
-        $authorPeriodBooks = [];
-        foreach ($authorTopBooks as $book) {
-            $key = $book['author_id'] . '-' . $book['time_period'];
-            if (!isset($authorPeriodBooks[$key])) {
-                $authorPeriodBooks[$key] = [
-                    'author_id' => $book['author_id'],
-                    'author_name' => $book['author_name'],
-                    'time_period' => $book['time_period'],
-                    'books' => []
-                ];
-            }
-            
-            if (count($authorPeriodBooks[$key]['books']) < 4) {
-                $authorPeriodBooks[$key]['books'][] = $book;
-            }
-        }
-        
-        // Filter just to show weekly results for top 3 authors
-        $weeklyAuthors = array_filter($authorPeriodBooks, function($item) {
-            return $item['time_period'] == 'week';
-        });
-        
-        $displayedAuthors = 0;
-        foreach ($weeklyAuthors as $index => $authorData) {
-            if ($displayedAuthors >= 3) break;
-            
-            // Get author details for image
-            $authorInfo = ['author_id' => $authorData['author_id'], 'author_profile' => ''];
-            $authorImgPath = getAuthorImagePath($authorInfo);
-            
-            // Get this author's books from the database
-            $authorBooks = getBooksByAuthor($connect, $authorData['author_id'], 5);
-            $totalBooks = count($authorBooks);
-            
-            // Calculate total borrows by summing borrow counts for each book
-            $totalBorrows = 0;
-            foreach ($authorData['books'] as $book) {
-                $totalBorrows += $book['borrow_count']; 
-            }
-        ?>
-        <div class="author-detail fade-in" style="animation-delay: <?php echo $index * 0.2; ?>s">
-            <div class="author-detail-img-container">
-                <img src="<?php echo htmlspecialchars($authorImgPath); ?>" alt="<?php echo htmlspecialchars($authorData['author_name']); ?>" class="author-detail-img">
-            </div>
-            <div class="author-detail-info">
-                <h3 class="author-detail-name"><?php echo htmlspecialchars($authorData['author_name']); ?></h3>
-                <div class="author-detail-meta">
-                    <div class="meta-item">
-                        <i class="bi bi-book"></i>
-                        <div><span class="meta-value"><?php echo $totalBooks; ?></span> books</div>
-                    </div>
-                    <div class="meta-item">
-                        <i class="bi bi-graph-up"></i>
-                        <div><span class="meta-value"><?php echo $totalBorrows; ?></span> total borrows</div>
-                    </div>
-                </div>
-                
-                <div class="book-list-header">
-                    <div class="book-list-title">Most Popular Books This Week</div>
-                    <a href="#" class="see-all">View All Books</a>
-                </div>
-                
-                <div class="book-list">
-                    <?php 
-                    foreach ($authorData['books'] as $bookIndex => $book) {
-                        // Get actual book details
-                        $bookData = getBookById($connect, $book['book_id'] ?? 0);
-                        if (!$bookData) continue;
-                        
-                        $bookImgPath = getBookImagePath($bookData);
-                        $totalCopies = $bookData['book_no_of_copy'] ?? 0;
-                        $availability = getBookAvailability($connect, $bookData['book_id'], $totalCopies);
-                    ?>
-                    <div class="book-card fade-in" style="animation-delay: <?php echo ($index * 0.2 + $bookIndex * 0.1); ?>s">
-                        <div class="book-img-container">
-                            <img src="<?php echo htmlspecialchars($bookImgPath); ?>" alt="<?php echo htmlspecialchars($book['book_name']); ?>" class="book-img">
-                        </div>
-                        <div class="book-info">
-                            <div class="book-title"><?php echo htmlspecialchars($book['book_name']); ?></div>
-                            <div class="book-meta">
-                                <div class="availability <?php echo $availability['is_available'] ? 'available' : 'unavailable'; ?>">
-                                    <i class="bi <?php echo $availability['is_available'] ? 'bi-check-circle-fill' : 'bi-x-circle-fill'; ?>"></i>
-                                    <?php echo $availability['is_available'] ? $availability['available_copies'] . ' available' : 'Unavailable'; ?>
-                                </div>
-                                <div class="borrow-count">
-                                    <?php echo $book['borrow_count']; ?> borrows
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <?php } ?>
-                </div>
+    <!-- Filters and Sorting - Similar to book.php -->
+    <div class="row mb-4">
+        <div class="col-md-9">
+            <div class="d-flex flex-wrap gap-2">
+                <!-- Alphabetical Index -->
+                <?php
+                $alphabet = range('A', 'Z');
+                foreach ($alphabet as $letter):
+                ?>
+                <a href="author.php?filter=<?php echo $letter; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?>" 
+                   class="btn <?php echo isset($_GET['filter']) && $_GET['filter'] == $letter ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                    <?php echo $letter; ?>
+                </a>
+                <?php endforeach; ?>
             </div>
         </div>
-        <?php 
-            $displayedAuthors++;
-        } 
-        ?>
-    </div>
-    
-    <!-- All Authors Section -->
-    <div class="section" id="all-authors">
-        <h2 class="text-dark">Browse All Authors</h2>
-        
-        <!-- Alphabetical Index -->
-        <div class="alpha-index">
-            <?php
-            for ($i = 65; $i <= 90; $i++) {
-                $letter = chr($i);
-                $activeClass = ($letter == 'A') ? 'active' : '';
-                echo "<a href='#letter-$letter' class='alpha-letter $activeClass'>$letter</a>";
-            }
-            ?>
+        <div class="col-md-3">
+            <form id="sort-form" action="author.php" method="GET">
+                <?php if (isset($_GET['filter'])): ?>
+                    <input type="hidden" name="filter" value="<?php echo $_GET['filter']; ?>">
+                <?php endif; ?>
+                <?php if (!empty($search_term)): ?>
+                    <input type="hidden" name="search" value="<?php echo htmlspecialchars($search_term); ?>">
+                <?php endif; ?>
+                <select class="form-select" id="sort-authors" name="sort" onchange="document.getElementById('sort-form').submit();">
+                    <option value="name-asc" <?php echo $selected_sort == 'name-asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
+                    <option value="name-desc" <?php echo $selected_sort == 'name-desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
+                    <option value="popular" <?php echo $selected_sort == 'popular' ? 'selected' : ''; ?>>Most Popular</option>
+                    <option value="books-count" <?php echo $selected_sort == 'books-count' ? 'selected' : ''; ?>>Number of Books</option>
+                </select>
+            </form>
         </div>
-        
-        <!-- Author listing by alphabet - we should query each letter from DB instead of dummy data -->
-        <?php
-        $alphabet = range('A', 'Z');
-        
-        // Ideally, we would query all authors, then group them by first letter
-        // For now, we'll use the sample data approach but with optimized image paths
-        foreach ($alphabet as $letterIndex => $letter) {
-            echo "<div id='letter-$letter' class='alpha-section fade-in' style='animation-delay: " . ($letterIndex * 0.1) . "s'>";
-            echo "<h3 class='alpha-header'>$letter</h3>";
-            echo "<div class='author-grid'>";
-            
-            // In real implementation, get authors whose names start with $letter
-            // This is just dummy data
-            if (in_array($letter, ['A', 'B', 'C', 'J', 'M', 'S'])) {
-                for ($i = 1; $i <= rand(3, 5); $i++) {
-                    $authorName = "$letter" . ucfirst(strtolower(substr(str_shuffle("abcdefghijklmnopqrstuvwxyz"), 0, rand(5, 8))));
-                    $dummyAuthor = ['author_profile' => '']; // For getAuthorImagePath function
-                    $authorImgPath = getAuthorImagePath($dummyAuthor);
-                    $bookCount = rand(3, 25);
-                    $borrowCount = rand(10, 200);
-                    
-                    echo "<div class='author-card fade-in' style='animation-delay: " . ($i * 0.1) . "s'>";
-                    echo "<div class='author-img-container'>";
-                    echo "<img src='$authorImgPath' alt='$authorName' class='author-img'>";
-                    echo "</div>";
-                    echo "<div class='author-info'>";
-                    echo "<div class='author-name'>$authorName</div>";
-                    echo "<div class='author-stats'>";
-                    echo "<div><span class='book-count'>$bookCount</span> books</div>";
-                    echo "<div class='borrow-count'><i class='bi bi-book'></i> $borrowCount borrows</div>";
-                    echo "</div>";
-                    echo "</div>";
-                    echo "</div>";
-                }
-            } else {
-                echo "<p class='text-center py-4 text-muted'>No authors found starting with '$letter'.</p>";
-            }
-            
-            echo "</div>";
-            echo "</div>";
-        }
-        ?>
     </div>
 
-    <!-- Author Recommendations Section -->
-    <div class="section">
-        <h2 class="text-dark">Personalized Author Recommendations</h2>
-        <div class="row">
-            <div class="col-md-8 offset-md-2">
-                <div class="card bg-light border-0 p-4 rounded-4">
-                    <div class="card-body text-center">
-                        <i class="bi bi-magic fs-1 text-primary mb-3"></i>
-                        <h4>Discover Authors You'll Love</h4>
-                        <p class="text-muted mb-4">Based on your reading history and preferences, we can recommend authors that match your taste.</p>
-                        <button class="btn btn-primary px-4 py-2 rounded-pill">
-                            <i class="bi bi-lightbulb me-2"></i> Get Personalized Recommendations
+    <!-- Authors Grid - Similar to book grid -->
+    <div class="d-flex flex-wrap justify-content-center gap-3" id="author-grid">
+        <?php if (empty($authors)): ?>
+            <div class="alert alert-info w-100 text-center">
+                <h4>No authors found</h4>
+                <p>Try a different search term or filter</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($authors as $author):             
+                $authorImgPath = getAuthorImagePath($author);
+                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                $bookCount = isset($author['book_count']) ? $author['book_count'] : 0;
+                $borrowCount = isset($author['borrow_count']) ? $author['borrow_count'] : 0;
+            ?>
+            <div class="author-card card shadow-sm" style="width: 220px;" data-id="<?php echo $author['author_id']; ?>">
+                <div class="position-relative overflow-hidden">
+                    <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img" alt="<?php echo htmlspecialchars($author['author_name']); ?>" style="width: 100%;height: 200px; object-fit: cover;">
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                    <div class="author-stats my-2">
+                        <p class="card-text text-muted mb-0">
+                            <i class="bi bi-book"></i> <?php echo $bookCount; ?> books
+                        </p>
+                        <p class="card-text text-muted mb-0">
+                            <i class="bi bi-graph-up"></i> <?php echo $borrowCount; ?> borrows
+                        </p>
+                    </div>
+                    <div class="mt-auto text-end">
+                        <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
+                            View Profile
                         </button>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+    
+    <!-- Pagination - Same as book.php -->
+    <?php if ($total_pages > 1): ?>
+    <div class="d-flex justify-content-center mt-5">
+        <nav aria-label="Author pagination">
+            <ul class="pagination">
+                <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
+                    <a class="page-link" href="author.php?page=<?php echo $page - 1; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                        <a class="page-link" href="author.php?page=<?php echo $i; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>">
+                            <?php echo $i; ?>
+                        </a>
+                    </li>
+                <?php endfor; ?>
+                <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
+                    <a class="page-link" href="author.php?page=<?php echo $page + 1; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <?php endif; ?>
+    
+    
+</div>
+
+<!-- Author Detail Modal -->
+<div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="author-detail-container">
+                <!-- Author details will be loaded here -->
+                <div class="d-flex justify-content-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
             </div>
@@ -987,105 +323,239 @@
 </div>
 
 <script>
-    // Tab functionality
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            // Add active class to clicked tab
-            this.classList.add('active');
-            
-            // Hide all stats sections
-            document.querySelectorAll('.time-stats').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // Show the selected section
-            const period = this.getAttribute('data-period');
-            document.getElementById(`${period}-stats`).classList.add('active');
-        });
-    });
-    
-    // Alphabetic index functionality
-    document.querySelectorAll('.alpha-letter').forEach(letter => {
-        letter.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Remove active class from all letters
-            document.querySelectorAll('.alpha-letter').forEach(l => l.classList.remove('active'));
-            // Add active class to clicked letter
-            this.classList.add('active');
-            
-            // Smooth scroll to the section
-            const targetId = this.getAttribute('href').substring(1);
-            const targetElement = document.getElementById(targetId);
-            
-            if (targetElement) {
-                window.scrollTo({
-                    top: targetElement.offsetTop - 100,
-                    behavior: 'smooth'
-                });
-            }
-        });
-    });
-    
-    // Search functionality
-    document.getElementById('search-button').addEventListener('click', function() {
-        const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+    document.addEventListener('DOMContentLoaded', function() {
+        // Author card click handlers
+        const authorCards = document.querySelectorAll('.author-card');
+        const viewButtons = document.querySelectorAll('.view-author-btn');
+        const authorModal = new bootstrap.Modal(document.getElementById('authorModal'));
         
-        if (searchTerm.length > 0) {
-            // In a real implementation, you would send this to the server
-            // For now, just show an alert
-            alert(`Searching for: "${searchTerm}"`);
+        function loadAuthorDetails(authorId) {
+            // Show loading spinner
+            document.getElementById('author-detail-container').innerHTML = `
+                <div class="d-flex justify-content-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
             
-            // You could also implement client-side filtering here
-            // For demonstration purposes only
-            const allAuthorCards = document.querySelectorAll('.author-card');
-            let foundCount = 0;
-            
-            allAuthorCards.forEach(card => {
-                const authorName = card.querySelector('.author-name').textContent.toLowerCase();
-                if (authorName.includes(searchTerm)) {
-                    card.style.border = '2px solid var(--accent-color)';
-                    foundCount++;
-                } else {
-                    card.style.border = '';
+            // Load author details via AJAX
+            fetch(`author_details_partial.php?author_id=${authorId}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('author-detail-container').innerHTML = html;
+                    
+                    // Load author's books
+                    const booksBySameAuthorContainer = document.getElementById('books-by-author-container');
+                    if (booksBySameAuthorContainer) {
+                        fetch(`author_books_partial.php?author_id=${authorId}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                booksBySameAuthorContainer.innerHTML = html;
+                                
+                                // Add event listeners to book cards
+                                const bookCards = booksBySameAuthorContainer.querySelectorAll('.book-card');
+                                bookCards.forEach(card => {
+                                    card.addEventListener('click', function() {
+                                        const bookId = this.dataset.id;
+                                        // Load book details - opens in a new modal or replaces the current one
+                                        window.location.href = `book.php?book_id=${bookId}`;
+                                    });
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error loading author books:', error);
+                                booksBySameAuthorContainer.innerHTML = `
+                                    <div class="alert alert-warning">
+                                        Unable to load author's books.
+                                    </div>
+                                `;
+                            });
+                    }
+                    
+                    // Load similar authors
+                    const similarAuthorsContainer = document.getElementById('similar-authors-container');
+                    if (similarAuthorsContainer) {
+                        fetch(`similar_authors_partial.php?author_id=${authorId}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                similarAuthorsContainer.innerHTML = html;
+                                
+                                // Add event listeners to related author cards
+                                const similarAuthorCards = similarAuthorsContainer.querySelectorAll('.similar-author-card');
+                                similarAuthorCards.forEach(card => {
+                                    card.addEventListener('click', function() {
+                                        const relatedAuthorId = this.dataset.id;
+                                        loadAuthorDetails(relatedAuthorId);
+                                    });
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error loading similar authors:', error);
+                                similarAuthorsContainer.innerHTML = `
+                                    <div class="alert alert-warning">
+                                        Unable to load similar authors.
+                                    </div>
+                                `;
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading author details:', error);
+                    document.getElementById('author-detail-container').innerHTML = `
+                        <div class="alert alert-danger m-3">
+                            Error loading author details. Please try again.
+                        </div>
+                    `;
+                });
+        }
+        
+        // Author card click event
+        authorCards.forEach(card => {
+            card.addEventListener('click', function() {
+                const authorId = this.dataset.id;
+                loadAuthorDetails(authorId);
+                authorModal.show();
+            });
+        });
+        
+        // View button click event (prevent propagation to card)
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const authorId = this.dataset.id;
+                loadAuthorDetails(authorId);
+                authorModal.show();
+            });
+        });
+        
+        // Real-time search functionality
+        const searchInput = document.getElementById('search-authors');
+        if (searchInput) {
+            // Keep this for real-time filtering of currently displayed authors
+            searchInput.addEventListener('keyup', function(e) {
+                // Only filter if we're not submitting the form with Enter key
+                if (e.key !== 'Enter') {
+                    const searchTerm = this.value.toLowerCase().trim();
+                    const authorCards = document.querySelectorAll('.author-card');
+                    
+                    authorCards.forEach(card => {
+                        const authorName = card.querySelector('.card-title').textContent.toLowerCase();
+                        
+                        if (authorName.includes(searchTerm)) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
                 }
             });
+        }
+    });
+</script>
+<!-- Author Detail Modal -->
+<div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="author-detail-container">
+                <!-- Author details will be loaded here -->
+                <div class="d-flex justify-content-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Author card click handlers
+        const authorCards = document.querySelectorAll('.author-card');
+        const authorModal = new bootstrap.Modal(document.getElementById('authorModal'));
+        
+        function loadAuthorDetails(authorId) {
+            // Show loading spinner
+            document.getElementById('author-detail-container').innerHTML = `
+                <div class="d-flex justify-content-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
             
-            if (foundCount === 0) {
-                alert('No authors found matching your search.');
-            }
+            // Load author details via AJAX
+            fetch(`author_details_partial.php?author_id=${authorId}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById('author-detail-container').innerHTML = html;
+                    
+                    // Load author's books
+                    const authorBooksContainer = document.getElementById('author-books-container');
+                    if (authorBooksContainer) {
+                        fetch(`author_books_partial.php?author_id=${authorId}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                authorBooksContainer.innerHTML = html;
+                                
+                                // Add event listeners to book cards
+                                const bookCards = authorBooksContainer.querySelectorAll('.book-card');
+                                bookCards.forEach(card => {
+                                    card.addEventListener('click', function() {
+                                        const bookId = this.dataset.id;
+                                        // Open book modal
+                                        loadBookDetails(bookId);
+                                        // Close author modal first
+                                        authorModal.hide();
+                                        // Show book modal
+                                        const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+                                        bookModal.show();
+                                    });
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error loading author books:', error);
+                                authorBooksContainer.innerHTML = `
+                                    <div class="alert alert-warning">
+                                        Unable to load author's books.
+                                    </div>
+                                `;
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading author details:', error);
+                    document.getElementById('author-detail-container').innerHTML = `
+                        <div class="alert alert-danger m-3">
+                            Error loading author details. Please try again.
+                        </div>
+                    `;
+                });
         }
-    });
-    
-    // Allow search on Enter key
-    document.getElementById('search-input').addEventListener('keyup', function(event) {
-        if (event.key === 'Enter') {
-            document.getElementById('search-button').click();
-        }
-    });
-    
-    // Intersection Observer for fade-in animations
-    const fadeElems = document.querySelectorAll('.fade-in');
-    
-    const fadeObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = 1;
-                entry.target.style.transform = 'translateY(0)';
-                fadeObserver.unobserve(entry.target);
+        
+        // Author card click event
+        authorCards.forEach(card => {
+            card.addEventListener('click', function() {
+                const authorId = this.dataset.id;
+                loadAuthorDetails(authorId);
+                authorModal.show();
+            });
+        });
+        
+        // Add author ID data attribute to all author cards
+        document.querySelectorAll('.author-card').forEach(card => {
+            // If the card doesn't have an ID attribute yet, get it from a child element
+            if (!card.dataset.id) {
+                // Try to extract ID from author name or other means
+                // This is a fallback - ideally each card would have data-id set in the PHP
+                const authorName = card.querySelector('.author-name').textContent;
+                card.dataset.id = authorName.split(' ')[0].toLowerCase() + '_id';
             }
         });
-    }, {
-        threshold: 0.1
-    });
-    
-    fadeElems.forEach(elem => {
-        elem.style.opacity = 0;
-        elem.style.transform = 'translateY(10px)';
-        elem.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-        fadeObserver.observe(elem);
     });
 </script>
 

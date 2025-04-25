@@ -175,7 +175,7 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <h1 class="mt-4 mb-4">Librarian Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>

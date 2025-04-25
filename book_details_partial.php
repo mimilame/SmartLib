@@ -1,73 +1,73 @@
 <?php
-// book_details_partial.php - For loading book details via AJAX
-include 'database_connection.php';
-include 'function.php';
+    // book_details_partial.php - For loading book details via AJAX
+    include 'database_connection.php';
+    include 'function.php';
 
-// Only include database connection and function files
-// Don't include header/footer since this is loaded in a modal
+    // Only include database connection and function files
+    // Don't include header/footer since this is loaded in a modal
 
-$book_id = isset($_GET['book_id']) ? intval($_GET['book_id']) : 0;
+    $book_id = isset($_GET['book_id']) ? intval($_GET['book_id']) : 0;
 
-if ($book_id <= 0) {
-    echo '<div class="alert alert-danger m-3">Invalid book ID.</div>';
-    exit;
-}
+    if ($book_id <= 0) {
+        echo '<div class="alert alert-danger m-3">Invalid book ID.</div>';
+        exit;
+    }
 
-// Get book details
-$book = getBookDetails($connect, $book_id);
+    // Get book details
+    $book = getBookDetails($connect, $book_id);
 
-if (!$book) {
-    echo '<div class="alert alert-danger m-3">Book not found.</div>';
-    exit;
-}
+    if (!$book) {
+        echo '<div class="alert alert-danger m-3">Book not found.</div>';
+        exit;
+    }
 
-// Get authors
-$authors = getBookAuthors($connect, $book_id);
+    // Get authors
+    $authors = getBookAuthors($connect, $book_id);
 
-// Get borrow history (only for admins)
-$borrow_history = [];
-if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1) {
-    $borrow_history = getBookBorrowHistory($connect, $book_id);
-}
+    // Get borrow history (only for admins)
+    $borrow_history = [];
+    if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 1) {
+        $borrow_history = getBookBorrowHistory($connect, $book_id);
+    }
 
-// Get similar books by category
-$similar_books = getSimilarBooksByCategory($connect, $book['category_id'], $book_id, 6);
+    // Get similar books by category
+    $similar_books = getSimilarBooksByCategory($connect, $book['category_id'], $book_id, 6);
 
-// Get books by same author
-$author_books = getBooksBySameAuthor($connect, $book_id, 6);
+    // Get books by same author
+    $author_books = getBooksBySameAuthor($connect, $book_id, 6);
 
-// Get book reviews
-$reviews = getBookReviews($connect, $book_id);
+    // Get book reviews
+    $reviews = getBookReviews($connect, $book_id);
 
-// Get book availability status
-// Calculate available copies based on total and borrowed
-$book_details = getBookById($connect, $book_id);
-$query = "SELECT COUNT(*) as borrowed_copies 
-         FROM lms_issue_book 
-         WHERE book_id = :book_id 
-         AND (issue_book_status = 'Issue' OR issue_book_status = 'Not Return')";
-$statement = $connect->prepare($query);
-$statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
-$statement->execute();
-$result = $statement->fetch(PDO::FETCH_ASSOC);
-// Format authors as a comma-separated string
-$author_names = array_map(function($author) {
-    return $author['author_name'];
-}, $authors);
-$author_string = implode(', ', $author_names);
+    // Get book availability status
+    // Calculate available copies based on total and borrowed
+    $book_details = getBookById($connect, $book_id);
+    $query = "SELECT COUNT(*) as borrowed_copies 
+            FROM lms_issue_book 
+            WHERE book_id = :book_id 
+            AND (issue_book_status = 'Issue' OR issue_book_status = 'Not Return')";
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':book_id', $book_id, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    // Format authors as a comma-separated string
+    $author_names = array_map(function($author) {
+        return $author['author_name'];
+    }, $authors);
+    $author_string = implode(', ', $author_names);
 
-$base_url = base_url();
-$bookImgPath = getBookImagePath($book);
-$bookImgUrl = str_replace('../', $base_url, $bookImgPath);
+    $base_url = base_url();
+    $bookImgPath = getBookImagePath($book);
+    $bookImgUrl = str_replace('../', $base_url, $bookImgPath);
 
-// Get book availability status
-$availability = getBookAvailability($connect, $book_id, $book['book_no_of_copy']);
-$borrowed_copies = $availability['borrowed_copies'];
-$available_copies = $availability['available_copies'];
-$is_available = $availability['is_available'];
+    // Get book availability status
+    $availability = getBookAvailability($connect, $book_id, $book['book_no_of_copy']);
+    $borrowed_copies = $availability['borrowed_copies'];
+    $available_copies = $availability['available_copies'];
+    $is_available = $availability['is_available'];
 
-// Get borrow frequency
-$borrow_count = getBookBorrowCount($connect, $book_id);
+    // Get borrow frequency
+    $borrow_count = getBookBorrowCount($connect, $book_id);
 ?>
 
 <div class="container-fluid p-0">
@@ -236,9 +236,9 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                             <div class="w-100">
                                                 <div class="d-flex justify-content-between align-items-start">
                                                     <h5 class="card-title"><?php echo htmlspecialchars($author['author_name']); ?></h5>
-                                                    <a href="author.php?id=<?php echo $author['author_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                    <button class="btn btn-sm btn-outline-primary author-details-link" data-author-id="<?php echo $author['author_id']; ?>">
                                                         <i class="bi bi-info-circle me-1"></i>More Details
-                                                    </a>
+                                                    </button>
                                                 </div>
                                                 <?php if (!empty($author['author_bio'])): ?>
                                                     <p class="card-text"><?php echo nl2br(htmlspecialchars($author['author_bio'])); ?></p>
@@ -303,7 +303,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                 </div>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <p class="text-muted">No reviews yet. Be the first to review this book!</p>
+                            <p class="text-muted">No reviews yet. Be the first to review this book! Visit us and get it today!</p>
                         <?php endif; ?>
                     </div>
                     
@@ -321,7 +321,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                             ?>
                                             <img src="<?php echo $similar_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($similar_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
-                                                <h6 class="card-title"><?php echo htmlspecialchars($similar_book['book_name']); ?></h6>
+                                                <span class="fw-bold"><?php echo htmlspecialchars($similar_book['book_name']); ?></span>
                                                 <a href="#" class="stretched-link book-details-link" data-book-id="<?php echo $similar_book['book_id']; ?>"></a>
                                             </div>
                                         </div>
@@ -342,7 +342,7 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
                                             ?>
                                             <img src="<?php echo $author_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($author_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
-                                                <h6 class="card-title"><?php echo htmlspecialchars($author_book['book_name']); ?></h6>
+                                                <span class="fw-bold"><?php echo htmlspecialchars($author_book['book_name']); ?></span>
                                                 <a href="#" class="stretched-link book-details-link" data-book-id="<?php echo $author_book['book_id']; ?>"></a>
                                             </div>
                                         </div>
@@ -407,27 +407,48 @@ $borrow_count = getBookBorrowCount($connect, $book_id);
 </div>
 
 <script>
-// JavaScript to handle clicking on related books
-document.addEventListener('DOMContentLoaded', function() {
-    const bookLinks = document.querySelectorAll('.book-details-link');
-    bookLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const bookId = this.getAttribute('data-book-id');
-            loadBookDetails(bookId);
-        });
-    });
-    
-    function loadBookDetails(bookId) {
-        // Fetch book details via AJAX and update the modal content
-        fetch('book_details_partial.php?book_id=' + bookId)
-            .then(response => response.text())
-            .then(html => {
-                document.querySelector('.modal-body').innerHTML = html;
-            })
-            .catch(error => {
-                console.error('Error loading book details:', error);
+    // JavaScript to handle clicking on related books
+    document.addEventListener('DOMContentLoaded', function() {
+        const bookLinks = document.querySelectorAll('.book-details-link');
+        bookLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const bookId = this.getAttribute('data-book-id');
+                loadBookDetails(bookId);
             });
-    }
-});
+        });
+        
+        function loadBookDetails(bookId) {
+            // Fetch book details via AJAX and update the modal content
+            fetch('book_details_partial.php?book_id=' + bookId)
+                .then(response => response.text())
+                .then(html => {
+                    document.querySelector('.modal-body').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading book details:', error);
+                });
+        }
+        // Add this inside the existing DOMContentLoaded event handler
+        const authorLinks = document.querySelectorAll('.author-details-link');
+        authorLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const authorId = this.getAttribute('data-author-id');
+                loadAuthorDetails(authorId);
+            });
+        });
+
+        function loadAuthorDetails(authorId) {
+            // Fetch author details via AJAX and update the modal content
+            fetch('author_books_partial.php?author_id=' + authorId)
+                .then(response => response.text())
+                .then(html => {
+                    document.querySelector('.modal-body').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading author details:', error);
+                });
+        }
+    });
 </script>

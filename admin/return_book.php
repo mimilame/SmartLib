@@ -232,7 +232,7 @@
     $fines = $fines_statement->fetchAll(PDO::FETCH_KEY_PAIR);
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <div class="d-flex justify-content-between align-items-center my-4">
         <h1 class="">Return Book Management
         </h1>

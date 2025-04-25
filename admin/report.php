@@ -66,7 +66,7 @@ foreach ($combinedReviews as $review) {
 }
 
 ?>
-    <div class="container-fluid mt-4">
+    <div class="mt-4">
         <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Reports</h1>
         
         <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">

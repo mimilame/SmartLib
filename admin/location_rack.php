@@ -124,7 +124,7 @@ $library_features = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <h1 class="my-4">Rack Location Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>
