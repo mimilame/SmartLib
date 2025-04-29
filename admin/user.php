@@ -219,8 +219,10 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
-    <h1 class="my-3">User Management</h1>
+<div class="container-fluid px-4">
+<div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="">User Management</h1>
+    </div>
 
     <?php if (isset($_GET["msg"])): ?>
         <script>
@@ -505,17 +507,15 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
         else: ?>
 
         <!-- User List -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col col-md-6">
-                        <i class="fas fa-table me-1"></i> User Management
-                    </div>
-                    <div class="col col-md-6">
-                        <a href="user.php?action=add" class="btn btn-success btn-sm float-end">
-                            <i class="fas fa-plus me-1"></i> Add User
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>User List</h5>                      
+                    <?php if (!isset($_GET['action'])): ?>            
+                        <a href="user.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add User
                         </a>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

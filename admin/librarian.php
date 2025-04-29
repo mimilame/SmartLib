@@ -514,7 +514,7 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
             <div class="card-header">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h5 class="mb-0"><i class="fas fa-users me-2"></i> Librarian Management</h5>
+                        <h5 class="mb-0"><i class="fas fa-table me-2"></i> Librarian Management</h5>
                     </div>
                     <div class="col-md-6 text-md-end">
                         <a href="librarian.php?action=add" class="btn btn-success">
