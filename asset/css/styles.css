@@ -100,6 +100,13 @@
   --scrollbar-bg: rgb(255 253 253 / 57%);
   --content-title-color: --theme-color;
  }
+ :root {
+  --primary-gradient: linear-gradient(135deg, #3B82F6, #60A5FA);
+  --accent-gradient: linear-gradient(135deg, #2563EB, #3B82F6);
+  --gold-gradient: linear-gradient(135deg, #F59E0B, #FBBF24);
+  --silver-gradient: linear-gradient(135deg, #9CA3AF, #D1D5DB);
+  --bronze-gradient: linear-gradient(135deg, #B45309, #D97706);
+}
 
  
 *,
@@ -14546,4 +14553,100 @@ label {
     0% { transform: translateX(0); }
     100% { transform: translateX(calc(-200px * 5 - 20px * 5)); }
   }
+}
+.podium-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+.podium-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 10px;
+  transition: all 0.3s;
+}
+.podium-item:hover {
+  transform: translateY(-10px);
+}
+.podium-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 120px;
+  border-radius: 10px 10px 0 0;
+  padding-top: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.gold {
+  background: linear-gradient(to bottom, #FFD700, #FFC107);
+  height: 130px;
+  z-index: 3;
+}
+.silver {
+  background: linear-gradient(to bottom, #C0C0C0, #aaa);
+  height: 75px;
+  z-index: 2;
+}
+.bronze {
+  background: linear-gradient(to bottom, #CD7F32, #b36a1d);
+  height: 45px;
+  z-index: 1;
+}
+.podium-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}
+.author-image {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid white;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  margin-bottom: 10px;
+  background-color: #f8f9fa;
+}
+.author-name {
+  font-weight: 600;
+  text-align: start;
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.5rem;
+}
+.borrow-count {
+  background-color: #0d6efd;
+  color: white;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-weight: bold;
+  font-size: 14px;
+  margin-top: 5px;
+}
+.rank-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  margin-right: 15px;
+}
+.period-title {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 300;
+  color: #555;
+}
+.trophy-icon {
+  color: #FFC107;
+  font-size: 2rem;
+  margin-right: 10px;
 }

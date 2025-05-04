@@ -322,7 +322,7 @@
                                             <img src="<?php echo $similar_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($similar_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
                                                 <span class="fw-bold"><?php echo htmlspecialchars($similar_book['book_name']); ?></span>
-                                                <a href="#" class="stretched-link book-details-link" data-book-id="<?php echo $similar_book['book_id']; ?>"></a>
+                                                <button class="stretched-link book-details-link btn btn-link p-0 text-decoration-none" data-book-id="<?php echo $similar_book['book_id']; ?>">View Details</button>
                                             </div>
                                         </div>
                                     </div>
@@ -343,7 +343,7 @@
                                             <img src="<?php echo $author_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($author_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
                                                 <span class="fw-bold"><?php echo htmlspecialchars($author_book['book_name']); ?></span>
-                                                <a href="#" class="stretched-link book-details-link" data-book-id="<?php echo $author_book['book_id']; ?>"></a>
+                                                <button class="stretched-link book-details-link btn btn-link p-0 text-decoration-none" data-book-id="<?php echo $author_book['book_id']; ?>">View Details</button>
                                             </div>
                                         </div>
                                     </div>
@@ -351,55 +351,6 @@
                             </div>
                         <?php endif; ?>
                     </div>
-                    
-                    <!-- Borrow History Tab (Admin only) -->
-                    <?php if (!empty($borrow_history) && isset($_SESSION['role_id']) && $_SESSION['role_id'] == 0): ?>
-                    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-                        <h5 class="mb-3">Borrow History</h5>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>User</th>
-                                        <th>Issue Date</th>
-                                        <th>Return Date</th>
-                                        <th>Due Date</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($borrow_history as $history): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($history['user_name']); ?></td>
-                                            <td><?php echo date('M d, Y', strtotime($history['issue_date'])); ?></td>
-                                            <td><?php echo !empty($history['return_date']) ? date('M d, Y', strtotime($history['return_date'])) : 'Not returned'; ?></td>
-                                            <td><?php echo date('M d, Y', strtotime($history['expected_return_date'])); ?></td>
-                                            <td>
-                                                <?php
-                                                $status_class = '';
-                                                switch ($history['issue_book_status']) {
-                                                    case 'Issue':
-                                                        $status_class = 'bg-warning';
-                                                        break;
-                                                    case 'Return':
-                                                        $status_class = 'bg-success';
-                                                        break;
-                                                    case 'Not Return':
-                                                        $status_class = 'bg-danger';
-                                                        break;
-                                                    default:
-                                                        $status_class = 'bg-secondary';
-                                                }
-                                                ?>
-                                                <span class="badge <?php echo $status_class; ?>"><?php echo $history['issue_book_status']; ?></span>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -407,8 +358,9 @@
 </div>
 
 <script>
-    // JavaScript to handle clicking on related books
+    // JavaScript to handle clicking on related books and authors
     document.addEventListener('DOMContentLoaded', function() {
+        // Book details link handler
         const bookLinks = document.querySelectorAll('.book-details-link');
         bookLinks.forEach(link => {
             link.addEventListener('click', function(e) {
@@ -418,6 +370,16 @@
             });
         });
         
+        // Author details link handler
+        const authorLinks = document.querySelectorAll('.author-details-link');
+        authorLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const authorId = this.getAttribute('data-author-id');
+                loadAuthorDetails(authorId);
+            });
+        });
+
         function loadBookDetails(bookId) {
             // Fetch book details via AJAX and update the modal content
             fetch('book_details_partial.php?book_id=' + bookId)
@@ -429,26 +391,25 @@
                     console.error('Error loading book details:', error);
                 });
         }
-        // Add this inside the existing DOMContentLoaded event handler
-        const authorLinks = document.querySelectorAll('.author-details-link');
-        authorLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const authorId = this.getAttribute('data-author-id');
-                loadAuthorDetails(authorId);
-            });
-        });
-
+        
         function loadAuthorDetails(authorId) {
-            // Fetch author details via AJAX and update the modal content
-            fetch('author_books_partial.php?author_id=' + authorId)
+            
+            fetch('author_details_partial.php?author_id=' + authorId)
                 .then(response => response.text())
                 .then(html => {
-                    document.querySelector('.modal-body').innerHTML = html;
+                    document.getElementById('book-detail-container').innerHTML = html;
                 })
                 .catch(error => {
                     console.error('Error loading author details:', error);
+                    document.getElementById('book-detail-container').innerHTML = `
+                        <div class="alert alert-danger m-3">
+                            Error loading author details. Please try again.
+                        </div>
+                    `;
                 });
+            
+            // Option 2 (alternative): Redirect to author.php with the author ID
+            window.location.href = 'author.php?author_id=' + authorId;
         }
     });
 </script>
