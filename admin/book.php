@@ -1060,7 +1060,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: `Yes, ${action} it!`
+                confirmButtonText: `Yes, ${action} it!`,
+                timer: 2000
             }).then((result) => {
                 if (result.isConfirmed) {
                     // This line remains the same

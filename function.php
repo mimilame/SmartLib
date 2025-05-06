@@ -2139,11 +2139,17 @@ function Timezone_list()
 
 
 function getBookImagePath($book) {
-    $book_img = $book['book_img'];
-    
-    // If there's an image specified in the database, use it without checking file_exists
-    if (!empty($book_img)) {
-        return '../upload/' . $book_img;
+    // Check if $book is an array (as intended) or a direct string value
+    if (is_array($book)) {
+        $book_img = $book['book_img'];
+        
+        // If there's an image specified in the database, use it
+        if (!empty($book_img)) {
+            return '../upload/' . $book_img;
+        }
+    } else if (is_string($book)) {
+        // If $book is directly a string, use it as the image name
+        return '../upload/' . $book;
     }
     
     // Otherwise use the default

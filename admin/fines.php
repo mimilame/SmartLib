@@ -412,9 +412,9 @@ $lost_books = $lost_books_statement->fetchAll(PDO::FETCH_ASSOC);
                             <td>
                                 <?php
                                     if ($row['issue_book_status'] === 'Lost') {
-                                        echo '<span class="badge bg-danger">Lost</span>';
+                                        echo '<span class="badge bg-warning">Lost</span>';
                                     } elseif ($row['issue_book_status'] === 'Overdue') {
-                                        echo '<span class="badge bg-warning text-dark">Overdue</span>';
+                                        echo '<span class="badge bg-danger">Overdue</span>';
                                     } else {
                                         echo '<span class="badge bg-success">' . htmlspecialchars($row['issue_book_status']) . '</span>';
                                     }
