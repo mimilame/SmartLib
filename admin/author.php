@@ -178,8 +178,10 @@ $author = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 
 ?>
-
-<h1 class="my-3">Author Management</h1>
+<div class="container-fluid px-4">
+<div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="">Author Management</h1>
+    </div>
 
 <?php if (isset($_GET["msg"])): ?>
     <script>

@@ -369,7 +369,10 @@
 
 ?>
 
-    <h1 class="my-3">Book Management</h1>
+<div class="container-fluid px-4">
+<div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="">Book Management</h1>
+    </div>
        
     <?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
         <!-- Add Book Form with enhanced design -->
@@ -1024,7 +1027,7 @@
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="10" class="text-center">No books found!</td></tr>
+                                <tr><td colspan="11" class="text-center">No books found!</td></tr>
                             <?php endif; ?>
 
                         </tbody>
@@ -1079,7 +1082,7 @@ $(document).ready(function () {
         stateSave: true,
         paging: true,
         info: true,
-        searching: false,
+        searching: true,
         order: [[0, 'asc']],
         language: {
             emptyTable: "No books found in the table."

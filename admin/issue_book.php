@@ -348,7 +348,8 @@
                     title: 'Book Marked as Lost',
                     text: 'The book has been marked as lost!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'issued'): ?>
                 Swal.fire({
@@ -356,7 +357,8 @@
                     title: 'Book Issued',
                     text: 'The book has been successfully issued!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'returned'): ?>
                 Swal.fire({
@@ -364,7 +366,8 @@
                     title: 'Book Returned',
                     text: 'The book has been successfully returned!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
                 Swal.fire({
@@ -372,7 +375,8 @@
                     title: 'Record Updated',
                     text: 'The issue record was updated successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php endif; ?>
 
@@ -1211,7 +1215,8 @@ if (document.getElementById('issue_date') && !document.querySelector('form.edit-
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
                         cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, mark as lost!'
+                        confirmButtonText: 'Yes, mark as lost!',
+                        timer: 2000
                     }).then((result) => {
                         if (result.isConfirmed) {
                             window.location.href = `issue_book.php?action=delete&code=${id}`;

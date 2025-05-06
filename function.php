@@ -1094,6 +1094,33 @@ function Count_total_category_number($connect)
 	return $total;
 }
 
+function getLostBookIssues($connect) {
+    $query = "
+        SELECT ib.issue_book_id, b.book_name, u.user_name 
+        FROM lms_issue_book ib
+        JOIN lms_book b ON ib.book_id = b.book_id
+        JOIN lms_user u ON ib.user_id = u.user_id
+        WHERE ib.issue_book_status = 'Lost'
+        ORDER BY ib.issue_book_id DESC
+    ";
+    return $connect->query($query)->fetchAll();
+}
+
+function getIssueDetails($connect, $issue_book_id) {
+    $stmt = $connect->prepare("
+        SELECT i.issue_date, i.expected_return_date, u.user_name, b.book_name 
+        FROM lms_issue_book i
+        JOIN lms_user u ON i.user_id = u.user_id
+        JOIN lms_book b ON i.book_id = b.book_id
+        WHERE i.issue_book_id = :issue_book_id
+    ");
+    $stmt->execute([':issue_book_id' => $issue_book_id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+
+
+
 function Count_total_location_rack_number($connect)
 {
 	$total = 0;

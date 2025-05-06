@@ -208,7 +208,7 @@
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="fas fa-money-bill"></i></span>
                                                     <input type="number" name="fines_amount" id="fines_amount" step="0.01"
-                                                            class="form-control" value="<?= htmlspecialchars($fine['fines_amount']) ?>" readonly>
+                                                            class="form-control" value="<?= htmlspecialchars($fine['fines_amount']) ?>">
                                                     <span class="input-group-text"><?= get_currency_symbol($connect) ?></span>
                                                 </div>
                                                 <div class="form-text">Rate: <?= get_currency_symbol($connect) . $fine_rate_per_day ?> × Days Late</div>
@@ -253,9 +253,6 @@
                                     <i class="fas fa-arrow-left me-2"></i>Back to List
                                 </a>
                                 <div>
-                                    <button type="reset" class="btn btn-outline-danger me-2">
-                                        <i class="fas fa-undo me-2"></i>Reset
-                                    </button>
                                     <button type="submit" name="edit_fine" class="btn btn-primary">
                                         <i class="fas fa-save me-2"></i>Update Fine
                                     </button>
