@@ -233,7 +233,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Disabled',
                     text: 'The user has been successfully disabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
                 Swal.fire({
@@ -241,7 +242,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Enabled',
                     text: 'The user has been successfully enabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
                 Swal.fire({
@@ -249,7 +251,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Added',
                     text: 'The user was added successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
                 Swal.fire({
@@ -257,7 +260,9 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Updated',
                     text: 'The user was updated successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
+                
                 });
             <?php endif; ?>
 
@@ -725,7 +730,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Yes'
+            confirmButtonText: 'Yes',
+            timer: 2000
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = `user.php?action=delete&code=${userId}&status=${newStatus}`;
