@@ -247,7 +247,8 @@
                     title: 'Book Returned',
                     text: 'The book has been successfully returned.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php endif; ?>
 
@@ -481,6 +482,7 @@
                         text: 'The returned book record you are looking for does not exist.',
                         confirmButtonText: 'Back to Return Books',
                         confirmButtonColor: '#6c757d',
+                        timer: 2000,
                         customClass: {
                             confirmButton: 'btn btn-outline-secondary'
                         },
@@ -645,7 +647,7 @@
                                                                         
                                                                         if ($is_late) {
                                                                             $interval = $return_date->diff($expected_date);
-                                                                            echo '<span class="badge bg-warning ms-2">'. $interval->days .' days late</span>';
+                                                                            echo '<span class="badge bg-danger ms-2">'. $interval->days .' days late</span>';
                                                                         } else {
                                                                             echo '<span class="badge bg-success ms-2">On time</span>';
                                                                         }
@@ -707,7 +709,7 @@
                                                                                 <h5 class="mb-0">₱<?= number_format($fine_info['total_fine'], 2); ?></h5>
                                                                                 <span class="text-muted small">Total Fine Amount</span>
                                                                             </div>
-                                                                            <span class="badge <?= $fine_info['fines_status'] === 'Paid' ? 'bg-success' : 'bg-warning' ?> p-2">
+                                                                            <span class="badge <?= $fine_info['fines_status'] === 'Paid' ? 'bg-success' : 'bg-danger' ?> p-2">
                                                                                 <i class="fas <?= $fine_info['fines_status'] === 'Paid' ? 'fa-check' : 'fa-exclamation' ?> me-1"></i>
                                                                                 <?= htmlspecialchars($fine_info['fines_status']); ?>
                                                                             </span>
@@ -861,7 +863,7 @@
                                         <td>
                                             <?php
                                                 $fine_amount = isset($fines[$row['issue_book_id']]) ? $fines[$row['issue_book_id']] : 0;
-                                                $fine_badge = $fine_amount > 0 ? 'bg-danger' : 'bg-success';
+                                                $fine_badge = $fine_amount > 0 ? 'bg-success' : 'bg-danger';
                                             ?>
                                             <span class="badge <?= $fine_badge ?>">₱<?= number_format($fine_amount, 2); ?></span>
                                         </td>
@@ -966,7 +968,8 @@ $(document).ready(function() {
                 showCancelButton: true,
                 confirmButtonText: 'Yes, confirm',
                 cancelButtonText: 'Cancel',
-                reverseButtons: true
+                reverseButtons: true,
+                timer: 2000
             }).then((result) => {
                 if (result.isConfirmed) {
                     $damageNotesContainer.slideDown();
