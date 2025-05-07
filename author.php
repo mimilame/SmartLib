@@ -29,6 +29,8 @@
         $total_authors = countTotalAuthors($connect);
     }
 
+    $authorImgPath = getAuthorImagePath($all_authors);
+    $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
     $total_pages = ceil($total_authors / $limit);
 
     // Get featured authors
@@ -67,11 +69,9 @@
                 <div class="featured-authors-carousel">            
                     <div class="authors-row">
                         <!-- Original authors section -->
-                        <div class="authors-row-section original">
+                        <div class="featured-row-section original">
                             <?php 
                             foreach ($featured_authors as $index => $author):
-                                $authorImgPath = getAuthorImagePath($author);
-                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                                 $bookCount = count($author['books']);
                             ?>
                             <div class="featured-author">
@@ -100,7 +100,7 @@
                             <?php endforeach; ?>
                         </div>
                         <!-- Duplicate authors section -->
-                        <div class="authors-row-section duplicate">
+                        <div class="featured-row-section clone">
                             <?php 
                             foreach ($featured_authors as $index => $author):
                                 $authorImgPath = getAuthorImagePath($author);

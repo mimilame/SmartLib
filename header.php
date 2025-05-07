@@ -320,17 +320,12 @@
                     <i class="fas fa-user-edit me-2"></i>
                     <span class="nav-text">Authors</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'reports.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/reports.php" data-bs-toggle="tooltip" data-bs-placement="right" 
-                data-bs-title="Reports">
-                    <i class="fas fa-chart-bar me-2"></i>
-                    <span class="nav-text">Reports</span>
-                </a>
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'my_books.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/my_books.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="My Books">
                     <i class="fas fa-bookmark me-2"></i>
                     <span class="nav-text">My Books</span>
                 </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/fines.php" data-bs-toggle="tooltip" data-bs-placement="right" 
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'my_fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>user/my_fines.php" data-bs-toggle="tooltip" data-bs-placement="right" 
                 data-bs-title="My Fines">
                     <i class="fas fa-dollar-sign me-2"></i>
                     <span class="nav-text">My Fines</span>
@@ -364,7 +359,7 @@
                     </ul>
                 </div>
             </nav>            
-            <div class="container-fluid py-4 mt-5 px-5">
+            <div class="wrapper mt-5">
 <?php elseif ($role_id == 5): ?>
     <!-- Visitor Header -->
     <?php 

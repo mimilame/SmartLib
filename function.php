@@ -6,9 +6,10 @@ function base_url()
 	return 'http://localhost/SmartLib/';
 }
 
-function startUserSession($user_unique_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
+function startUserSession($user_unique_id, $user_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
 
     $_SESSION['user_unique_id'] = $user_unique_id;
+    $_SESSION['user_id'] = $user_id;
     $_SESSION['role_id'] = $role_id;
 	$_SESSION['email'] = $user_email;
     $_SESSION['role_name'] = $role_name;
@@ -117,11 +118,11 @@ function process_login($connect, $email, $password) {
     $query = "
         SELECT u.*, r.role_name
         FROM (
-            SELECT admin_unique_id AS user_unique_id, admin_email AS email, admin_password AS password, role_id, admin_profile AS profile_img FROM lms_admin
+            SELECT admin_unique_id AS user_unique_id, admin_id AS user_id, admin_email AS email, admin_password AS password, role_id, admin_profile AS profile_img FROM lms_admin
             UNION ALL
-            SELECT librarian_unique_id AS user_unique_id, librarian_email AS email, librarian_password AS password, role_id, librarian_profile AS profile_img FROM lms_librarian
+            SELECT librarian_unique_id AS user_unique_id, librarian_id AS user_id, librarian_email AS email, librarian_password AS password, role_id, librarian_profile AS profile_img FROM lms_librarian
             UNION ALL
-            SELECT user_unique_id AS user_unique_id, user_email AS email, user_password AS password, role_id, user_profile AS profile_img FROM lms_user
+            SELECT user_unique_id AS user_unique_id, user_id, user_email AS email, user_password AS password, role_id, user_profile AS profile_img FROM lms_user
         ) AS u
         INNER JOIN user_roles r ON u.role_id = r.role_id
         WHERE u.email = :email
@@ -141,7 +142,7 @@ function process_login($connect, $email, $password) {
 			$profile_img = $row['profile_img'];
             error_log("Extracted username: " . $user_name); // Debugging
 
-            startUserSession($row['user_unique_id'], $row['role_id'],  $user_email, $row['role_name'], $user_name, $profile_img);
+            startUserSession($row['user_unique_id'], $row['user_id'], $row['role_id'],  $user_email, $row['role_name'], $user_name, $profile_img);
             return ['success' => true, 'role_id' => $row['role_id']];
         }
         
@@ -663,6 +664,7 @@ function get_complete_user_details($unique_id, $connect) {
         return null;
     }
 }
+
 
 function set_timezone($connect)
 {
@@ -2156,13 +2158,19 @@ function getBookImagePath($book) {
     return '../asset/img/book_placeholder.png';
 }
 function getAuthorImagePath($author) {
-	$author_profile = $author['author_profile'];
-    // If empty, use default
-    if (!empty($author_profile)) {
-        return '../upload/' . $author_profile;
+    $author_profile = $author['author_profile'] ?? '';
+    
+    // If profile is not empty and not the default "author.jpg" value
+    if (!empty($author_profile) && $author_profile !== 'author.jpg') {
+        $file_path = '../upload/' . $author_profile;
+        
+        // Check if file actually exists
+        if (file_exists($file_path)) {
+            return $file_path;
+        }
     }
     
-    // If image was provided but doesn't exist, fallback to default
+    // Return default image path if any condition fails
     return '../asset/img/author.jpg';
 }
 function getUserImagePath($user) {
@@ -2249,8 +2257,6 @@ function getPopularBooks($connect, $limit = 10) {
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
-
 
 function getCategoryStats($connect) {
     return $connect->query("
@@ -2632,12 +2638,28 @@ function countTotalBooks($connect, $category_id = null) {
     $result = $statement->fetch(PDO::FETCH_ASSOC);
     return $result['total'];
 }
-function countTotalAuthors($connect) {
-    $query = "SELECT COUNT(*) as total 
-              FROM lms_author 
-              WHERE author_status = 'Enable'";
+function countTotalAuthors($connect, $filter = null) {
+    $query = "
+        SELECT 
+            COUNT(*) as total
+        FROM 
+            lms_author
+        WHERE 
+            author_status = 'Enable'
+    ";
+    
+    // Add letter filter if provided
+    if ($filter !== null) {
+        $query .= " AND author_name LIKE :filter";
+    }
     
     $statement = $connect->prepare($query);
+    
+    if ($filter !== null) {
+        $filterParam = $filter . '%';
+        $statement->bindParam(':filter', $filterParam, PDO::PARAM_STR);
+    }
+    
     $statement->execute();
     $result = $statement->fetch(PDO::FETCH_ASSOC);
     
@@ -2672,17 +2694,17 @@ function getBooksByAuthor($connect, $author_id, $limit = 0) {
 function getAllAuthors($connect) {
     $query = "
         SELECT *
-        FROM 
+        FROM
             lms_author
-        WHERE 
+        WHERE
             author_status = 'Enable'
-        ORDER BY 
+        ORDER BY
             author_name ASC
     ";
-    
+   
     $statement = $connect->prepare($query);
     $statement->execute();
-    
+   
     return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
 // Function to get all categories - add this to function.php
@@ -2695,37 +2717,60 @@ function getAllCategories($connect) {
     $statement->execute();
     return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
-// Get author of the week using the existing function from function.php
 function getTopAuthorsWithBooks($connect, $limit = 5) {
-    $query = "SELECT 
-        a.author_id,
-        a.author_name,
-        a.author_profile,
-        COUNT(DISTINCT ba.book_id) as book_count 
-    FROM 
-        lms_author a
-    JOIN 
-        lms_book_author ba ON a.author_id = ba.author_id
-    JOIN 
-        lms_book b ON ba.book_id = b.book_id 
-    WHERE 
-        a.author_status = 'Enable' AND
-        b.book_status = 'Enable'
-    GROUP BY 
-        a.author_id, a.author_name, a.author_profile
-    ORDER BY 
-        book_count DESC
-    LIMIT :limit";
+    // First get the top authors based on borrowing stats
+    $query = "
+        SELECT 
+            a.author_id,
+            a.author_name,
+            a.author_profile,
+            COUNT(DISTINCT ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        LEFT JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable'
+        GROUP BY 
+            a.author_id, a.author_name, a.author_profile
+        ORDER BY 
+            borrow_count DESC, a.author_name ASC
+        LIMIT :limit
+    ";
     
     $statement = $connect->prepare($query);
     $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
     $statement->execute();
-    
     $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
     
-    // For each author, get their top books
+    // For each author, get their books
     foreach ($authors as &$author) {
-        $author['books'] = getBooksByAuthor($connect, $author['author_id'], 3);
+        $books_query = "
+            SELECT 
+                b.book_id,
+                b.book_name,
+                b.book_isbn_number,
+                b.book_img
+            FROM 
+                lms_book b
+            JOIN 
+                lms_book_author ba ON b.book_id = ba.book_id
+            WHERE 
+                ba.author_id = :author_id
+                AND b.book_status = 'Enable'
+            ORDER BY 
+                b.book_id DESC
+            LIMIT 3
+        ";
+        
+        $books_statement = $connect->prepare($books_query);
+        $books_statement->bindParam(':author_id', $author['author_id'], PDO::PARAM_INT);
+        $books_statement->execute();
+        $author['books'] = $books_statement->fetchAll(PDO::FETCH_ASSOC);
     }
     
     return $authors;
@@ -4322,34 +4367,36 @@ function getAuthorBorrowStats($connect, $author_id) {
     
     return $stats;
 }
-function searchAuthors($connect, $search_term, $limit = 10, $offset = 0) {
-    $search_term = "%$search_term%";
-    
-    $query = "SELECT 
-                a.author_id,
-                a.author_name,
-                a.author_profile,
-                COUNT(DISTINCT ba.book_id) as book_count,
-                COUNT(DISTINCT ib.issue_book_id) as borrow_count
-              FROM 
-                lms_author a
-              LEFT JOIN 
-                lms_book_author ba ON a.author_id = ba.author_id
-              LEFT JOIN 
-                lms_book b ON ba.book_id = b.book_id
-              LEFT JOIN 
-                lms_issue_book ib ON b.book_id = ib.book_id
-              WHERE 
-                a.author_status = 'Enable' AND
-                a.author_name LIKE :search_term
-              GROUP BY 
-                a.author_id, a.author_name, a.author_profile
-              ORDER BY 
-                a.author_name
-              LIMIT :limit OFFSET :offset";
+function searchAuthors($connect, $searchTerm, $limit = 20, $offset = 0) {
+    $query = "
+        SELECT 
+            a.author_id,
+            a.author_name,
+            a.author_profile,
+            a.author_biography,
+            COUNT(DISTINCT ba.book_id) as book_count,
+            COUNT(DISTINCT ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        LEFT JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        LEFT JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        LEFT JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable'
+            AND a.author_name LIKE :search
+        GROUP BY 
+            a.author_id, a.author_name, a.author_profile, a.author_biography
+        ORDER BY 
+            a.author_name ASC
+        LIMIT :limit OFFSET :offset
+    ";
     
     $statement = $connect->prepare($query);
-    $statement->bindParam(':search_term', $search_term, PDO::PARAM_STR);
+    $searchParam = '%' . $searchTerm . '%';
+    $statement->bindParam(':search', $searchParam, PDO::PARAM_STR);
     $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
     $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
     $statement->execute();
@@ -4357,28 +4404,37 @@ function searchAuthors($connect, $search_term, $limit = 10, $offset = 0) {
     return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function getSortedAuthors($connect, $limit = 10, $offset = 0, $sort_option = 'name-asc') {
-    $query = "SELECT 
-                a.author_id,
-                a.author_name,
-                a.author_profile,
-                COUNT(DISTINCT ba.book_id) as book_count,
-                COUNT(DISTINCT ib.issue_book_id) as borrow_count
-              FROM 
-                lms_author a
-              LEFT JOIN 
-                lms_book_author ba ON a.author_id = ba.author_id
-              LEFT JOIN 
-                lms_book b ON ba.book_id = b.book_id AND b.book_status = 'Enable'
-              LEFT JOIN 
-                lms_issue_book ib ON b.book_id = ib.book_id
-              WHERE 
-                a.author_status = 'Enable'
-              GROUP BY 
-                a.author_id, a.author_name, a.author_profile";
+function getSortedAuthors($connect, $limit = 20, $offset = 0, $sort = 'name-asc', $filter = null) {
+    // Base query with book counts and borrow counts
+    $query = "
+        SELECT 
+            a.author_id,
+            a.author_name,
+            a.author_profile,
+            a.author_biography,
+            COUNT(DISTINCT ba.book_id) as book_count,
+            COUNT(DISTINCT ib.issue_book_id) as borrow_count
+        FROM 
+            lms_author a
+        LEFT JOIN 
+            lms_book_author ba ON a.author_id = ba.author_id
+        LEFT JOIN 
+            lms_book b ON ba.book_id = b.book_id
+        LEFT JOIN 
+            lms_issue_book ib ON b.book_id = ib.book_id
+        WHERE 
+            a.author_status = 'Enable'
+    ";
     
-    // Add sorting options
-    switch ($sort_option) {
+    // Add letter filter if provided
+    if ($filter !== null) {
+        $query .= " AND a.author_name LIKE :filter";
+    }
+    
+    $query .= " GROUP BY a.author_id, a.author_name, a.author_profile, a.author_biography";
+    
+    // Add sorting
+    switch ($sort) {
         case 'name-desc':
             $query .= " ORDER BY a.author_name DESC";
             break;
@@ -4400,7 +4456,160 @@ function getSortedAuthors($connect, $limit = 10, $offset = 0, $sort_option = 'na
     $statement = $connect->prepare($query);
     $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
     $statement->bindParam(':offset', $offset, PDO::PARAM_INT);
+    
+    if ($filter !== null) {
+        $filterParam = $filter . '%';
+        $statement->bindParam(':filter', $filterParam, PDO::PARAM_STR);
+    }
+    
     $statement->execute();
     
     return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get user's current books
+function getUserCurrentBooks($connect, $userId) {
+    $query = "SELECT ib.*, b.book_name, b.book_isbn_number, b.book_img, 
+             GROUP_CONCAT(DISTINCT a.author_name SEPARATOR ', ') as authors, DATEDIFF(ib.expected_return_date, CURRENT_DATE()) as days_remaining
+             FROM lms_issue_book ib
+             JOIN lms_book b ON ib.book_id = b.book_id
+             LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+             LEFT JOIN lms_author a ON ba.author_id = a.author_id
+             WHERE ib.user_id = :user_id 
+             AND (ib.issue_book_status = 'Issue' OR ib.issue_book_status = 'Overdue')
+             GROUP BY ib.issue_book_id
+             ORDER BY ib.issue_date DESC";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get user's overdue books with fines
+function getUserOverdueBooks($connect, $userId) {
+    $query = "SELECT ib.*, b.book_name, b.book_isbn_number, b.book_img, 
+             a.author_name, f.fines_amount, f.fines_status,
+             DATEDIFF(CURRENT_DATE(), ib.expected_return_date) as days_overdue
+             FROM lms_issue_book ib
+             JOIN lms_book b ON ib.book_id = b.book_id
+             LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+             LEFT JOIN lms_author a ON ba.author_id = a.author_id
+             LEFT JOIN lms_fines f ON ib.issue_book_id = f.issue_book_id
+             WHERE ib.user_id = :user_id 
+             AND ib.issue_book_status = 'Overdue'
+             GROUP BY ib.issue_book_id
+             ORDER BY days_overdue DESC";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get user's recently returned books
+function getUserRecentlyReturnedBooks($connect, $userId) {
+    $query = "SELECT ib.*, b.book_name, b.book_isbn_number, b.book_img, 
+             a.author_name
+             FROM lms_issue_book ib
+             JOIN lms_book b ON ib.book_id = b.book_id
+             LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+             LEFT JOIN lms_author a ON ba.author_id = a.author_id
+             WHERE ib.user_id = :user_id 
+             AND ib.issue_book_status = 'Returned'
+             GROUP BY ib.issue_book_id
+             ORDER BY ib.return_date DESC
+             LIMIT 5";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get total outstanding fines
+function getUserTotalFines($connect, $userId) {
+    $query = "SELECT SUM(fines_amount) as total_fines 
+             FROM lms_fines 
+             WHERE user_id = :user_id 
+             AND fines_status = 'Unpaid'";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    return $result['total_fines'] ?? 0;
+}
+
+// Get newly added books
+function getNewBooks($connect, $limit = 5) {
+    $query = "SELECT b.book_id, b.book_name, b.book_img, b.book_added_on,
+             GROUP_CONCAT(DISTINCT a.author_name SEPARATOR ', ') as authors
+             FROM lms_book b
+             LEFT JOIN lms_book_author ba ON b.book_id = ba.book_id
+             LEFT JOIN lms_author a ON ba.author_id = a.author_id
+             WHERE b.book_status = 'Enable'
+             GROUP BY b.book_id
+             ORDER BY b.book_added_on DESC
+             LIMIT :limit";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
+    $statement->execute();
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get reading statistics for the current user
+function getUserReadingStats($connect, $userId) {
+    // Books currently borrowed
+    $query1 = "SELECT COUNT(*) as current_books 
+              FROM lms_issue_book 
+              WHERE user_id = :user_id 
+              AND (issue_book_status = 'Issue' OR issue_book_status = 'Overdue')";
+    
+    // Total books ever borrowed
+    $query2 = "SELECT COUNT(*) as total_borrowed 
+              FROM lms_issue_book 
+              WHERE user_id = :user_id";
+    
+    // Books returned on time
+    $query3 = "SELECT COUNT(*) as returned_on_time 
+              FROM lms_issue_book 
+              WHERE user_id = :user_id 
+              AND issue_book_status = 'Returned' 
+              AND return_date <= expected_return_date";
+    
+    // Books returned late
+    $query4 = "SELECT COUNT(*) as returned_late 
+              FROM lms_issue_book 
+              WHERE user_id = :user_id 
+              AND issue_book_status = 'Returned' 
+              AND return_date > expected_return_date";
+    
+    $statement1 = $connect->prepare($query1);
+    $statement1->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement1->execute();
+    $current = $statement1->fetch(PDO::FETCH_ASSOC);
+    
+    $statement2 = $connect->prepare($query2);
+    $statement2->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement2->execute();
+    $total = $statement2->fetch(PDO::FETCH_ASSOC);
+    
+    $statement3 = $connect->prepare($query3);
+    $statement3->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement3->execute();
+    $onTime = $statement3->fetch(PDO::FETCH_ASSOC);
+    
+    $statement4 = $connect->prepare($query4);
+    $statement4->bindParam(':user_id', $userId, PDO::PARAM_INT);
+    $statement4->execute();
+    $late = $statement4->fetch(PDO::FETCH_ASSOC);
+    
+    return [
+        'current' => $current['current_books'] ?? 0,
+        'total' => $total['total_borrowed'] ?? 0,
+        'on_time' => $onTime['returned_on_time'] ?? 0,
+        'late' => $late['returned_late'] ?? 0
+    ];
 }

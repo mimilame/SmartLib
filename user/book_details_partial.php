@@ -313,14 +313,14 @@
                         <?php if (!empty($similar_books)): ?>
                             <h5 class="mb-3">More from <?php echo htmlspecialchars($book['category_name']); ?> Category</h5>
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-                                <?php foreach($similar_books as $similar_book): ?>
+                                <?php foreach($similar_books as $similar_book): 
+                                    $bookImgPath = getBookImagePath($similar_book);
+                                    $bookImgUrl = str_replace('../', $base_url, $bookImgPath);
+                                ?>
                                     <div class="col">
                                         <div class="card h-100 border-0 shadow-sm">
-                                            <?php 
-                                            $similar_book_img = !empty($similar_book['book_img']) ? 'upload/' . $similar_book['book_img'] : 'asset/img/book_placeholder.png';
-                                            ?>
-                                            <img src="<?php echo $similar_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($similar_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
-                                            <div class="card-body">
+                                            <img src="<?php echo  $bookImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($similar_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
+                                            <div class="card-body d-flex justify-content-between">
                                                 <span class="fw-bold"><?php echo htmlspecialchars($similar_book['book_name']); ?></span>
                                                 <button class="stretched-link book-details-link btn btn-link p-0 text-decoration-none" data-book-id="<?php echo $similar_book['book_id']; ?>">View Details</button>
                                             </div>
@@ -334,14 +334,14 @@
                         <?php if (!empty($author_books)): ?>
                             <h5 class="mb-3">More by <?php echo htmlspecialchars($author_string); ?></h5>
                             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                                <?php foreach($author_books as $author_book): ?>
+                                <?php foreach($author_books as $author_book): 
+                                    $bookImgPath = getBookImagePath($author_book);
+                                    $author_book_img = str_replace('../', $base_url, $bookImgPath);
+                                ?>
                                     <div class="col">
                                         <div class="card h-100 border-0 shadow-sm">
-                                            <?php 
-                                            $author_book_img = !empty($author_book['book_img']) ? 'upload/' . $author_book['book_img'] : 'asset/img/book_placeholder.png';
-                                            ?>
                                             <img src="<?php echo $author_book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($author_book['book_name']); ?>" style="height: 180px; object-fit: cover;">
-                                            <div class="card-body">
+                                            <div class="card-body d-flex justify-content-between">
                                                 <span class="fw-bold"><?php echo htmlspecialchars($author_book['book_name']); ?></span>
                                                 <button class="stretched-link book-details-link btn btn-link p-0 text-decoration-none" data-book-id="<?php echo $author_book['book_id']; ?>">View Details</button>
                                             </div>

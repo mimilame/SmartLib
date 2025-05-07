@@ -29,16 +29,16 @@
         $total_authors = countTotalAuthors($connect);
     }
 
+    $authorImgPath = getAuthorImagePath($all_authors);
+    $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
     $total_pages = ceil($total_authors / $limit);
 
     // Get featured authors
     $featured_authors = getTopAuthorsWithBooks($connect, 5);
 ?>
-
-<div class="container-fluid py-4 mt-5 px-5">
     <!-- Hero Section - Consistent with book.php -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
-        <img src="asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
+        <img src="../asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
         <div class="card-img-overlay d-flex flex-column justify-content-center">
             <div class="container">
                 <h1 class="display-4 fw-bold">Discover Our Authors</h1>
@@ -60,134 +60,220 @@
             </div>
         </div>
     </div>
-    <div class="row">
-        <!-- Featured Authors Section with infinite carousel -->
-        <div class="col-md-6 mt-5">
-            <h2 class="mb-4">Featured Authors</h2>
-            <div class="featured-authors-carousel">            
-                <div class="authors-row">
-                    <!-- Original authors section -->
-                    <div class="authors-row-section original">
-                        <?php 
-                        foreach ($featured_authors as $index => $author):
-                            $authorImgPath = getAuthorImagePath($author);
-                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
-                            $bookCount = count($author['books']);
-                        ?>
-                        <div class="featured-author">
-                            <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
-                                <div class="position-relative overflow-hidden">
-                                    <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img w-100 h-100" alt="<?php echo htmlspecialchars($author['author_name']); ?>" >
-                                    <?php if ($index < 5): ?>
-                                    <span class="author-badge badge bg-warning text-dark">
-                                        <i class="bi bi-star-fill"></i> Featured
-                                    </span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="author-name"><?php echo htmlspecialchars($author['author_name']); ?></h5>
-                                    <p class="author-books">
-                                        <i class="bi bi-book"></i> <?php echo $bookCount; ?> books in collection
-                                    </p>
-                                    <div class="mt-auto text-end">
-                                        <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
-                                            View Profile
-                                        </button>
+    <div class="row mb-4">        
+        <h2 class="mb-4">Featured Authors</h2>    
+        <div class="row">            
+            <!-- Featured Authors Section with infinite carousel -->
+            <div class="col-md-8 mt-5">
+                <div class="featured-authors-carousel">            
+                    <div class="authors-row">
+                        <!-- Original authors section -->
+                        <div class="featured-row-section original">
+                            <?php 
+                            foreach ($featured_authors as $index => $author):
+                                $bookCount = count($author['books']);
+                            ?>
+                            <div class="featured-author">
+                                <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
+                                    <div class="position-relative overflow-hidden">
+                                        <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img w-100 h-100" alt="<?php echo htmlspecialchars($author['author_name']); ?>" >
+                                        <?php if ($index < 5): ?>
+                                        <span class="author-badge badge bg-warning text-dark">
+                                            <i class="bi bi-star-fill"></i> Featured
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <h5 class="author-name"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                                        <p class="author-books">
+                                            <i class="bi bi-book"></i> <?php echo $bookCount; ?> books in collection
+                                        </p>
+                                        <div class="mt-auto text-end">
+                                            <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
+                                                View Profile
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <?php endforeach; ?>
                         </div>
-                        <?php endforeach; ?>
-                    </div>
-                    
-                    <!-- JS to update animation based on actual content -->
-                    <script>
-                    document.addEventListener('DOMContentLoaded', function() {
-                        // Calculate number of items and adjust animation for authors carousel
-                        const authorItemWidth = document.querySelector('.featured-author').offsetWidth;
-                        const authorGapWidth = 20; // Same as gap in CSS
-                        const authorItemCount = document.querySelectorAll('.authors-row-section.original .featured-author').length;
-                        const authorTotalWidth = (authorItemWidth + authorGapWidth) * authorItemCount;
+                        <!-- Duplicate authors section -->
+                        <div class="featured-row-section clone">
+                            <?php 
+                            foreach ($featured_authors as $index => $author):
+                                $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                                $bookCount = count($author['books']);
+                            ?>
+                            <div class="featured-author">
+                                <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
+                                    <div class="position-relative overflow-hidden">
+                                        <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img w-100 h-100" alt="<?php echo htmlspecialchars($author['author_name']); ?>" >
+                                        <?php if ($index < 5): ?>
+                                        <span class="author-badge badge bg-warning text-dark">
+                                            <i class="bi bi-star-fill"></i> Featured
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <h5 class="author-name"><?php echo htmlspecialchars($author['author_name']); ?></h5>
+                                        <p class="author-books">
+                                            <i class="bi bi-book"></i> <?php echo $bookCount; ?> books in collection
+                                        </p>
+                                        <div class="mt-auto text-end">
+                                            <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
+                                                View Profile
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <!-- JS to update animation based on actual content -->
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // Calculate number of items and adjust animation
+                            const itemWidth = document.querySelector('.featured-author').offsetWidth;
+                            const gapWidth = 20; // Same as gap in CSS
+                            const itemCount = document.querySelectorAll('.featured-row-section.original .featured-author').length;
+                            const totalWidth = (itemWidth + gapWidth) * itemCount;
+                            
+                            // Update animation
+                            document.styleSheets[0].insertRule(`
+                                @keyframes scroll-left {
+                                    0% { transform: translateX(0); }
+                                    100% { transform: translateX(-${totalWidth}px); }
+                                }
+                            `, document.styleSheets[0].cssRules.length);
+                        });
+                        </script>
                         
-                        // Update animation for authors carousel
-                        document.styleSheets[0].insertRule(`
-                            @keyframes authors-scroll {
-                                0% { transform: translateX(0); }
-                                100% { transform: translateX(-${authorTotalWidth}px); }
-                            }
-                        `, document.styleSheets[0].cssRules.length);
-                    });
-                    </script>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- Trending Authors Section - Using Bootstrap styling -->
-        <div class="col-md-6 mt-5">
-            <!-- Time Period Tabs - Bootstrap styling -->
-            <ul class="nav nav-tabs mb-4" id="authorTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab">This Week</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab">This Month</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab">This Year</button>
-                </li>
-            </ul>
-            
-            <!-- Tab Content -->
-            <div class="tab-content" id="authorTabContent">
+            <!-- Trending Authors Section - Using Bootstrap styling -->
+            <div class="col-md-4 mt-3">
                 <?php
-                $authorTimeStats = getAuthorTimeStats($connect);
-                $formattedStats = formatAuthorTimeStats($authorTimeStats);
+                // Modified function to get all-time stats
+                function getAllTimeAuthorStats($connect) {
+                    return $connect->query("
+                        SELECT 
+                            a.author_id,
+                            a.author_name,
+                            COUNT(ib.issue_book_id) as borrow_count
+                        FROM 
+                            lms_author a
+                        JOIN 
+                            lms_book_author ba ON a.author_id = ba.author_id
+                        JOIN 
+                            lms_book b ON ba.book_id = b.book_id
+                        JOIN 
+                            lms_issue_book ib ON b.book_id = ib.book_id
+                        WHERE 
+                            a.author_status = 'Enable'
+                        GROUP BY 
+                            a.author_id, a.author_name
+                        ORDER BY 
+                            borrow_count DESC
+                        LIMIT 5
+                    ")->fetchAll(PDO::FETCH_ASSOC);
+                }
                 
-                $periods = ['weekly' => 'weekly', 'monthly' => 'monthly', 'yearly' => 'yearly'];
-                
-                foreach ($periods as $tabId => $period):
-                    $activeClass = $tabId === 'weekly' ? 'show active' : '';
+                $authors = getAllTimeAuthorStats($connect);
                 ?>
-                <div class="tab-pane fade <?php echo $activeClass; ?>" id="<?php echo $tabId; ?>" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 80px">Rank</th>
-                                    <th>Author</th>
-                                    <th style="width: 120px">Borrows</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($formattedStats[$period] as $index => $author): 
+                
+                <!-- Podium Section for Top 3 -->
+                <div class="podium-container">
+                    <?php if (count($authors) >= 3): ?>
+                        <!-- 2nd Place (Left) -->
+                        <div class="podium-item">
+                            <?php
+                            $author = $authors[1];
+                            $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
+                            $authorImgPath = getAuthorImagePath($authorData);
+                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            ?>
+                            <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
+                            <div class="podium-block silver">
+                                <div class="podium-number">2</div>
+                            </div>
+                            <div class="author-name "><?php echo htmlspecialchars($author['author_name']); ?></div>
+                            <div class="borrow-count"><?php echo $author['borrow_count']; ?> borrows</div>
+                        </div>
+                        
+                        <!-- 1st Place (Center) -->
+                        <div class="podium-item">
+                            <?php
+                            $author = $authors[0];
+                            $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
+                            $authorImgPath = getAuthorImagePath($authorData);
+                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            ?>
+                            <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
+                            <div class="podium-block gold">
+                                <div class="podium-number">1</div>
+                            </div>
+                            <div class="author-name "><?php echo htmlspecialchars($author['author_name']); ?></div>
+                            <div class="borrow-count"><?php echo $author['borrow_count']; ?> borrows</div>
+                        </div>
+                        
+                        <!-- 3rd Place (Right) -->
+                        <div class="podium-item">
+                            <?php
+                            $author = $authors[2];
+                            $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
+                            $authorImgPath = getAuthorImagePath($authorData);
+                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            ?>
+                            <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
+                            <div class="podium-block bronze">
+                                <div class="podium-number">3</div>
+                            </div>
+                            <div class="author-name "><?php echo htmlspecialchars($author['author_name']); ?></div>
+                            <div class="borrow-count"><?php echo $author['borrow_count']; ?> borrows</div>
+                        </div>
+                    <?php else: ?>
+                        <div class="alert alert-info">Not enough data to display podium.</div>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- Remaining Authors (4th and 5th) -->
+                <?php if (count($authors) > 3): ?>
+                <div class="row my-3">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <span class="mb-0">Runner-ups</span>
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <?php for($i = 3; $i < count($authors); $i++): 
+                                    $author = $authors[$i];
                                     $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
                                     $authorImgPath = getAuthorImagePath($authorData);
                                     $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
-                                    $rankClass = ($index < 3) ? "bg-" . ($index === 0 ? "warning" : ($index === 1 ? "secondary" : "danger")) : "";
                                 ?>
-                                <tr>
-                                    <td>
-                                        <span class="badge rounded-pill <?php echo $rankClass; ?> text-white fs-6">
-                                            <?php echo ($index + 1); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
-                                            <div><?php echo htmlspecialchars($author['author_name']); ?></div>
+                                <li class="list-group-item">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rank-badge bg-secondary">
+                                            <?php echo ($i + 1); ?>
                                         </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-primary rounded-pill fs-6">
-                                            <?php echo $author['borrow_count']; ?>
+                                        <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                                        <div class="flex-grow-1">
+                                            <?php echo htmlspecialchars($author['author_name']); ?>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">
+                                            <?php echo $author['borrow_count']; ?> borrows
                                         </span>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                    </div>
+                                </li>
+                                <?php endfor; ?>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -300,12 +386,11 @@
     </div>
     <?php endif; ?>
     
-    
-</div>
+
 
 <!-- Author Detail Modal -->
 <div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0">
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -453,111 +538,7 @@
         }
     });
 </script>
-<!-- Author Detail Modal -->
-<div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0" id="author-detail-container">
-                <!-- Author details will be loaded here -->
-                <div class="d-flex justify-content-center p-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Author card click handlers
-        const authorCards = document.querySelectorAll('.author-card');
-        const authorModal = new bootstrap.Modal(document.getElementById('authorModal'));
-        
-        function loadAuthorDetails(authorId) {
-            // Show loading spinner
-            document.getElementById('author-detail-container').innerHTML = `
-                <div class="d-flex justify-content-center p-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            `;
-            
-            // Load author details via AJAX
-            fetch(`author_details_partial.php?author_id=${authorId}`)
-                .then(response => response.text())
-                .then(html => {
-                    document.getElementById('author-detail-container').innerHTML = html;
-                    
-                    // Load author's books
-                    const authorBooksContainer = document.getElementById('author-books-container');
-                    if (authorBooksContainer) {
-                        fetch(`author_books_partial.php?author_id=${authorId}`)
-                            .then(response => response.text())
-                            .then(html => {
-                                authorBooksContainer.innerHTML = html;
-                                
-                                // Add event listeners to book cards
-                                const bookCards = authorBooksContainer.querySelectorAll('.book-card');
-                                bookCards.forEach(card => {
-                                    card.addEventListener('click', function() {
-                                        const bookId = this.dataset.id;
-                                        // Open book modal
-                                        loadBookDetails(bookId);
-                                        // Close author modal first
-                                        authorModal.hide();
-                                        // Show book modal
-                                        const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
-                                        bookModal.show();
-                                    });
-                                });
-                            })
-                            .catch(error => {
-                                console.error('Error loading author books:', error);
-                                authorBooksContainer.innerHTML = `
-                                    <div class="alert alert-warning">
-                                        Unable to load author's books.
-                                    </div>
-                                `;
-                            });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading author details:', error);
-                    document.getElementById('author-detail-container').innerHTML = `
-                        <div class="alert alert-danger m-3">
-                            Error loading author details. Please try again.
-                        </div>
-                    `;
-                });
-        }
-        
-        // Author card click event
-        authorCards.forEach(card => {
-            card.addEventListener('click', function() {
-                const authorId = this.dataset.id;
-                loadAuthorDetails(authorId);
-                authorModal.show();
-            });
-        });
-        
-        // Add author ID data attribute to all author cards
-        document.querySelectorAll('.author-card').forEach(card => {
-            // If the card doesn't have an ID attribute yet, get it from a child element
-            if (!card.dataset.id) {
-                // Try to extract ID from author name or other means
-                // This is a fallback - ideally each card would have data-id set in the PHP
-                const authorName = card.querySelector('.author-name').textContent;
-                card.dataset.id = authorName.split(' ')[0].toLowerCase() + '_id';
-            }
-        });
-    });
-</script>
 
 <?php
 include '../footer.php';

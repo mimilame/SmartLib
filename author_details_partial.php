@@ -131,16 +131,7 @@ $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_pr
                                         <span class="fw-bold"><?php echo htmlspecialchars($book['book_name']); ?></span>
                                         <p class="card-text small text-muted"><?php echo htmlspecialchars($book['category_name']); ?></p>
                                         
-                                        <?php
-                                        // Calculate availability based on book info
-                                        $availability = getBookAvailability($connect, $book['book_id'], $book['book_no_of_copy']);
-                                        $is_available = $availability['is_available'];
-                                        ?>
-                                        
                                         <div class="d-flex flex-wrap justify-content-between align-items-center mt-auto">
-                                            <span class="badge mx-sm-auto <?php echo $is_available ? 'bg-success' : 'bg-danger'; ?>">
-                                                <?php echo $is_available ? 'Available' : 'Unavailable'; ?>
-                                            </span>
                                             <button class="btn btn-sm btn-primary book-details-btn badge mx-sm-auto mt-sm-1" data-book-id="<?php echo $book['book_id']; ?>">
                                                 View Details
                                             </button>
