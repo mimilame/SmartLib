@@ -66,7 +66,7 @@ foreach ($combinedReviews as $review) {
 }
 
 ?>
-    <div class="container-fluid mt-4">
+    <div class="mt-4">
         <h1 class="mb-4"><i class="bi bi-bar-chart-line"></i> Reports</h1>
         
         <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
@@ -196,133 +196,490 @@ foreach ($combinedReviews as $review) {
                 </div>
                 
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0"><i class="bi bi-exclamation-triangle"></i> Overdue Books</h5>
-                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#overdueContainer">
-                                    <i class="bi bi-arrows-expand"></i> Toggle View
-                                </button>
-                            </div>
-                            <div class="collapse show" id="overdueContainer">
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table id="overdueTable" class="display nowrap">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Book Name</th>
-                                                    <th>Borrower</th>
-                                                    <th>Email</th>
-                                                    <th>Issue Date</th>
-                                                    <th>Due Date</th>
-                                                    <th>Days Overdue</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (count($overdueBooksList) > 0): ?>
-                                                    <?php foreach ($overdueBooksList as $book): ?>
-                                                    <tr>
-                                                        <td><?= htmlspecialchars($book['book_name']) ?></td>
-                                                        <td><?= htmlspecialchars($book['user_name']) ?></td>
-                                                        <td><?= htmlspecialchars($book['user_email']) ?></td>
-                                                        <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
-                                                        <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
-                                                        <td><span class="badge bg-danger"><?= $book['days_overdue'] ?> days</span></td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                
+      <!-- Transaction History Main Card -->
+      <div class="row">
+      <div class="col-md-12">
+    <div class="card mb-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0"><i class="bi bi-list-ul"></i> Book Transactions History</h5>
+            </div>
+            <div class="d-flex gap-2">
+                <!-- Filter Dropdown -->
+                <div class="dropdown me-2">
+                    <select class="form-select" id="statusFilter">
+                        <option value="All">All Status</option>
+                        <option value="Issued">Issued</option>
+                        <option value="Returned">Returned</option>
+                        <option value="Overdue">Overdue</option>
+                        <option value="Lost">Lost</option>
+                        <option value="Damaged">Damaged</option>
+                    </select>
+                </div>
+                
+                <!-- Date Range Filter -->
+                <div class="dropdown me-2">
+                    <select class="form-select" id="dateFilter">
+                        <option value="All">All Time</option>
+                        <option value="Today">Today</option>
+                        <option value="ThisWeek">This Week</option>
+                        <option value="ThisMonth">This Month</option>
+                        <option value="Custom">Custom Range...</option>
+                    </select>
+                </div>
+                
+                <!-- Print Button -->
+                <button class="btn btn-outline-primary" id="printReport">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+                
+                <!-- Export Button with Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                        <li><a class="dropdown-item" href="#" id="exportPDF"><i class="bi bi-file-earmark-pdf"></i> PDF</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportExcel"><i class="bi bi-file-earmark-excel"></i> Excel</a></li>
+                        <li><a class="dropdown-item" href="#" id="exportCSV"><i class="bi bi-file-earmark-text"></i> CSV</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+        <div class="table-responsive">
+            <table id="transactionsTable" class="table table-hover">
+            <thead>
+    <tr>
+        <th style="font-weight: bold;">Book Name</th>
+        <th style="font-weight: bold;">Borrower</th>
+        <th style="font-weight: bold;">Issue Date</th>
+        <th style="font-weight: bold;">Expected Return</th>
+        <th style="font-weight: bold;">Return Date</th>
+        <th style="font-weight: bold;">Status</th>
+    </tr>
+</thead>
+
+                <tbody>
+                    <?php foreach ($recentTransactions as $transaction): ?>
+                    <tr>
+                        <td><?= htmlspecialchars($transaction['book_name']) ?></td>
+                        <td><?= htmlspecialchars($transaction['user_name']) ?></td>
+                        <td><?= date('M d, Y', strtotime($transaction['issue_date'])) ?></td>
+                        <td><?= date('M d, Y', strtotime($transaction['expected_return_date'])) ?></td>
+                        <td>
+    <?php
+        $returnDate = $transaction['return_date'];
+        if (
+            !$returnDate || $returnDate === '0000-00-00' ||
+            strtotime($returnDate) === false ||
+            date('Y', strtotime($returnDate)) == -0001
+        ) {
+            echo '<span style="color: red; font-weight: bold;">Not Returned</span>';
+        } else {
+            echo date('M d, Y', strtotime($returnDate));
+        }
+    ?>
+</td>
+
+
+                        <td><?= htmlspecialchars($transaction['issue_book_status']) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+                    
+            <!-- Pagination -->
+            <nav aria-label="Transaction pagination" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- Problem Books Section with Tabs -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <ul class="nav nav-tabs card-header-tabs" id="problemBooksTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="overdue-tab" data-bs-toggle="tab" data-bs-target="#overdue" type="button" role="tab" aria-controls="overdue" aria-selected="true">
+                        <i class="bi bi-exclamation-triangle text-warning"></i> Overdue
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="lost-tab" data-bs-toggle="tab" data-bs-target="#lost" type="button" role="tab" aria-controls="lost" aria-selected="false">
+                        <i class="bi bi-question-circle text-danger"></i> Lost
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="damaged-tab" data-bs-toggle="tab" data-bs-target="#damaged" type="button" role="tab" aria-controls="damaged" aria-selected="false">
+                        <i class="bi bi-tools text-secondary"></i> Defective
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="problemBooksContent">
+                <!-- Overdue Tab Content -->
+                <div class="tab-pane fade show active" id="overdue" role="tabpanel" aria-labelledby="overdue-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Overdue Books</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="printOverdue">
+                            <i class="bi bi-printer"></i> Print Report
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="font-weight: bold;">Book Name</th>
+                                    <th style="font-weight: bold;">Borrower</th>
+                                    <th style="font-weight: bold;">Issue Date</th>
+                                    <th style="font-weight: bold;">Expected Return</th>
+                                    <th style="font-weight: bold;">Days Overdue</th>
+                                    <th style="font-weight: bold;">Fine</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $overdueBooks = array_filter($recentTransactions, function($t) { 
+                                    return $t['issue_book_status'] == 'Overdue'; 
+                                });
+                                foreach ($overdueBooks as $book): 
+                                    $daysOverdue = ceil((time() - strtotime($book['expected_return_date'])) / (60 * 60 * 24));
+                                    $fine = $daysOverdue * 5; // Assuming $5 per day
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($book['book_name']) ?></td>
+                                    <td><?= htmlspecialchars($book['user_name']) ?></td>
+                                    <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
+                                    <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
+                                    <td><span class="badge bg-danger"><?= $daysOverdue ?> days</span></td>
+                                    <td>$<?= number_format($fine, 2) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php if (count($overdueBooks) == 0): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">No overdue books found</td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center"> 
-                        <h5 class="card-title mb-0"><i class="bi bi-card-list"></i> Book Transactions History</h5>
-                        <!-- Short Dropdown Filter -->
-                        <div class="w-25">
-                            <select class="form-select" id="dateFilter">
-                                <option value="All">All</option>
-                                <option value="Today">Today</option>
-                                <option value="ThisWeek">This Week</option>
-                                <option value="ThisMonth">This Month</option>
-                            </select>
-                        </div>
+                
+                <!-- Lost Tab Content -->
+                <div class="tab-pane fade" id="lost" role="tabpanel" aria-labelledby="lost-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Lost Books</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="printLost">
+                            <i class="bi bi-printer"></i> Print Report
+                        </button>
                     </div>
-
-                    <div class="collapse show">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="recentTransactionsTable" class="display nowrap">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Book Name</th>
-                                            <th>User</th>
-                                            <th>Issue Date</th>
-                                            <th>Expected Return</th>
-                                            <th>Return Date</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($recentTransactions as $transaction): ?>
-                                        <?php 
-                                            $status_class = '';
-                                            switch ($transaction['issue_book_status']) {
-                                                case 'Issue':
-                                                    if (strtotime($transaction['expected_return_date']) < time()) {
-                                                        $status_class = 'table-danger';
-                                                    } else {
-                                                        $status_class = 'table-warning';
-                                                    }
-                                                    break;
-                                                case 'Return':
-                                                    $status_class = 'table-success';
-                                                    break;
-                                                case 'Not Return':
-                                                    $status_class = 'table-danger';
-                                                    break;
-                                                default:
-                                                    $status_class = '';
-                                            }
-                                        ?>
-                                        <tr class="<?= $status_class ?>" data-issue-date="<?= $transaction['issue_date'] ?>">
-                                            <td><?= htmlspecialchars($transaction['book_name']) ?></td>
-                                            <td><?= htmlspecialchars($transaction['user_name']) ?></td>
-                                            <td><?= date('M d, Y', strtotime($transaction['issue_date'])) ?></td>
-                                            <td><?= date('M d, Y', strtotime($transaction['expected_return_date'])) ?></td>
-                                            <td><?= $transaction['return_date'] ? date('M d, Y', strtotime($transaction['return_date'])) : 'Not returned' ?></td>
-                                            <td>
-                                                <?php if ($transaction['issue_book_status'] == 'Issued'): ?>
-                                                    <span class="badge bg-warning">Issued</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Returned'): ?>
-                                                    <span class="badge bg-success">Returned</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Overdue'): ?>
-                                                    <span class="badge bg-danger">Overdue</span>
-                                                <?php elseif ($transaction['issue_book_status'] == 'Lost'): ?>
-                                                    <span class="badge bg-dark">Lost</span>
-                                                <?php endif; ?>
-                                            </td>
-
-                                        </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="font-weight: bold;">Book Name</th>
+                                    <th style="font-weight: bold;">Borrower</th>
+                                    <th style="font-weight: bold;">Issue Date</th>
+                                    <th style="font-weight: bold;">Expected Return</th>
+                                    <th style="font-weight: bold;">Reported Lost</th>
+                                    <th style="font-weight: bold;">Replacement Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                $lostBooks = array_filter($recentTransactions, function($t) { 
+                                    return $t['issue_book_status'] == 'Lost'; 
+                                });
+                                foreach ($lostBooks as $book):
+                                    // Assuming replacement cost is stored or calculated
+                                    $replacementCost = isset($book['replacement_cost']) ? $book['replacement_cost'] : 50.00;
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($book['book_name']) ?></td>
+                                    <td><?= htmlspecialchars($book['user_name']) ?></td>
+                                    <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
+                                    <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
+                                    <td><?= isset($book['lost_date']) ? date('M d, Y', strtotime($book['lost_date'])) : 'N/A' ?></td>
+                                    <td>$<?= number_format($replacementCost, 2) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php if (count($lostBooks) == 0): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">No lost books found</td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                
+                <!-- Damaged Tab Content -->
+                <div class="tab-pane fade" id="damaged" role="tabpanel" aria-labelledby="damaged-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">Defective Books</h6>
+                        <button class="btn btn-sm btn-outline-primary" id="printDamaged">
+                            <i class="bi bi-printer"></i> Print Report
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="font-weight: bold;">Book Name</th>
+                                    <th style="font-weight: bold;">Borrower</th>
+                                    <th style="font-weight: bold;">Return Date</th>
+                                    <th style="font-weight: bold;">Damage Description</th>
+                                    <th style="font-weight: bold;">Repair Cost</th>
+                                    <th style="font-weight: bold;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php 
+$damagedStatuses = ['Damaged', 'Missing Pages', 'Water Damaged', 'Binding Loose'];
 
+$damagedBooks = array_filter($recentTransactions, function($t) use ($damagedStatuses) { 
+    return in_array($t['issue_book_status'], $damagedStatuses);
+});
+
+foreach ($damagedBooks as $book):
+    // Assuming repair cost is stored or calculated
+    $repairCost = isset($book['repair_cost']) ? $book['repair_cost'] : 20.00;
+?>
+
+                                <tr>
+                                    <td><?= htmlspecialchars($book['book_name']) ?></td>
+                                    <td><?= htmlspecialchars($book['user_name']) ?></td>
+                                    <td><?= $book['return_date'] ? date('M d, Y', strtotime($book['return_date'])) : 'N/A' ?></td>
+                                    <td><?= isset($book['damage_description']) ? htmlspecialchars($book['damage_description']) : 'Unspecified damage' ?></td>
+                                    <td>$<?= number_format($repairCost, 2) ?></td>
+                                    <td><?= isset($book['repair_status']) ? htmlspecialchars($book['repair_status']) : 'Pending' ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <?php if (count($damagedBooks) == 0): ?>
+                                <tr>
+                                    <td colspan="7" class="text-center">No damaged books found</td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Helper PHP Functions -->
+<?php
+function getStatusClass($status) {
+    switch ($status) {
+        case 'Issued':
+            return 'table-info';
+        case 'Returned':
+            return 'table-success';
+        case 'Overdue':
+            return 'table-danger';
+        case 'Lost':
+            return 'table-dark';
+        case 'Damaged':
+            return 'table-warning';
+        default:
+            return '';
+    }
+}
+
+function getStatusBadge($status) {
+    switch ($status) {
+        case 'Issued':
+            return '<span class="badge bg-info">Issued</span>';
+        case 'Returned':
+            return '<span class="badge bg-success">Returned</span>';
+        case 'Overdue':
+            return '<span class="badge bg-danger">Overdue</span>';
+        case 'Lost':
+            return '<span class="badge bg-dark">Lost</span>';
+        case 'Damaged':
+            return '<span class="badge bg-warning">Damaged</span>';
+        default:
+            return '<span class="badge bg-secondary">Unknown</span>';
+    }
+}
+?>
+
+<!-- JavaScript for Print and Export Functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Print functionality
+    document.getElementById('printReport').addEventListener('click', function() {
+        printTable('transactionsTable', 'Book Transactions Report');
+    });
+    
+    document.getElementById('printOverdue').addEventListener('click', function() {
+        printTab('overdue', 'Overdue Books Report');
+    });
+    
+    document.getElementById('printLost').addEventListener('click', function() {
+        printTab('lost', 'Lost Books Report');
+    });
+    
+    document.getElementById('printDamaged').addEventListener('click', function() {
+        printTab('damaged', 'Damaged Books Report');
+    });
+    
+    // Export functionality
+    document.getElementById('exportPDF').addEventListener('click', function() {
+        exportTable('transactionsTable', 'book_transactions', 'pdf');
+    });
+    
+    document.getElementById('exportExcel').addEventListener('click', function() {
+        exportTable('transactionsTable', 'book_transactions', 'excel');
+    });
+    
+    document.getElementById('exportCSV').addEventListener('click', function() {
+        exportTable('transactionsTable', 'book_transactions', 'csv');
+    });
+    
+    // Status filter
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        filterTableByStatus('transactionsTable', this.value);
+    });
+    
+    // Date filter
+    document.getElementById('dateFilter').addEventListener('change', function() {
+        filterTableByDate('transactionsTable', this.value);
+    });
+});
+
+// Print a specific table
+function printTable(tableId, title) {
+    const printWindow = window.open('', '_blank');
+    const table = document.getElementById(tableId).cloneNode(true);
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${title}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+                body { padding: 20px; }
+                h1 { text-align: center; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                .print-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                .print-date { text-align: right; }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <h1>${title}</h1>
+                <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
+            </div>
+            <div class="table-responsive">
+                ${table.outerHTML}
+            </div>
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 500);
+}
+
+// Print a specific tab content
+function printTab(tabId, title) {
+    const tab = document.getElementById(tabId);
+    const tableInTab = tab.querySelector('table').cloneNode(true);
+    
+    printTable(tableInTab.id || 'reportTable', title);
+}
+
+// Export table to various formats
+function exportTable(tableId, filename, format) {
+    // In a real application, this would call server-side export functionality
+    // This is a placeholder that simulates the export process
+    alert(`Exporting ${tableId} to ${format} format as ${filename}.${format}`);
+    
+    // For actual implementation, you'd want to use libraries like jsPDF, SheetJS, etc.,
+    // or send an AJAX request to a server-side script that generates the file
+}
+
+// Filter table by status
+function filterTableByStatus(tableId, status) {
+    const table = document.getElementById(tableId);
+    const rows = table.getElementsByTagName('tr');
+    
+    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip header
+        const statusCell = rows[i].cells[5]; // Assuming status is in the 6th column
+        if (statusCell) {
+            const rowStatus = statusCell.textContent.trim();
+            if (status === 'All' || rowStatus.includes(status)) {
+                rows[i].style.display = '';
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    }
+}
+
+// Filter table by date range
+function filterTableByDate(tableId, dateRange) {
+    const table = document.getElementById(tableId);
+    const rows = table.getElementsByTagName('tr');
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip header
+        const dateCell = rows[i].cells[2]; // Assuming issue date is in the 3rd column
+        if (dateCell) {
+            const rowDate = new Date(dateCell.textContent);
+            let show = false;
+            
+            switch (dateRange) {
+                case 'All':
+                    show = true;
+                    break;
+                case 'Today':
+                    show = rowDate.toDateString() === today.toDateString();
+                    break;
+                case 'ThisWeek':
+                    show = rowDate >= startOfWeek;
+                    break;
+                case 'ThisMonth':
+                    show = rowDate >= startOfMonth;
+                    break;
+                case 'Custom':
+                    // Would open a date range picker in a real application
+                    alert('Custom date range picker would appear here');
+                    show = true;
+                    break;
+            }
+            
+            rows[i].style.display = show ? '' : 'none';
+        }
+    }
+}
+</script>
             
             <!-- Popular Books Tab -->
             <div class="tab-pane fade <?= $active_tab === 'popular' ? 'show active' : '' ?>" id="popular" role="tabpanel">
@@ -472,7 +829,7 @@ foreach ($combinedReviews as $review) {
                             <div class="card-body p-0 border-0">
                                 <!-- Carousel Container -->
                                 <div class="reviews-carousel-container">
-                                    <div class="reviews-carousel" id="reviewsCarousel" style="    width: 99em;">
+                                    <div class="reviews-carousel" id="reviewsCarousel" style="width: 65em;">
                                         <?php foreach ($getReviews as $review): ?>
                                             <?php 
                                                 $book = getBookById($connect, $review['book_id']);

@@ -36,7 +36,7 @@ if (isset($_POST['add_author'])) {
     $biography = isset($_POST['author_biography']) ? trim($_POST['author_biography']) : '';
     
     // Default profile image
-    $profile_image = 'author.png';
+    $profile_image = 'author.jpg';
     
     // Check if profile image was uploaded
     if(isset($_FILES['author_profile']) && $_FILES['author_profile']['error'] == 0) {
@@ -46,7 +46,7 @@ if (isset($_POST['add_author'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Generate unique filename
-            $new_filename = time() . '.' . $ext;
+            $new_filename = 'author_' . time() . '.' . $ext;
             $upload_path = '../upload/' . $new_filename;
             
             // Create directory if it doesn't exist
@@ -137,7 +137,7 @@ if (isset($_POST['edit_author'])) {
                 $profile_image = $new_filename;
                 
                 // Delete old file if it's not the default
-                if($current_profile != 'author.png' && file_exists('../upload/' . $current_profile)) {
+                if($current_profile != 'author.jpg' && file_exists('../upload/' . $current_profile)) {
                     unlink('../upload/' . $current_profile);
                 }
             }
@@ -178,8 +178,10 @@ $author = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 
 ?>
-
-<h1 class="my-3">Author Management</h1>
+<div class="container-fluid px-4">
+<div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="">Author Management</h1>
+    </div>
 
 <?php if (isset($_GET["msg"])): ?>
     <script>
@@ -460,18 +462,16 @@ $author = $statement->fetchAll(PDO::FETCH_ASSOC);
     else: ?>
 
     <!-- author List -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <div class="row">
-                <div class="col col-md-6">
-                    <i class="fas fa-table me-1"></i> Author List
+    <div class="card hadow-sm border-0">
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Author List</h5>
+                <?php if (!isset($_GET['action'])): ?>            
+                        <a href="author.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add Author
+                        </a>
+                    <?php endif; ?>
                 </div>
-                <div class="col col-md-6">
-                    <a href="author.php?action=add" class="btn btn-success btn-sm float-end">
-                        <i class="fas fa-plus-circle me-1"></i> Add Author
-                    </a>
-                </div>
-            </div>
         </div>
 
         <div class="card-body">

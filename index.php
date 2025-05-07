@@ -2,7 +2,8 @@
 	include 'database_connection.php';
 	include 'function.php';	
 	include 'header.php';
-	
+	validate_session();
+
 	// Fetch library settings
 	$query = "SELECT * FROM lms_setting LIMIT 1";
 	$statement = $connect->prepare($query);
@@ -34,7 +35,7 @@
             <div class="book js-flickity" data-flickity-options='{ "wrapAround": true }'>
 			<?php
 				// Query to fetch all books
-				$books = getPaginatedBooks($connect, 10, 0); // Use the function instead of direct query
+				$books = getRatedBooks($connect, 10, 0); // Use the function instead of direct query
 				$base_url = base_url();
 				// Color classes for alternating styles
 				$colors = ['pink', 'blue', 'purple', 'yellow', 'dark-purp'];

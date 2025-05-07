@@ -48,14 +48,14 @@ if (isset($_POST['add_librarian'])) {
     $profile_image = 'librarian.jpg';
     
     if(!empty($_FILES['librarian_profile']['name'])) {
-        $fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
-		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+		$fileName = 'librarian_' . time() . '.' . $ext;
 		$targetFilePath = $uploadDir . $fileName;
 
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
-        if(in_array($fileType, $allowTypes)) {
+        if(in_array($ext, $allowTypes)) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
                 $profile_image = $fileName;
@@ -106,14 +106,14 @@ if (isset($_POST['edit_librarian'])) {
     
     // Handle profile image upload
     if(!empty($_FILES['librarian_profile']['name'])) {
-		$fileType = pathinfo($_FILES['librarian_profile']['name'], PATHINFO_EXTENSION);
-		$fileName = time() . '_' . basename($_FILES['librarian_profile']['name']);
+		$ext = pathinfo($filename, PATHINFO_EXTENSION);
+		$fileName = 'librarian_' . time() . '.' . $ext;
 		$targetFilePath = $uploadDir . $fileName;
 
         
         // Allow certain file formats
         $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
-        if(in_array($fileType, $allowTypes)) {
+        if(in_array($ext, $allowTypes)) {
             // Upload file to server
             if(move_uploaded_file($_FILES["librarian_profile"]["tmp_name"], $targetFilePath)){
                 // Remove old file if it's not the default image
@@ -175,7 +175,7 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <h1 class="mt-4 mb-4">Librarian Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>
@@ -187,7 +187,8 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Librarian Disabled',
                     text: 'The librarian has been successfully disabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
                 Swal.fire({
@@ -195,7 +196,8 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Librarian Enabled',
                     text: 'The librarian has been successfully enabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
                 Swal.fire({
@@ -203,7 +205,8 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Librarian Added',
                     text: 'The librarian was added successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
                 Swal.fire({
@@ -211,7 +214,8 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Librarian Updated',
                     text: 'The librarian was updated successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php endif; ?>
 
@@ -514,7 +518,7 @@ $librarians = $statement->fetchAll(PDO::FETCH_ASSOC);
             <div class="card-header">
                 <div class="row align-items-center">
                     <div class="col-md-6">
-                        <h5 class="mb-0"><i class="fas fa-users me-2"></i> Librarian Management</h5>
+                        <h5 class="mb-0"><i class="fas fa-table me-2"></i> Librarian Management</h5>
                     </div>
                     <div class="col-md-6 text-md-end">
                         <a href="librarian.php?action=add" class="btn btn-success">
@@ -667,7 +671,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: `Yes, ${action} it!`
+                confirmButtonText: `Yes, ${action} it!`,
+                timer: 2000
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = `librarian.php?action=delete&status=${action === 'disable' ? 'Disable' : 'Enable'}&code=${librarianId}`;
@@ -696,7 +701,8 @@ function delete_data(code) {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, change it!'
+        confirmButtonText: 'Yes, change it!',
+        timer: 2000
     }).then((result) => {
         if (result.isConfirmed) {
             window.location.href = "librarian.php?action=delete&code=" + code + "&status=Disable";

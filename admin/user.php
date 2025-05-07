@@ -56,7 +56,7 @@ if (isset($_POST['add_user'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Create unique filename
-            $new_filename = 'user_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_filename = 'user_' . time() . '.' . $ext;
             $upload_dir = '../upload/';
             
             // Create directory if it doesn't exist
@@ -143,7 +143,7 @@ if (isset($_POST['edit_user'])) {
         
         if(in_array(strtolower($ext), $allowed)) {
             // Create unique filename
-            $new_filename = 'user_' . time() . '_' . uniqid() . '.' . $ext;
+            $new_filename = 'user_' . time() . '.' . $ext;
             $upload_dir = '../upload/';
             
             // Create directory if it doesn't exist
@@ -219,7 +219,7 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<main class="container py-4" style="min-height: 700px;">
+<main class="py-4" style="min-height: 700px;">
     <h1 class="my-3">User Management</h1>
 
     <?php if (isset($_GET["msg"])): ?>
@@ -231,7 +231,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Disabled',
                     text: 'The user has been successfully disabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
                 Swal.fire({
@@ -239,7 +240,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Enabled',
                     text: 'The user has been successfully enabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
                 Swal.fire({
@@ -247,7 +249,8 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Added',
                     text: 'The user was added successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
                 Swal.fire({
@@ -255,7 +258,9 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'User Updated',
                     text: 'The user was updated successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
+                
                 });
             <?php endif; ?>
 
@@ -505,17 +510,15 @@ $user = $statement->fetchAll(PDO::FETCH_ASSOC);
         else: ?>
 
         <!-- User List -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col col-md-6">
-                        <i class="fas fa-table me-1"></i> User Management
-                    </div>
-                    <div class="col col-md-6">
-                        <a href="user.php?action=add" class="btn btn-success btn-sm float-end">
-                            <i class="fas fa-plus me-1"></i> Add User
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>User List</h5>                      
+                    <?php if (!isset($_GET['action'])): ?>            
+                        <a href="user.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add User
                         </a>
-                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -725,7 +728,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Yes'
+            confirmButtonText: 'Yes',
+            timer: 2000
         }).then((result) => {
             if (result.isConfirmed) {
                 window.location.href = `user.php?action=delete&code=${userId}&status=${newStatus}`;

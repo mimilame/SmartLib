@@ -1,9 +1,9 @@
 <?php
     // book.php - Modern book catalog/grid view with optimized functions
-    include 'database_connection.php';
-    include 'function.php';
-    include 'header.php';
-    validate_session();
+    include '../database_connection.php';
+    include '../function.php';
+    include '../header.php';
+    authenticate_user();
 
     // Use the improved function to get categories
     $all_categories = getAllCategories($connect);
@@ -41,10 +41,9 @@
     $featured_books = getFeaturedBooks($connect, 8);
 ?>
 
-<div class="container-fluid py-4 mt-5 px-5">
     <!-- Hero Section -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
-        <img src="asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
+        <img src="../asset/img/library-hero.jpg" class="card-img opacity-50" alt="Library" style="height: 250px; object-fit: cover;">
         <div class="card-img-overlay d-flex flex-column justify-content-center">
             <div class="container">
                 <h1 class="display-4 fw-bold">Library Catalog</h1>
@@ -299,7 +298,6 @@
     <?php endif; ?>
     
     <div class="p-5 mt-5 mb-5"></div>
-</div>
 
 <!-- Book Detail Modal -->
 <div class="modal fade" id="bookModal" tabindex="-1" aria-labelledby="bookModalLabel" aria-hidden="true">
@@ -458,4 +456,4 @@
 </script>
 
 
-<?php include 'footer.php'; ?>
+<?php include '../footer.php'; ?>

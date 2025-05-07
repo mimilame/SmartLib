@@ -22,7 +22,7 @@ $bookStatusStats = getBookStatusStats($connect);
 $authorTopBooks = getAuthorTopBooks($connect);
 ?>
 
-<main class="container py-4">
+<main class="py-4">
     <h1 class="mb-5">Dashboard</h1>
     
     <!-- Stats Overview Cards -->

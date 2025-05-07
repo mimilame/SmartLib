@@ -49,7 +49,7 @@
     if (isset($_POST['add_book'])) {
         $name = trim($_POST['book_name']); // Clean the input
         $category_id = trim($_POST['category_id']);
-        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $author_ids = $_POST['author_ids'];
         $rack = trim($_POST['book_location_rack']);
         $isbn = trim($_POST['book_isbn_number']);
         $no_of_copies = trim($_POST['book_no_of_copy']);
@@ -76,7 +76,7 @@
                 $maxsize = 5 * 1024 * 1024;
                 if ($filesize < $maxsize) {
                     // Generate unique filename
-                    $new_filename = uniqid() . '.' . $ext;
+                    $new_filename = 'book_' . time() . '.' . $ext;
                     $upload_path = $upload_dir . $new_filename;
                     
                     if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
@@ -179,7 +179,7 @@
         $id = $_POST['book_id'];
         $name = $_POST['book_name'];
         $category_id = $_POST['category_id'];
-        $author_ids = isset($_POST['author_ids']) ? $_POST['author_ids'] : [];
+        $author_ids = $_POST['author_ids'];
         $rack = $_POST['book_location_rack'];
         $isbn = $_POST['book_isbn_number'];
         $no_of_copies = $_POST['book_no_of_copy'];
@@ -234,7 +234,7 @@
                 $maxsize = 5 * 1024 * 1024;
                 if ($filesize < $maxsize) {
                     // Generate unique filename
-                    $new_filename = uniqid() . '.' . $ext;
+                    $new_filename = 'book_' . time() . '.' . $ext;
                     $upload_path = $upload_dir . $new_filename;
                     
                     if (move_uploaded_file($_FILES['book_img']['tmp_name'], $upload_path)) {
@@ -248,11 +248,21 @@
             }
         }
 
-
         // Get author names for the book_author field
         $author_names = [];
-        // Your existing code for author names
+        if (!empty($author_ids)) {
+            $author_names_query = "SELECT author_name FROM lms_author WHERE author_id IN (" . implode(',', array_fill(0, count($author_ids), '?')) . ")";
+            $author_names_stmt = $connect->prepare($author_names_query);
+            
+            foreach ($author_ids as $index => $id_value) {
+                $author_names_stmt->bindValue($index + 1, $id_value);
+            }
+            
+            $author_names_stmt->execute();
+            $author_names = $author_names_stmt->fetchAll(PDO::FETCH_COLUMN);
+        }
         $author_string = implode(', ', $author_names);
+        
 
         // Build update query without potentially problematic fields
         $update_query = "
@@ -283,7 +293,7 @@
         $params = [
             ':name' => $name,
             ':category_id' => $category_id,
-            ':author' => $author_string,
+            ':author' => $author_string, // This is the key part - storing the author string
             ':rack' => $rack,
             ':no_of_copies' => $no_of_copies,
             ':status' => $status,
@@ -339,7 +349,6 @@
         }
     }
 
-
     // List all books with their category names
     $query = "
         SELECT b.*, c.category_name, 
@@ -360,7 +369,10 @@
 
 ?>
 
-    <h1 class="my-3">Book Management</h1>
+<div class="container-fluid px-4">
+<div class="d-flex justify-content-between align-items-center my-4">
+        <h1 class="">Book Management</h1>
+    </div>
        
     <?php if (isset($_GET['action']) && $_GET['action'] === 'add'): ?>
         <!-- Add Book Form with enhanced design -->
@@ -642,7 +654,7 @@
                                             foreach ($racks as $rack):
                                                 $id = isset($rack['location_rack_id']) ? htmlspecialchars($rack['location_rack_id']) : '';
                                                 $name = isset($rack['location_rack_name']) ? htmlspecialchars($rack['location_rack_name']) : '';
-                                                $selected = (isset($book['book_location_rack']) && isset($rack['location_rack_id']) && $rack['location_rack_id'] == $book['book_location_rack']) ? 'selected' : '';
+                                                $selected = ($book['book_location_rack'] === $name) ? 'selected' : '';
                                             ?>
                                                 <option value="<?= $name ?>"<?= $selected ?>><?= $name ?></option>
                                             <?php endforeach; ?>
@@ -936,18 +948,19 @@
 
 	<!-- Book List -->
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <div class="row">
-                    <div class="col col-md-6">
-                        <i class="fas fa-table me-1"></i> Book Management
-                    </div>
-                    <div class="col col-md-6">
-                        <a href="book.php?action=add" class="btn btn-success btn-sm float-end"><i class="fas fa-plus-circle me-2"></i>Add Book</a>
-                    </div>
+    <div class="card shadow-sm border-0">
+			<div class="card-header bg-white py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Book List</h5>                      
+                    <?php if (!isset($_GET['action'])): ?>            
+                        <a href="book.php?action=add" class="btn btn-sm btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>Add New Book
+                        </a>
+                    <?php endif; ?>
                 </div>
+
             </div>
-            <div class="card-body" style="overflow-x: auto;">
+            <div class="card-body">
                 <div class="table-responsive">
                     <table id="dataTable" class="display nowrap" style="width:100%">
                         <thead>
@@ -1014,7 +1027,7 @@
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="10" class="text-center">No books found!</td></tr>
+                                <tr><td colspan="11" class="text-center">No books found!</td></tr>
                             <?php endif; ?>
 
                         </tbody>
@@ -1047,7 +1060,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: `Yes, ${action} it!`
+                confirmButtonText: `Yes, ${action} it!`,
+                timer: 2000
             }).then((result) => {
                 if (result.isConfirmed) {
                     // This line remains the same
@@ -1069,18 +1083,15 @@ $(document).ready(function () {
         stateSave: true,
         paging: true,
         info: true,
-        searching: false,
+        searching: true,
         order: [[0, 'asc']],
         language: {
             emptyTable: "No books found in the table."
         },
 
         columnDefs: [
-            { responsivePriority: 1, targets: 1 }, // Book Title
-            { responsivePriority: 2, targets: 10 }, // Actions
-            { responsivePriority: 3, targets: 0 }, // Book ID
-            { responsivePriority: 4, targets: [2, 3, 4] }, // Author, Category, Rack
-            { responsivePriority: 5, targets: [5, 6, 7, 8, 9] } // ISBN, Copies, Status, Dates
+            { responsivePriority: 1, targets: [0, 1, 2, 3, 6, 7, 10]}, // Book ID, Title, Actions
+            { responsivePriority: 2, targets: [4, 5, 8, 9] } 
         ],
 
         drawCallback: function () {

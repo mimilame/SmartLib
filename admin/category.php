@@ -114,7 +114,7 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 
-<div class="container-fluid px-4">
+<div class="py-4">
     <div class="d-flex justify-content-between align-items-center my-4">
         <h1 class="">Category Management</h1>
     </div>
@@ -128,7 +128,8 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Category Disabled',
                     text: 'The category has been successfully disabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'enable'): ?>
                 Swal.fire({
@@ -136,7 +137,8 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Category Enabled',
                     text: 'The category has been successfully enabled.',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'add'): ?>
                 Swal.fire({
@@ -144,7 +146,8 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Category Added',
                     text: 'The category was added successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php elseif (isset($_GET["msg"]) && $_GET["msg"] == 'edit'): ?>
                 Swal.fire({
@@ -152,7 +155,8 @@ $categories = $statement->fetchAll(PDO::FETCH_ASSOC);
                     title: 'Category Updated',
                     text: 'The category was updated successfully!',
                     confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    timer: 2000
                 });
             <?php endif; ?>
 
