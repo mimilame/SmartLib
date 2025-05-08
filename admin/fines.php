@@ -60,7 +60,7 @@ function check_and_create_overdue_fines($connect) {
             ib.book_id,
             ib.expected_return_date,
             DATEDIFF(CURRENT_DATE, ib.expected_return_date) AS days_late,
-            (SELECT library_one_day_fine FROM lms_setting LIMIT 1) AS library_one_day_fine
+            (SELECT fine_rate_per_day FROM lms_setting LIMIT 1) AS fine_rate_per_day
         FROM lms_issue_book AS ib
         LEFT JOIN lms_fines AS f ON ib.issue_book_id = f.issue_book_id
         WHERE 
@@ -77,7 +77,7 @@ function check_and_create_overdue_fines($connect) {
     
     foreach ($overdue_books as $book) {
         // Calculate fine amount based on days late and daily rate
-        $fine_amount = $book['days_late'] * $book['library_one_day_fine'];
+        $fine_amount = $book['days_late'] * $book['fine_rate_per_day'];
         
         // Insert new fine record
         $insert_query = "
@@ -114,7 +114,7 @@ function check_and_create_overdue_fines($connect) {
         JOIN lms_issue_book AS ib ON f.issue_book_id = ib.issue_book_id
         JOIN lms_setting AS s ON 1=1
         SET 
-            f.fines_amount = DATEDIFF(CURRENT_DATE, ib.expected_return_date) * s.library_one_day_fine,
+            f.fines_amount = DATEDIFF(CURRENT_DATE, ib.expected_return_date) * s.fine_rate_per_day,
             f.fines_updated_on = NOW()
         WHERE 
             ib.issue_book_status = 'Overdue'

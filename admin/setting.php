@@ -32,13 +32,13 @@ if (isset($_POST['edit_setting'])) {
         ':library_address'                => $_POST['library_address'],
         ':library_contact_number'         => $_POST['library_contact_number'],
         ':library_email_address'          => $_POST['library_email_address'],
-        ':library_open_hours'             => $library_hours_json,
-        ':library_total_book_issue_day'   => $_POST['library_total_book_issue_day'],
-        ':library_one_day_fine'           => $_POST['library_one_day_fine'],
-        ':library_max_fine_per_book'      => $_POST['library_max_fine_per_book'], // New field for max fine cap
+        ':library_hours'                  => $library_hours_json,
+        ':loan_days'                      => $_POST['loan_days'] ?? 0,
+        ':fine_rate_per_day'              => $_POST['fine_rate_per_day'] ?? 0,
+        ':max_fine_per_book'      => $_POST['max_fine_per_book'] ?? 0, // New field for max fine cap
         ':library_currency'               => $_POST['library_currency'],
         ':library_timezone'               => $_POST['library_timezone'],
-        ':library_issue_total_book_per_user' => $_POST['library_issue_total_book_per_user']
+        ':max_books_per_user'     => $_POST['max_books_per_user'] ?? 0
     );
     
     $query = "
@@ -47,13 +47,13 @@ if (isset($_POST['edit_setting'])) {
         library_address = :library_address, 
         library_contact_number = :library_contact_number, 
         library_email_address = :library_email_address, 
-        library_open_hours = :library_open_hours, 
-        library_total_book_issue_day = :library_total_book_issue_day, 
-        library_one_day_fine = :library_one_day_fine, 
-        library_max_fine_per_book = :library_max_fine_per_book, 
+        library_hours = :library_hours, 
+        loan_days = :loan_days, 
+        fine_rate_per_day = :fine_rate_per_day, 
+        max_fine_per_book = :max_fine_per_book, 
         library_currency = :library_currency, 
         library_timezone = :library_timezone, 
-        library_issue_total_book_per_user = :library_issue_total_book_per_user
+        max_books_per_user = :max_books_per_user
     ";
     $statement = $connect->prepare($query);
     $statement->execute($data);
@@ -409,10 +409,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-md-6 mb-4">
-                                                    <label for="library_total_book_issue_day" class="form-label fw-medium">Book Return Day Limit</label>
+                                                    <label for="loan_days" class="form-label fw-medium">Book Return Day Limit</label>
                                                     <div class="input-group">
                                                         <span class="input-group-text"><i class="fas fa-calendar-day text-primary"></i></span>
-                                                        <input type="number" name="library_total_book_issue_day" id="library_total_book_issue_day" class="form-control" value="<?= htmlspecialchars($settings['library_total_book_issue_day'] ?? '7') ?>" min="1" required />
+                                                        <input type="number" name="loan_days" id="loan_days" class="form-control" value="<?= htmlspecialchars($settings['loan_days'] ?? '7') ?>" min="1" required />
                                                         <span class="input-group-text">days</span>
                                                         <div class="invalid-feedback">Please specify a valid number of days.</div>
                                                     </div>
@@ -420,10 +420,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                                 </div>
                                                 
                                                 <div class="col-md-6 mb-4">
-                                                    <label for="library_one_day_fine" class="form-label fw-medium">Late Return Fine (Per Day)</label>
+                                                    <label for="fine_rate_per_day" class="form-label fw-medium">Late Return Fine (Per Day)</label>
                                                     <div class="input-group">
                                                         <span class="input-group-text"><i class="fas fa-money-bill-wave text-primary"></i></span>
-                                                        <input type="number" name="library_one_day_fine" id="library_one_day_fine" class="form-control" value="<?= htmlspecialchars($settings['library_one_day_fine'] ?? '0') ?>" step="0.01" min="0" required />
+                                                        <input type="number" name="fine_rate_per_day" id="fine_rate_per_day" class="form-control" value="<?= htmlspecialchars($settings['fine_rate_per_day'] ?? '0') ?>" step="0.01" min="0" required />
                                                         <div class="invalid-feedback">Please specify a valid fine amount.</div>
                                                     </div>
                                                     <div class="form-text">Amount to charge per day for overdue books</div>
@@ -455,21 +455,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                             </div>
                                             
                                             <div class="mb-3">
-                                                <label for="library_issue_total_book_per_user" class="form-label fw-medium">Book Issue Limit (Per User)</label>
+                                                <label for="max_books_per_user" class="form-label fw-medium">Book Issue Limit (Per User)</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="fas fa-user-tag text-primary"></i></span>
-                                                    <input type="number" name="library_issue_total_book_per_user" id="library_issue_total_book_per_user" class="form-control" value="<?= htmlspecialchars($settings['library_issue_total_book_per_user'] ?? '3') ?>" min="1" required />
+                                                    <input type="number" name="max_books_per_user" id="max_books_per_user" class="form-control" value="<?= htmlspecialchars($settings['max_books_per_user'] ?? '3') ?>" min="1" required />
                                                     <span class="input-group-text">books</span>
                                                     <div class="invalid-feedback">Please specify a valid number of books.</div>
                                                 </div>
                                                 <div class="form-text">Maximum number of books a user can borrow at once</div>
                                             </div>
                                             <div class="row mb-3">
-                                                <label for="library_max_fine_per_book" class="form-label fw-medium">Maximum Fine Per Book</label>
+                                                <label for="max_fine_per_book" class="form-label fw-medium">Maximum Fine Per Book</label>
                                                 <div class="input-group">
                                                     <span class="input-group-text"><i class="fas fa-money-bill-wave text-primary"></i></span>
-                                                    <input type="number" name="library_max_fine_per_book" id="library_max_fine_per_book" class="form-control" min="0" step="0.01" 
-                                                        value="<?= $settings['library_max_fine_per_book'] ?? '50.00' ?>">
+                                                    <input type="number" name="max_fine_per_book" id="max_fine_per_book" class="form-control" min="0" step="0.01" 
+                                                        value="<?= $settings['max_fine_per_book'] ?? '50.00' ?>">
                                                     <span class="input-group-text"><?= $settings['library_currency'] ?></span>
                                                 </div>
                                                 <div class="form-text">Maximum amount a user can be charged for a single overdue book.</div>
@@ -489,7 +489,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                         <div class="card-body">                              
                                             <div class="row mb-2">
                                                 <?php
-                                                $open_hours = json_decode($settings['library_open_hours'] ?? '{}', true);
+                                                $open_hours = json_decode($settings['library_hours'] ?? '{}', true);
                                                 $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
                                                 ?>
                                                 <div class="table-responsive">

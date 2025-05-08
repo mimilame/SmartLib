@@ -369,8 +369,16 @@ foreach ($combinedReviews as $review) {
                                     <td><?= htmlspecialchars($book['user_name']) ?></td>
                                     <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
                                     <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
-                                    <td><span class="badge bg-danger"><?= $daysOverdue ?> days</span></td>
-                                    <td>$<?= number_format($fine, 2) ?></td>
+                                    <td>
+                        <?php
+                            if ($daysOverdue > 0) {
+                                echo '<span style="color: red; font-weight: bold;">' . $daysOverdue . ' days</span>';
+                            } else {
+                                echo 'On time';
+                            }
+                        ?>
+                    </td>
+                                    <td>₱<?= number_format($fine, 2) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (count($overdueBooks) == 0): ?>
@@ -418,7 +426,7 @@ foreach ($combinedReviews as $review) {
                                     <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
                                     <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
                                     <td><?= isset($book['lost_date']) ? date('M d, Y', strtotime($book['lost_date'])) : 'N/A' ?></td>
-                                    <td>$<?= number_format($replacementCost, 2) ?></td>
+                                    <td>₱<?= number_format($replacementCost, 2) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                                 <?php if (count($lostBooks) == 0): ?>
@@ -469,7 +477,7 @@ foreach ($damagedBooks as $book):
                                     <td><?= htmlspecialchars($book['user_name']) ?></td>
                                     <td><?= $book['return_date'] ? date('M d, Y', strtotime($book['return_date'])) : 'N/A' ?></td>
                                     <td><?= isset($book['damage_description']) ? htmlspecialchars($book['damage_description']) : 'Unspecified damage' ?></td>
-                                    <td>$<?= number_format($repairCost, 2) ?></td>
+                                    <td>₱<?= number_format($repairCost, 2) ?></td>
                                     <td><?= isset($book['repair_status']) ? htmlspecialchars($book['repair_status']) : 'Pending' ?></td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -533,15 +541,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     document.getElementById('printOverdue').addEventListener('click', function() {
-        printTab('overdue', 'Overdue Books Report');
+        printElementTable('overdue', 'Overdue Books Report');
     });
     
     document.getElementById('printLost').addEventListener('click', function() {
-        printTab('lost', 'Lost Books Report');
+        printElementTable('lost', 'Lost Books Report');
     });
     
     document.getElementById('printDamaged').addEventListener('click', function() {
-        printTab('damaged', 'Damaged Books Report');
+        printElementTable('damaged', 'Damaged Books Report');
     });
     
     // Export functionality
@@ -575,28 +583,105 @@ function printTable(tableId, title) {
     
     printWindow.document.write(`
         <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${title}</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-            <style>
-                body { padding: 20px; }
-                h1 { text-align: center; margin-bottom: 20px; }
-                table { width: 100%; border-collapse: collapse; }
-                .print-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                .print-date { text-align: right; }
-            </style>
-        </head>
-        <body>
-            <div class="print-header">
-                <h1>${title}</h1>
-                <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
-            </div>
-            <div class="table-responsive">
-                ${table.outerHTML}
-            </div>
-        </body>
-        </html>
+<html>
+<head>
+    <title>${title}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.print-date {
+    text-align: right;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    position: fixed; /* Fixes it to the bottom of the page */
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: white; /* Optional: for visibility */
+    padding: 5px 0;
+}
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .header-text {
+            text-align: center;
+            flex-grow: 1;
+        }
+        .header-text h6 {
+            margin: 0;
+        }
+        .header-text h6:first-child {
+            font-weight: bold;
+        }
+        h4 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .inner-container {
+    max-width: 700px;
+    margin: 0 auto;
+    white-space: nowrap;
+}
+
+.university-name {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.campus-name {
+    font-size: 0.95rem;
+    font-weight: bold;
+}
+
+.logo-img {
+    width: 80px;
+    height: auto;
+}
+
+    </style>
+</head>
+<body>
+
+    <div class="header-container justify-content-center">
+    <div class="inner-container d-flex align-items-center gap-3 flex-nowrap">
+        <!-- Left logo -->
+        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
+
+        <!-- Center text -->
+        <div class="header-text text-center">
+            <div class="university-name">WESTERN MINDANAO STATE UNIVERSITY</div>
+            <div class="campus-name">Curuan Campus</div>
+        </div>
+
+        <!-- Right logo -->
+        <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
+    </div>
+</div>
+
+    <h4>${title}</h4>
+
+    <div class="table-responsive">
+        ${table.outerHTML}
+    </div>
+
+    <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
+</body>
+</html>
+
+
     `);
     
     printWindow.document.close();
@@ -604,53 +689,205 @@ function printTable(tableId, title) {
     setTimeout(() => { printWindow.print(); }, 500);
 }
 
-// Print a specific tab content
-function printTab(tabId, title) {
-    const tab = document.getElementById(tabId);
-    const tableInTab = tab.querySelector('table').cloneNode(true);
+// Print a specific tab content with table
+function printElementTable(elementId, title) {
+    const element = document.getElementById(elementId);
+    const table = element.querySelector('table').cloneNode(true);
     
-    printTable(tableInTab.id || 'reportTable', title);
+    const printWindow = window.open('', '_blank');
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+<html>
+<head>
+    <title>${title}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; }
+        h1 { text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        
+        /* Header styling for university and logos */
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .logo-img {
+            width: 80px;
+            height: auto;
+        }
+
+        .header-text {
+            text-align: center;
+        }
+
+        .header-text h6 {
+            margin: 0;
+        }
+
+        .header-text h6:first-child {
+            font-weight: bold;
+        }
+
+        /* Styling for generated date at the bottom-right */
+        .print-date {
+            text-align: right;
+            position: fixed;
+            right: 0;
+            bottom: 0;
+            font-size: 0.9rem;
+            width: auto;
+            padding: 5px 10px;
+            background-color: white; /* Optional: for visibility */
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with logos and university info -->
+    <div class="header-container">
+        <!-- Left logo -->
+        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
+
+        <!-- Center text -->
+        <div class="header-text">
+            <h6>WESTERN MINDANAO STATE UNIVERSITY</h6>
+            <h6>Curuan Campus</h6>
+        </div>
+
+        <!-- Right logo -->
+        <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
+    </div>
+
+    <h4>${title}</h4>
+
+    <div class="table-responsive">
+        ${table.outerHTML}
+    </div>
+
+    <!-- Generated date at the bottom-right -->
+    <div class="print-date">Generated: ${new Date().toLocaleString()}</div>
+</body>
+</html>
+
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 500);
 }
 
-// Export table to various formats
-function exportTable(tableId, filename, format) {
-    // In a real application, this would call server-side export functionality
-    // This is a placeholder that simulates the export process
-    alert(`Exporting ${tableId} to ${format} format as ${filename}.${format}`);
+// Export table to PDF
+function exportToPDF(tableId, filename) {
+    const table = document.getElementById(tableId);
     
-    // For actual implementation, you'd want to use libraries like jsPDF, SheetJS, etc.,
-    // or send an AJAX request to a server-side script that generates the file
+    html2pdf().from(table).set({
+        margin: 10,
+        filename: `${filename}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).save();
+}
+
+// Export table to Excel
+function exportToExcel(tableId, filename) {
+    const table = document.getElementById(tableId);
+    const wb = XLSX.utils.table_to_book(table, {sheet: "Sheet JS"});
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+}
+
+// Export table to CSV
+function exportToCSV(tableId, filename) {
+    const table = document.getElementById(tableId);
+    const csvContent = [];
+    
+    // Get headers
+    const headerRow = [];
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach(header => {
+        headerRow.push(header.textContent.trim());
+    });
+    csvContent.push(headerRow.join(','));
+    
+    // Get data rows
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const dataRow = [];
+        const cells = row.querySelectorAll('td');
+        cells.forEach(cell => {
+            // Replace commas with spaces to avoid CSV column issues
+            let cellText = cell.textContent.trim().replace(/,/g, ' ');
+            dataRow.push(cellText);
+        });
+        csvContent.push(dataRow.join(','));
+    });
+    
+    // Create and download CSV file
+    const csvString = csvContent.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Create a URL for the blob
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Combined export function
+function exportTable(tableId, filename, format) {
+    switch(format) {
+        case 'pdf':
+            exportToPDF(tableId, filename);
+            break;
+        case 'excel':
+            exportToExcel(tableId, filename);
+            break;
+        case 'csv':
+            exportToCSV(tableId, filename);
+            break;
+        default:
+            console.error('Unsupported export format');
+    }
 }
 
 // Filter table by status
 function filterTableByStatus(tableId, status) {
     const table = document.getElementById(tableId);
-    const rows = table.getElementsByTagName('tr');
+    const rows = table.querySelectorAll('tbody tr');
     
-    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip header
-        const statusCell = rows[i].cells[5]; // Assuming status is in the 6th column
+    rows.forEach(row => {
+        const statusCell = row.cells[5]; // Assuming status is in the 6th column (index 5)
         if (statusCell) {
             const rowStatus = statusCell.textContent.trim();
-            if (status === 'All' || rowStatus.includes(status)) {
-                rows[i].style.display = '';
+            if (status === 'All' || rowStatus === status) {
+                row.style.display = '';
             } else {
-                rows[i].style.display = 'none';
+                row.style.display = 'none';
             }
         }
-    }
+    });
 }
 
 // Filter table by date range
 function filterTableByDate(tableId, dateRange) {
     const table = document.getElementById(tableId);
-    const rows = table.getElementsByTagName('tr');
+    const rows = table.querySelectorAll('tbody tr');
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    for (let i = 1; i < rows.length; i++) { // Start from 1 to skip header
-        const dateCell = rows[i].cells[2]; // Assuming issue date is in the 3rd column
+    rows.forEach(row => {
+        const dateCell = row.cells[2]; // Assuming issue date is in the 3rd column (index 2)
         if (dateCell) {
             const rowDate = new Date(dateCell.textContent);
             let show = false;
@@ -670,14 +907,99 @@ function filterTableByDate(tableId, dateRange) {
                     break;
                 case 'Custom':
                     // Would open a date range picker in a real application
-                    alert('Custom date range picker would appear here');
-                    show = true;
-                    break;
+                    openDateRangePicker(tableId);
+                    return; // Exit early as we'll filter after date range is selected
             }
             
-            rows[i].style.display = show ? '' : 'none';
+            row.style.display = show ? '' : 'none';
         }
+    });
+}
+
+// Open date range picker
+function openDateRangePicker(tableId) {
+    // Check if date picker modal exists, create if not
+    let datePickerModal = document.getElementById('dateRangePickerModal');
+    
+    if (!datePickerModal) {
+        // Create modal element
+        datePickerModal = document.createElement('div');
+        datePickerModal.id = 'dateRangePickerModal';
+        datePickerModal.className = 'modal fade';
+        datePickerModal.setAttribute('tabindex', '-1');
+        datePickerModal.setAttribute('aria-labelledby', 'dateRangePickerModalLabel');
+        datePickerModal.setAttribute('aria-hidden', 'true');
+        
+        datePickerModal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="dateRangePickerModalLabel">Select Date Range</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="startDate" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="startDate">
+                        </div>
+                        <div class="mb-3">
+                            <label for="endDate" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="endDate">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="applyDateFilter">Apply</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(datePickerModal);
+        
+        // Add event listener for Apply button
+        document.getElementById('applyDateFilter').addEventListener('click', function() {
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            endDate.setHours(23, 59, 59); // Set to end of day
+            
+            filterTableByDateRange(tableId, startDate, endDate);
+            
+            // Close modal using Bootstrap's API
+            const modal = bootstrap.Modal.getInstance(datePickerModal);
+            modal.hide();
+        });
     }
+    
+    // Set default dates
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    document.getElementById('startDate').valueAsDate = thirtyDaysAgo;
+    document.getElementById('endDate').valueAsDate = today;
+    
+    // Open modal using Bootstrap's API
+    const modal = new bootstrap.Modal(datePickerModal);
+    modal.show();
+}
+
+// Filter table by custom date range
+function filterTableByDateRange(tableId, startDate, endDate) {
+    const table = document.getElementById(tableId);
+    const rows = table.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const dateCell = row.cells[2]; // Assuming issue date is in the 3rd column (index 2)
+        if (dateCell) {
+            const rowDate = new Date(dateCell.textContent);
+            const show = rowDate >= startDate && rowDate <= endDate;
+            row.style.display = show ? '' : 'none';
+        }
+    });
+    
+    // Update dropdown to show Custom
+    document.getElementById('dateFilter').value = 'Custom';
 }
 </script>
             
