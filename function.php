@@ -3,7 +3,25 @@
 
 function base_url()
 {
-	return 'http://localhost/SmartLib/';
+    // Get protocol (http vs https)
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+    
+    // Get host name (domain/IP)
+    $host = $_SERVER['HTTP_HOST'];
+    
+    // Get base directory by extracting from script path
+    $base_dir = str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
+    
+    // Extract the project folder name from path
+    $path_parts = explode('/', trim($base_dir, '/'));
+    $project_folder = !empty($path_parts[0]) ? $path_parts[0] : '';
+    
+    // Construct complete base URL
+    if (!empty($project_folder)) {
+        return $protocol . $host . '/' . $project_folder . '/';
+    } else {
+        return $protocol . $host . '/';
+    }
 }
 
 function startUserSession($user_unique_id, $user_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
