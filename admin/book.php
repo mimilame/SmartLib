@@ -948,7 +948,7 @@
 
 	<!-- Book List -->
 
-    <div class="card shadow-sm border-0">
+    <div class="card shadow-sm border-0  mb-4">
 			<div class="card-header bg-white py-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-table me-2"></i>Book List</h5>                      

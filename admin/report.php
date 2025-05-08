@@ -658,7 +658,7 @@ function printTable(tableId, title) {
     <div class="header-container justify-content-center">
     <div class="inner-container d-flex align-items-center gap-3 flex-nowrap">
         <!-- Left logo -->
-        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
+       <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
 
         <!-- Center text -->
         <div class="header-text text-center">
@@ -667,7 +667,7 @@ function printTable(tableId, title) {
         </div>
 
         <!-- Right logo -->
-        <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
+        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
     </div>
 </div>
 
@@ -750,7 +750,7 @@ function printElementTable(elementId, title) {
     <!-- Header with logos and university info -->
     <div class="header-container">
         <!-- Left logo -->
-        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
+        <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
 
         <!-- Center text -->
         <div class="header-text">
@@ -759,7 +759,7 @@ function printElementTable(elementId, title) {
         </div>
 
         <!-- Right logo -->
-        <img src="../asset/img/wmsu.png" alt="WMSU Logo" class="logo-img">
+        <img src="../asset/img/curuan.png" alt="Curuan Campus Logo" class="logo-img">
     </div>
 
     <h4>${title}</h4>

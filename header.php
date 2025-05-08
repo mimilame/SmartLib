@@ -238,7 +238,7 @@
                 <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'return_book.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/return_book.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                 data-bs-title="Return Book">
                     <i class="fas fa-book-reader me-2"></i>
-                    <span class="nav-text">Return Book</span>
+                    <span class="nav-text">Return/Lost Book</span>
                 </a>
                 <?php if ($role_id == 1): ?>
                     <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'librarian.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/librarian.php" data-bs-toggle="tooltip"  data-bs-placement="right" 

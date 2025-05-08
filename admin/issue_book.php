@@ -295,8 +295,15 @@
             $statement->execute([':book_id' => $book_id]);
         }
 
-        header('location:issue_book.php?msg=edit');
+        if ($issue_book_status === 'Returned') {
+            header('location:return_book.php?tab=returned&msg=edit');
+        } elseif ($issue_book_status === 'Lost') {
+            header('location:return_book.php?tab=lost&msg=edit');
+        } else {
+            header('location:issue_book.php?msg=edit');
+        }
         exit;
+        
     }
 
     // Fetch all issued books with user and book details - EXCLUDE RETURNED BOOKS
