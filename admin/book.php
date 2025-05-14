@@ -948,95 +948,127 @@
 
 	<!-- Book List -->
 
-    <div class="card shadow-sm border-0  mb-4">
-			<div class="card-header bg-white py-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Book List</h5>                      
-                    <?php if (!isset($_GET['action'])): ?>            
-                        <a href="book.php?action=add" class="btn btn-sm btn-success">
-                            <i class="fas fa-plus-circle me-2"></i>Add New Book
-                        </a>
-                    <?php endif; ?>
-                </div>
-
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="dataTable" class="display nowrap" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>Book ID</th>
-                                <th>Book Title</th>
-                                <th>Author</th>
-                                <th>Category</th>
-                                <th>Location Rack</th>
-                                <th>ISBN Number</th>
-                                <th>No of Copy</th>
-                                <th>Status</th>
-                                <th>Added On</th>
-                                <th>Updated On</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($books)): ?>
-                                <?php foreach ($books as $row): ?>
-                                    <tr>
-                                        <td><?= $row['book_id'] ?></td>
-                                        <td><?= htmlspecialchars($row['book_name']) ?></td>
-                                        <td><?= htmlspecialchars($row['authors']) ?></td>
-                                        <td><?= htmlspecialchars($row['category_name']) ?></td>
-                                        <td><?= htmlspecialchars($row['book_location_rack']) ?></td>
-                                        <td><?= htmlspecialchars($row['book_isbn_number']) ?></td>
-                                        <td><?= htmlspecialchars($row['book_no_of_copy']) ?></td>
-
-                                        <td>
-                                        <?= ($row['book_status'] === 'Enable') 
-                                        ? '<span class="badge bg-success">Active</span>' 
-                                        : '<span class="badge bg-danger">Disabled</span>' ?>
-                                        </td>
-
-                                        <td><?= date('M d, Y H:i:s', strtotime($row['book_added_on'])) ?></td>
-                                        <td><?= date('M d, Y H:i:s', strtotime($row['book_updated_on'])) ?></td>
-
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm mb-1">
-                                                    <i class="fa fa-eye"></i>
-                                                </a>
-                                                <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm mb-1">
-                                                    <i class="fa fa-edit"></i>
-                                                </a>
-                                                <?php if ($row['book_status'] === 'Enable'): ?>
-                                                    <button type="button" class="btn btn-danger btn-sm delete-btn mb-1" 
-                                                        data-id="<?= $row['book_id'] ?>" 
-                                                        data-status="<?= $row['book_status'] ?>" 
-                                                        title="Disable">
-                                                        <i class="fa fa-ban"></i>
-                                                    </button>
-                                                <?php else: ?>
-                                                    <button type="button" class="btn btn-success btn-sm delete-btn mb-1" 
-                                                        data-id="<?= $row['book_id'] ?>" 
-                                                        data-status="<?= $row['book_status'] ?>" 
-                                                        title="Enable">
-                                                        <i class="fa fa-check"></i>
-                                                    </button>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="11" class="text-center">No books found!</td></tr>
-                            <?php endif; ?>
-
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+   <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>Book List</h5>                      
+            <?php if (!isset($_GET['action'])): ?>            
+                <a href="book.php?action=add" class="btn btn-sm btn-success">
+                    <i class="fas fa-plus-circle me-2"></i>Add New Book
+                </a>
+            <?php endif; ?>
         </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="dataTable" class="display nowrap" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Book ID</th>
+                        <th>Book Title</th>
+                        <th>Author</th>
+                        <th>Category</th>
+                        <th>Location Rack</th>
+                        <th>ISBN Number</th>
+                        <th>No of Copy</th>
+                        <th>Status</th>
+                        <th>Added On</th>
+                        <th>Updated On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($books)): ?>
+                        <?php foreach ($books as $row): ?>
+                            <tr>
+                                <td><?= $row['book_id'] ?></td>
+                                <td>
+                                    <!-- Truncate long book titles and add tooltip with full title -->
+                                    <span class="d-inline-block text-truncate" style="max-width: 150px;" 
+                                          data-bs-toggle="tooltip" title="<?= htmlspecialchars($row['book_name']) ?>">
+                                        <?= htmlspecialchars($row['book_name']) ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <!-- Also truncate author names if needed -->
+                                    <span class="d-inline-block text-truncate" style="max-width: 120px;" 
+                                          data-bs-toggle="tooltip" title="<?= htmlspecialchars($row['authors']) ?>">
+                                        <?= htmlspecialchars($row['authors']) ?>
+                                    </span>
+                                </td>
+                                <td><?= htmlspecialchars($row['category_name']) ?></td>
+                                <td><?= htmlspecialchars($row['book_location_rack']) ?></td>
+                                <td><?= htmlspecialchars($row['book_isbn_number']) ?></td>
+                                <td><?= htmlspecialchars($row['book_no_of_copy']) ?></td>
+                                <td>
+                                <?= ($row['book_status'] === 'Enable') 
+                                ? '<span class="badge bg-success">Active</span>' 
+                                : '<span class="badge bg-danger">Disabled</span>' ?>
+                                </td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['book_added_on'])) ?></td>
+                                <td><?= date('M d, Y H:i:s', strtotime($row['book_updated_on'])) ?></td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="book.php?action=view&code=<?= $row['book_id'] ?>" class="btn btn-info btn-sm mb-1">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a href="book.php?action=edit&code=<?= $row['book_id'] ?>" class="btn btn-primary btn-sm mb-1">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                        <?php if ($row['book_status'] === 'Enable'): ?>
+                                            <button type="button" class="btn btn-danger btn-sm delete-btn mb-1" 
+                                                data-id="<?= $row['book_id'] ?>" 
+                                                data-status="<?= $row['book_status'] ?>" 
+                                                title="Disable">
+                                                <i class="fa fa-ban"></i>
+                                            </button>
+                                        <?php else: ?>
+                                            <button type="button" class="btn btn-success btn-sm delete-btn mb-1" 
+                                                data-id="<?= $row['book_id'] ?>" 
+                                                data-status="<?= $row['book_status'] ?>" 
+                                                title="Enable">
+                                                <i class="fa fa-check"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr><td colspan="11" class="text-center">No books found!</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-    <?php endif; ?>
+<!-- Script to initialize tooltips -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            boundary: document.body // This helps with tooltip positioning in scrollable areas
+        });
+    });
+    
+    // Add tooltip refresh on DataTables draw event for pagination/filtering
+    if ($.fn.DataTable.isDataTable('#dataTable')) {
+        $('#dataTable').on('draw.dt', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    boundary: document.body
+                });
+            });
+        });
+    }
+});
+</script>
+
+<?php endif; ?>
 
 </main>
 
