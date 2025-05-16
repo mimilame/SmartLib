@@ -103,17 +103,18 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
         ";
     
         $params = [
-            ':user_id' => $user_id,
-            ':book_id' => $book_id,
-            ':issue_date' => $issue_date,
-            ':expected_return_date' => $expected_return_date,
-            ':return_date' => $final_return_date,
-            ':issue_book_status' => $issue_book_status,
-            ':book_condition' => $book_condition,
-            'remarks' => $remarks,
-            ':issue_updated_on' => $date_now,
-            ':issue_book_id' => $issue_book_id
-        ];
+    ':user_id' => $user_id,
+    ':book_id' => $book_id,
+    ':issue_date' => $issue_date,
+    ':expected_return_date' => $expected_return_date,
+    ':return_date' => $final_return_date,
+    ':issue_book_status' => $issue_book_status,
+    ':book_condition' => $book_condition,
+    ':remarks' => $remarks, // Corrected here
+    ':issue_updated_on' => $date_now,
+    ':issue_book_id' => $issue_book_id
+];
+
     
         $statement = $connect->prepare($update_query);
         $statement->execute($params);
@@ -489,6 +490,10 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                         </div>
                     </div>
                     <div class="card-body">
+                        <form method="POST" action="return_book.php" class="needs-validation" novalidate>
+                            <input type="hidden" name="issue_book_id" value="<?= $issue['issue_book_id'] ?>">
+
+
                         <div class="row">
                             <!-- Book Details Section -->
                             <div class="col-md-4">
@@ -714,7 +719,7 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-gradient-info text-white py-3">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-eye me-2"></i>View Returned Book Details</h5>
+                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-eye me-2"></i>View Returned Book Details</h5>
                     <a href="return_book.php" class="btn btn-sm btn-light">
                         <i class="fas fa-arrow-left me-1"></i>Back to List
                     </a>
@@ -857,7 +862,7 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                         <label class="form-label">Search Value</label>
                         <div class="input-group">
                             <input type="text" name="search_value" class="form-control" placeholder="Enter search term..." value="<?= htmlspecialchars($search_value) ?>">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" name="edit_return_book" class="btn btn-primary">
                                 <i class="fas fa-search me-1"></i>Search
                             </button>
                             <a href="return_book.php?tab=<?= $current_tab ?>" class="btn btn-outline-secondary">
@@ -945,15 +950,15 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="return_book.php?code=<?= $book['issue_book_id'] ?>" class="btn btn-info btn-sm" title= "View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>" class="btn btn-primary btn-sm" title="Edit Return">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
+    <div class="btn-group btn-group-sm">
+        <a href="return_book.php?action=view&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-info btn-sm" title="View Details">
+            <i class="fas fa-eye"></i>
+        </a>
+        <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-primary btn-sm" title="Edit Return">
+            <i class="fas fa-edit"></i>
+        </a>
+    </div>
+</td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -1006,15 +1011,16 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="return_book.php?code=<?= $book['issue_book_id'] ?>" class="btn btn-info btn-sm" title= "View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>" class="btn btn-primary btn-sm" title="Edit Return">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                </div>
-                                            </td>
+    <div class="btn-group btn-group-sm">
+        <a href="lost_book.php?action=view&code=<?= $book['issue_book_id'] ?>&tab=lost" class="btn btn-info btn-sm" title="View Details">
+            <i class="fas fa-eye"></i>
+        </a>
+        <!-- Changed to a different action for lost books -->
+         <a href="lost_book.php?action=edit&code=<?= $book['issue_book_id'] ?>&tab=lost" class="btn btn-primary btn-sm" title="Edit Lost Book">
+            <i class="fas fa-edit"></i>
+        </a>
+    </div>
+</td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
