@@ -174,7 +174,7 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
         }
     
         // Check if the book is marked as lost
-        if ($book_condition === 'Lost') {
+        if ($issue_book_status === 'Lost') {
             // Don't add back to inventory if lost
             // You might want to add code here to charge a replacement fee
         } else {
@@ -342,7 +342,7 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
             FROM lms_issue_book AS ib
             LEFT JOIN lms_book AS b ON ib.book_id = b.book_id 
             LEFT JOIN lms_user AS u ON ib.user_id = u.user_id
-            WHERE ib.book_condition = 'Lost'
+            WHERE ib.issue_book_status = 'Lost'
         ";
 
         // Add search condition if provided
@@ -980,11 +980,10 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                                     <tr>
                                         <th>Issue ID</th>
                                         <th>Book Name</th>
-                                        <th>ISBN</th>
                                         <th>Borrowed By</th>
                                         <th>Issue Date</th>
                                         <th>Reported Date</th>
-                                        <th>Replacement Fine</th>
+                                        <th>Fine</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -993,14 +992,13 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                                         <tr>
                                             <td><?= $book['issue_book_id'] ?></td>
                                             <td><?= htmlspecialchars($book['book_name']) ?></td>
-                                            <td><?= htmlspecialchars($book['book_isbn_number']) ?></td>
                                             <td><?= htmlspecialchars($book['user_name']) ?></td>
                                             <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
-                                            <td><?= date('M d, Y', strtotime($book['return_date'])) ?></td>
+                                            <td><?= date('M d, Y') ?></td>
                                             <td>
                                                 <?php if (isset($fines[$book['issue_book_id']])): ?>
                                                     <span class="badge <?= $fines[$book['issue_book_id']]['status'] === 'Paid' ? 'bg-success' : 'bg-danger' ?>">
-                                                        $<?= number_format($fines[$book['issue_book_id']]['amount'], 2) ?>
+                                                        ₱<?= number_format($fines[$book['issue_book_id']]['amount'], 2) ?>
                                                         (<?= $fines[$book['issue_book_id']]['status'] ?>)
                                                     </span>
                                                 <?php else: ?>
@@ -1009,14 +1007,12 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
                                             </td>
                                             <td>
                                                 <div class="btn-group btn-group-sm">
-                                                    <a href="view_issue_book_details.php?code=<?= $book['issue_book_id'] ?>" class="btn btn-outline-primary" title="View Details">
+                                                    <a href="return_book.php?code=<?= $book['issue_book_id'] ?>" class="btn btn-info btn-sm" title= "View Details">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
-                                                    <?php if (!isset($fines[$book['issue_book_id']]) || $fines[$book['issue_book_id']]['status'] !== 'Paid'): ?>
-                                                    <button type="button" class="btn btn-outline-danger set-replacement-fee" data-issue-id="<?= $book['issue_book_id'] ?>" title="Set Replacement Fee">
-                                                        <i class="fas fa-dollar-sign"></i>
-                                                    </button>
-                                                    <?php endif; ?>
+                                                    <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>" class="btn btn-primary btn-sm" title="Edit Return">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
