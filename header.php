@@ -464,6 +464,7 @@
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
         const contentWrapper = document.querySelector('.content-wrapper');
+        
         // Add data-title attributes to all nav links (if not already added in PHP)
         document.querySelectorAll('#sidebar .nav-link').forEach(link => {
             if (!link.hasAttribute('data-title')) {
@@ -475,6 +476,7 @@
             // Add tooltip-nav class to all nav links
             link.classList.add('tooltip-nav');
         });
+        
         // Function to check viewport width and collapse sidebar if needed
         function checkWidth() {
             if (window.innerWidth < 992) {
@@ -490,6 +492,30 @@
         // Check on window resize
         window.addEventListener('resize', checkWidth);
         
+        // Load sidebar state from localStorage
+        function loadSidebarState() {
+            if (window.innerWidth >= 992) { // Only apply saved state on desktop
+                const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                
+                if (isCollapsed) {
+                    sidebar.classList.add('collapsed');
+                    contentWrapper.classList.add('expanded');
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    contentWrapper.classList.remove('expanded');
+                }
+            }
+        }
+        
+        // Save sidebar state to localStorage
+        function saveSidebarState() {
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
+        
+        // Load sidebar state on page load
+        loadSidebarState();
+        
         // Toggle sidebar on button click
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', function() {
@@ -500,6 +526,9 @@
                     // Desktop behavior - expand/collapse sidebar
                     sidebar.classList.toggle('collapsed');
                     contentWrapper.classList.toggle('expanded');
+                    
+                    // Save state after toggling
+                    saveSidebarState();
                 }
             });
         }

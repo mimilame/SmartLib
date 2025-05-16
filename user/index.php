@@ -33,9 +33,33 @@
                 <a href="author.php" class="btn btn-outline-light">Explore Authors</a>
             </div>
         </div>
-    </div>
+    </div> 
 </div>
-
+    <!-- Overdue Books & Fines Alert -->
+    <?php if (!empty($overdueBooks)): ?>
+        <div class="alert alert-danger mb-4 rounded-3 shadow-sm border-0">
+            <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-exclamation-triangle-fill fs-3 me-2"></i>
+                <h4 class="mb-0">Attention: You have overdue books</h4>
+            </div>
+            <p>Please return the following books as soon as possible to avoid additional fines:</p>
+            <ul class="mb-0">
+                <?php foreach ($overdueBooks as $book): ?>
+                <li class="mb-2">
+                    <strong><?php echo htmlspecialchars($book['book_name']); ?></strong> - 
+                    Due: <?php echo date('M d, Y', strtotime($book['expected_return_date'])); ?> 
+                    (<?php echo $book['days_overdue']; ?> days late)
+                    <?php if (isset($book['fines_amount']) && $book['fines_amount'] > 0): ?>
+                    <span class="badge bg-danger ms-2 rounded-pill"><?php echo get_currency_symbol($connect) . number_format($book['fines_amount'], 2); ?> fine</span>
+                    <?php endif; ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            <div class="mt-3">
+                <a href="my_fines.php" class="btn btn-danger rounded-pill px-4">View & Pay Fines</a>
+            </div>
+        </div>
+    <?php endif; ?>
     <!-- Quick Stats Cards - Modern Design -->
     <div class="row mb-4 g-3">
         <div class="col-md-3">
@@ -171,31 +195,7 @@
     </div>
     <?php endif; ?>
     
-    <!-- Overdue Books & Fines Alert -->
-    <?php if (!empty($overdueBooks)): ?>
-    <div class="alert alert-danger mb-4 rounded-3 shadow-sm border-0">
-        <div class="d-flex align-items-center mb-3">
-            <i class="bi bi-exclamation-triangle-fill fs-3 me-2"></i>
-            <h4 class="mb-0">Attention: You have overdue books</h4>
-        </div>
-        <p>Please return the following books as soon as possible to avoid additional fines:</p>
-        <ul class="mb-0">
-            <?php foreach ($overdueBooks as $book): ?>
-            <li class="mb-2">
-                <strong><?php echo htmlspecialchars($book['book_name']); ?></strong> - 
-                Due: <?php echo date('M d, Y', strtotime($book['expected_return_date'])); ?> 
-                (<?php echo $book['days_overdue']; ?> days late)
-                <?php if (isset($book['fines_amount']) && $book['fines_amount'] > 0): ?>
-                <span class="badge bg-danger ms-2 rounded-pill"><?php echo get_currency_symbol($connect) . number_format($book['fines_amount'], 2); ?> fine</span>
-                <?php endif; ?>
-            </li>
-            <?php endforeach; ?>
-        </ul>
-        <div class="mt-3">
-            <a href="my_fines.php" class="btn btn-danger rounded-pill px-4">View & Pay Fines</a>
-        </div>
-    </div>
-    <?php endif; ?>
+
     
     <!-- Two Column Layout: Reading Stats and Book Carousels -->
     <div class="row mb-4 g-4">

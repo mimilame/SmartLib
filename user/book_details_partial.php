@@ -89,16 +89,6 @@
                             </span>
                         </div>
                         
-                        <?php if ($is_available && isset($_SESSION['user_id'])): ?>
-                        <a href="issue_book.php?book_id=<?php echo $book_id; ?>" class="btn btn-primary w-100 mb-2">
-                            <i class="bi bi-journal-arrow-down"></i> Borrow This Book
-                        </a>
-                        <?php else: ?>
-                        <button class="btn btn-secondary w-100 mb-2" disabled>
-                            <i class="bi bi-lock"></i> Currently Unavailable
-                        </button>
-                        <?php endif; ?>
-                        
                         <button class="btn btn-outline-primary w-100" data-bs-dismiss="modal">
                             <i class="bi bi-arrow-left"></i> Back to Catalog
                         </button>

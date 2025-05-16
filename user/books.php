@@ -1,5 +1,5 @@
 <?php
-    // book.php - Modern book catalog/grid view with optimized functions
+    // books.php - Modern book catalog/grid view with optimized functions
     include '../database_connection.php';
     include '../function.php';
     include '../header.php';
@@ -50,7 +50,7 @@
                 <p class="lead">Discover our collection of books and resources</p>
                 <div class="row g-3 align-items-center mt-2">
                     <div class="col-12 col-md-6">
-                        <form action="book.php" method="GET" class="d-flex">
+                        <form action="books.php" method="GET" class="d-flex">
                             <div class="input-group">
                                 <input type="text" name="search" id="search-books" class="form-control form-control-lg" 
                                     placeholder="Search books by title, author, or ISBN..." 
@@ -164,7 +164,7 @@
     <div class="alert alert-info">
         <h4>Search Results for: "<?php echo htmlspecialchars($search_term); ?>"</h4>
         <p>Found <?php echo $total_books; ?> results</p>
-        <a href="book.php" class="btn btn-outline-primary">Clear Search</a>
+        <a href="books.php" class="btn btn-outline-primary">Clear Search</a>
     </div>
     <?php endif; ?>
 
@@ -172,10 +172,10 @@
     <div class="row mb-4">
         <div class="col-md-9">
             <div class="d-flex flex-wrap gap-2">
-                <a href="book.php<?php echo !empty($selected_sort) ? '?sort='.$selected_sort : ''; ?>" 
+                <a href="books.php<?php echo !empty($selected_sort) ? '?sort='.$selected_sort : ''; ?>" 
                    class="btn <?php echo empty($selected_category) ? 'btn-primary' : 'btn-outline-primary'; ?>">All Books</a>
                 <?php foreach ($all_categories as $category): ?>
-                    <a href="book.php?category=<?php echo $category['category_id']; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?>" 
+                    <a href="books.php?category=<?php echo $category['category_id']; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?>" 
                        class="btn <?php echo $selected_category == $category['category_id'] ? 'btn-primary' : 'btn-outline-primary'; ?>">
                         <?php echo htmlspecialchars($category['category_name']); ?>
                     </a>
@@ -183,7 +183,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <form id="sort-form" action="book.php" method="GET">
+            <form id="sort-form" action="books.php" method="GET">
                 <?php if (!empty($selected_category)): ?>
                     <input type="hidden" name="category" value="<?php echo $selected_category; ?>">
                 <?php endif; ?>
@@ -276,19 +276,19 @@
         <nav aria-label="Book pagination">
             <ul class="pagination">
                 <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="book.php?page=<?php echo $page - 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Previous">
+                    <a class="page-link" href="books.php?page=<?php echo $page - 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
-                        <a class="page-link" href="book.php?page=<?php echo $i; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>">
+                        <a class="page-link" href="books.php?page=<?php echo $i; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>">
                             <?php echo $i; ?>
                         </a>
                     </li>
                 <?php endfor; ?>
                 <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="book.php?page=<?php echo $page + 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Next">
+                    <a class="page-link" href="books.php?page=<?php echo $page + 1; ?><?php echo $selected_category ? '&category=' . $selected_category : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Next">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
@@ -340,7 +340,11 @@
                 .then(response => response.text())
                 .then(html => {
                     document.getElementById('book-detail-container').innerHTML = html;
+                    // Initialize any JS components inside the modal
+                    initializeModalComponents(bookId);
                     
+                    // Event listeners for related books and authors
+                    setupModalLinks();
                     // Initialize any JS components inside the modal
                     const reviewForm = document.getElementById('review-form');
                     if (reviewForm) {
@@ -451,6 +455,328 @@
                     });
                 }
             });
+        }
+        // Initialize modal components
+        function initializeModalComponents(bookId) {
+            // Initialize review form if it exists
+            const reviewForm = document.getElementById('review-form');
+            if (reviewForm) {
+                reviewForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitReview(this, bookId);
+                });
+            }
+        }
+        // Submit review via AJAX
+        function submitReview(form, bookId) {
+            const formData = new FormData(form);
+            
+            fetch('submit_review.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Review submitted successfully!');
+                    // Refresh reviews section
+                    loadBookDetails(bookId);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting review:', error);
+                alert('Error submitting review. Please try again.');
+            });
+        }
+
+        // Set up event listeners for modal links
+        function setupModalLinks() {
+            // Book details link handler
+            document.querySelectorAll('.book-details-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const bookId = this.getAttribute('data-book-id');
+                    
+                    // Load the new book details
+                    loadBookDetails(bookId);
+                    
+                    // Update URL without reloading
+                    updateUrlWithBookId(bookId);
+                });
+            });
+            
+            // Author details link handler
+            document.querySelectorAll('.author-details-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const authorId = this.getAttribute('data-author-id');
+                    // Redirect to author page
+                    window.location.href = 'author.php?author_id=' + authorId;
+                });
+            });
+        }
+
+        // Update URL with book ID
+        function updateUrlWithBookId(bookId) {
+            const currentUrl = window.location.href;
+            let newUrl;
+            
+            if (currentUrl.includes('books.php')) {
+                // If we're already on books.php, just update the book_id parameter
+                newUrl = updateUrlParameter(currentUrl, 'book_id', bookId);
+            } else {
+                // Otherwise, create a new URL to books.php
+                newUrl = 'books.php?book_id=' + bookId;
+            }
+            
+            // Update browser history without reloading
+            window.history.pushState({bookId: bookId}, '', newUrl);
+        }
+
+        // Helper function to update URL parameters
+        function updateUrlParameter(url, param, value) {
+            const regex = new RegExp('([?&])' + param + '=.*?(&|$)', 'i');
+            const separator = url.indexOf('?') !== -1 ? '&' : '?';
+            
+            if (url.match(regex)) {
+                return url.replace(regex, '$1' + param + '=' + value + '$2');
+            } else {
+                return url + separator + param + '=' + value;
+            }
+        }
+
+
+    });
+    // Initialize book details functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if we have a book modal
+        const bookModal = document.getElementById('bookModal');
+        if (!bookModal) return;
+        
+        // Check if we have a book_id in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('book_id');
+        
+        if (bookId) {
+            // Initialize and open the modal with the specified book
+            const bsModal = new bootstrap.Modal(bookModal);
+            loadBookDetails(bookId);
+            bsModal.show();
+        }
+        
+        // Add global event listener for all book detail links with class 'open-modal'
+        document.querySelectorAll('.open-modal').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const bookId = this.getAttribute('data-book-id');
+                if (bookId) {
+                    const bsModal = new bootstrap.Modal(bookModal);
+                    loadBookDetails(bookId);
+                    bsModal.show();
+                    
+                    // Update URL without reloading
+                    updateUrlWithBookId(bookId);
+                }
+            });
+        });
+        
+        // Handle modal close event
+        bookModal.addEventListener('hidden.bs.modal', function() {
+            // When modal is closed, remove book_id from URL if we're on books.php
+            if (window.location.pathname.includes('books.php')) {
+                const newUrl = window.location.href.split('?')[0];
+                window.history.pushState({}, '', newUrl);
+            }
+        });
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.bookId) {
+                // Re-open the modal with the previous book
+                const bsModal = new bootstrap.Modal(bookModal);
+                loadBookDetails(event.state.bookId);
+                bsModal.show();
+            } else {
+                // Close the modal if navigating back to a page without a book_id
+                const bsModal = bootstrap.Modal.getInstance(bookModal);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            }
+        });
+    });
+</script>
+<!-- Book Detail Modal -->
+<div class="modal fade" id="bookModal" tabindex="-1" aria-labelledby="bookModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="book-detail-container">
+                <!-- Book details will be loaded here -->
+                <div class="d-flex justify-content-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to load book details into the modal
+    function loadBookDetails(bookId) {
+        // Show loading spinner
+        document.getElementById('book-detail-container').innerHTML = `
+            <div class="d-flex justify-content-center p-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        // Load book details via AJAX
+        fetch(`book_details_partial.php?book_id=${bookId}`)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('book-detail-container').innerHTML = html;
+                
+                // Initialize any JS components inside the modal
+                const reviewForm = document.getElementById('review-form');
+                if (reviewForm) {
+                    reviewForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        // Handle form submission via AJAX
+                        const formData = new FormData(this);
+                        
+                        fetch('submit_review.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Review submitted successfully!');
+                                // Refresh reviews section
+                                loadBookDetails(bookId);
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error submitting review:', error);
+                            alert('Error submitting review. Please try again.');
+                        });
+                    });
+                }
+                
+                // Set up event listeners for related books and authors
+                setupBookAndAuthorLinks();
+            })
+            .catch(error => {
+                console.error('Error loading book details:', error);
+                document.getElementById('book-detail-container').innerHTML = `
+                    <div class="alert alert-danger m-3">
+                        Error loading book details. Please try again.
+                    </div>
+                `;
+            });
+    }
+
+    // Function to set up event listeners for book and author links inside the loaded content
+    function setupBookAndAuthorLinks() {
+        // Book details link handler
+        const bookLinks = document.querySelectorAll('.book-details-link');
+        bookLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const bookId = this.getAttribute('data-book-id');
+                loadBookDetails(bookId);
+                
+                // Update URL without reloading the page
+                const newUrl = updateUrlParameter(window.location.href, 'book_id', bookId);
+                window.history.pushState({bookId: bookId}, '', newUrl);
+            });
+        });
+        
+        // Author details link handler
+        const authorLinks = document.querySelectorAll('.author-details-link');
+        authorLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const authorId = this.getAttribute('data-author-id');
+                // You can either load author details in the modal or redirect
+                window.location.href = 'author.php?author_id=' + authorId;
+            });
+        });
+    }
+
+    // Helper function to update URL parameters
+    function updateUrlParameter(url, param, value) {
+        const regex = new RegExp('([?&])' + param + '=.*?(&|$)', 'i');
+        const separator = url.indexOf('?') !== -1 ? '&' : '?';
+        
+        if (url.match(regex)) {
+            return url.replace(regex, '$1' + param + '=' + value + '$2');
+        } else {
+            return url + separator + param + '=' + value;
+        }
+    }
+
+    // Check if we have a book_id in the URL and open modal if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookId = urlParams.get('book_id');
+        
+        if (bookId) {
+            // Initialize and open the modal with the specified book
+            const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+            loadBookDetails(bookId);
+            bookModal.show();
+        }
+        
+        // Add global event listener for all book detail links on the page
+        document.querySelectorAll('.book-details-link, [data-book-id]').forEach(element => {
+            element.addEventListener('click', function(e) {
+                if (this.tagName === 'A' && !this.classList.contains('open-modal')) {
+                    // Don't prevent default for regular links without the open-modal class
+                    return;
+                }
+                
+                e.preventDefault();
+                const bookId = this.getAttribute('data-book-id');
+                if (bookId) {
+                    const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+                    loadBookDetails(bookId);
+                    bookModal.show();
+                    
+                    // Update URL without reloading the page
+                    const newUrl = updateUrlParameter(window.location.href, 'book_id', bookId);
+                    window.history.pushState({bookId: bookId}, '', newUrl);
+                }
+            });
+        });
+    });
+
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.bookId) {
+            // Re-open the modal with the previous book
+            const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+            loadBookDetails(event.state.bookId);
+            bookModal.show();
+        } else {
+            // Close the modal if navigating back to a page without a book_id
+            const bookModalEl = document.getElementById('bookModal');
+            const bookModal = bootstrap.Modal.getInstance(bookModalEl);
+            if (bookModal) {
+                bookModal.hide();
+            }
         }
     });
 </script>

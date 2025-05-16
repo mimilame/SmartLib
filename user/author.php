@@ -4,37 +4,40 @@
     include '../function.php';
     include '../header.php';
     authenticate_user();
-
-    // Get all authors
-    $all_authors = getAllAuthors($connect);
-    $base_url = base_url();    
-    // Handle search
-    $search_term = isset($_GET['search']) ? $_GET['search'] : '';
-
+    
     // Get pagination parameters
-    $limit = 20; // Number of authors per page
+    $limit = 30; // Number of authors per page
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
     $offset = ($page - 1) * $limit;
+
+    // Handle search
+    $search_term = isset($_GET['search']) ? $_GET['search'] : '';
 
     // Handle sorting
     $sort_options = ['name-asc', 'name-desc', 'popular', 'books-count'];
     $selected_sort = isset($_GET['sort']) && in_array($_GET['sort'], $sort_options) ? $_GET['sort'] : 'name-asc';
 
+    // Handle letter filter
+    $letter_filter = isset($_GET['filter']) ? $_GET['filter'] : null;
+
     // Get authors based on filters
     if (!empty($search_term)) {
-        $authors = searchAuthors($connect, $search_term, $limit, $offset);
-        $total_authors = count(searchAuthors($connect, $search_term, 1000000, 0)); // For pagination
+        $authors = searchAuthors($connect, $search_term, $limit, $offset, $selected_sort);
+        $total_authors = countSearchAuthors($connect, $search_term);
+    } elseif ($letter_filter !== null) {
+        $authors = getFilteredAuthors($connect, $limit, $offset, $selected_sort, $letter_filter);
+        $total_authors = countFilteredAuthors($connect, $letter_filter);
     } else {
-        $authors = getSortedAuthors($connect, $limit, $offset, $selected_sort);
+        $authors = getAllSortedAuthors($connect, $limit, $offset, $selected_sort);
         $total_authors = countTotalAuthors($connect);
     }
 
-    $authorImgPath = getAuthorImagePath($all_authors);
-    $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
     $total_pages = ceil($total_authors / $limit);
-
-    // Get featured authors
+    
+    // Featured authors section - Always load these regardless of filters
     $featured_authors = getTopAuthorsWithBooks($connect, 5);
+    
+    $base_url = base_url();
 ?>
     <!-- Hero Section - Consistent with book.php -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
@@ -45,7 +48,12 @@
                 <p class="lead">Explore the minds behind your favorite books</p>
                 <div class="row g-3 align-items-center mt-2">
                     <div class="col-12 col-md-6">
-                        <form action="author.php" method="GET" class="d-flex">
+                        <form action="author.php" method="GET" class="d-flex" id="author-search-form">
+                            <!-- Preserve any existing filter parameters -->
+                            <?php if(!empty($selected_sort) && $selected_sort != 'name-asc'): ?>
+                                <input type="hidden" name="sort" value="<?php echo htmlspecialchars($selected_sort); ?>">
+                            <?php endif; ?>
+                            
                             <div class="input-group">
                                 <input type="text" name="search" id="search-authors" class="form-control form-control-lg" 
                                     placeholder="Search authors by name..." 
@@ -63,7 +71,7 @@
     <div class="row mb-4">        
         <h2 class="mb-4">Featured Authors</h2>    
         <div class="row">            
-            <!-- Featured Authors Section with infinite carousel -->
+            <!-- Featured Authors Section with infinite carousel - Independent of filters -->
             <div class="col-md-8 mt-5">
                 <div class="featured-authors-carousel">            
                     <div class="authors-row">
@@ -72,6 +80,8 @@
                             <?php 
                             foreach ($featured_authors as $index => $author):
                                 $bookCount = count($author['books']);
+                                $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                             ?>
                             <div class="featured-author">
                                 <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
@@ -277,6 +287,7 @@
             </div>
         </div>
     </div>
+
     <!-- Search Results Header -->
     <?php if (!empty($search_term)): ?>
     <div class="alert alert-info">
@@ -286,41 +297,57 @@
     </div>
     <?php endif; ?>
 
-    <!-- Filters and Sorting - Similar to book.php -->
+    <!-- Filters and Sorting Controls -->
     <div class="row mb-4">
         <div class="col-md-9">
             <div class="d-flex flex-wrap gap-2">
                 <!-- Alphabetical Index -->
+                <a href="author.php<?php echo !empty($selected_sort) && $selected_sort != 'name-asc' ? '?sort='.$selected_sort : ''; ?>" 
+                   class="btn <?php echo !isset($_GET['filter']) ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                    All
+                </a>
                 <?php
                 $alphabet = range('A', 'Z');
                 foreach ($alphabet as $letter):
+                    $isActive = isset($_GET['filter']) && $_GET['filter'] == $letter;
+                    $sortParam = !empty($selected_sort) && $selected_sort != 'name-asc' ? '&sort='.$selected_sort : '';
                 ?>
-                <a href="author.php?filter=<?php echo $letter; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?>" 
-                   class="btn <?php echo isset($_GET['filter']) && $_GET['filter'] == $letter ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                <a href="author.php?filter=<?php echo $letter; ?><?php echo $sortParam; ?>" 
+                   class="btn <?php echo $isActive ? 'btn-primary' : 'btn-outline-primary'; ?>">
                     <?php echo $letter; ?>
                 </a>
                 <?php endforeach; ?>
             </div>
         </div>
         <div class="col-md-3">
-            <form id="sort-form" action="author.php" method="GET">
+            <form id="sort-form" action="author.php" method="GET" class="mb-3">
+                <!-- Preserve existing filter parameters -->
                 <?php if (isset($_GET['filter'])): ?>
-                    <input type="hidden" name="filter" value="<?php echo $_GET['filter']; ?>">
+                    <input type="hidden" name="filter" value="<?php echo htmlspecialchars($_GET['filter']); ?>">
                 <?php endif; ?>
                 <?php if (!empty($search_term)): ?>
                     <input type="hidden" name="search" value="<?php echo htmlspecialchars($search_term); ?>">
                 <?php endif; ?>
-                <select class="form-select" id="sort-authors" name="sort" onchange="document.getElementById('sort-form').submit();">
-                    <option value="name-asc" <?php echo $selected_sort == 'name-asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
-                    <option value="name-desc" <?php echo $selected_sort == 'name-desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
-                    <option value="popular" <?php echo $selected_sort == 'popular' ? 'selected' : ''; ?>>Most Popular</option>
-                    <option value="books-count" <?php echo $selected_sort == 'books-count' ? 'selected' : ''; ?>>Number of Books</option>
-                </select>
+                
+                <div class="input-group">
+                    <select class="form-select" id="sort-authors" name="sort" onchange="document.getElementById('sort-form').submit();">
+                        <option value="name-asc" <?php echo $selected_sort == 'name-asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
+                        <option value="name-desc" <?php echo $selected_sort == 'name-desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
+                        <option value="popular" <?php echo $selected_sort == 'popular' ? 'selected' : ''; ?>>Most Popular</option>
+                        <option value="books-count" <?php echo $selected_sort == 'books-count' ? 'selected' : ''; ?>>Number of Books</option>
+                    </select>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Authors Grid - Similar to book grid -->
+    <!-- Authors Grid - Filtered based on search/sort/filter -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-4"><?php echo !empty($search_term) ? 'Search Results' : (!empty($letter_filter) ? 'Authors Starting with "' . htmlspecialchars($letter_filter) . '"' : 'All Authors'); ?></h3>
+        </div>
+    </div>
+    
     <div class="d-flex flex-wrap justify-content-center gap-3" id="author-grid">
         <?php if (empty($authors)): ?>
             <div class="alert alert-info w-100 text-center">
@@ -359,25 +386,78 @@
         <?php endif; ?>
     </div>
     
-    <!-- Pagination - Same as book.php -->
+    <!-- Pagination with preserved filters -->
     <?php if ($total_pages > 1): ?>
     <div class="d-flex justify-content-center mt-5">
         <nav aria-label="Author pagination">
             <ul class="pagination">
                 <li class="page-item <?php echo ($page <= 1) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="author.php?page=<?php echo $page - 1; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Previous">
+                    <?php 
+                    $prev_params = "page=" . ($page - 1);
+                    if (isset($_GET['filter'])) $prev_params .= "&filter=" . htmlspecialchars($_GET['filter']);
+                    if (!empty($selected_sort) && $selected_sort != 'name-asc') $prev_params .= "&sort=" . htmlspecialchars($selected_sort);
+                    if (!empty($search_term)) $prev_params .= "&search=" . urlencode($search_term);
+                    ?>
+                    <a class="page-link" href="author.php?<?php echo $prev_params; ?>" aria-label="Previous">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
-                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                <?php 
+                // Show limited pagination numbers with ellipsis
+                $start_page = max(1, $page - 2);
+                $end_page = min($total_pages, $page + 2);
+                
+                if ($start_page > 1): ?>
+                    <li class="page-item">
+                        <a class="page-link" href="author.php?page=1<?php 
+                            if (isset($_GET['filter'])) echo "&filter=" . htmlspecialchars($_GET['filter']);
+                            if (!empty($selected_sort) && $selected_sort != 'name-asc') echo "&sort=" . htmlspecialchars($selected_sort);
+                            if (!empty($search_term)) echo "&search=" . urlencode($search_term);
+                        ?>">1</a>
+                    </li>
+                    <?php if ($start_page > 2): ?>
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    <?php endif; ?>
+                <?php endif; ?>
+                
+                <?php for ($i = $start_page; $i <= $end_page; $i++): 
+                    $page_params = "page=" . $i;
+                    if (isset($_GET['filter'])) $page_params .= "&filter=" . htmlspecialchars($_GET['filter']);
+                    if (!empty($selected_sort) && $selected_sort != 'name-asc') $page_params .= "&sort=" . htmlspecialchars($selected_sort);
+                    if (!empty($search_term)) $page_params .= "&search=" . urlencode($search_term);
+                ?>
                     <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
-                        <a class="page-link" href="author.php?page=<?php echo $i; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>">
+                        <a class="page-link" href="author.php?<?php echo $page_params; ?>">
                             <?php echo $i; ?>
                         </a>
                     </li>
                 <?php endfor; ?>
+                
+                <?php if ($end_page < $total_pages): ?>
+                    <?php if ($end_page < $total_pages - 1): ?>
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    <?php endif; ?>
+                    <li class="page-item">
+                        <a class="page-link" href="author.php?page=<?php echo $total_pages; ?><?php 
+                            if (isset($_GET['filter'])) echo "&filter=" . htmlspecialchars($_GET['filter']);
+                            if (!empty($selected_sort) && $selected_sort != 'name-asc') echo "&sort=" . htmlspecialchars($selected_sort);
+                            if (!empty($search_term)) echo "&search=" . urlencode($search_term);
+                        ?>"><?php echo $total_pages; ?></a>
+                    </li>
+                <?php endif; ?>
+                
                 <li class="page-item <?php echo ($page >= $total_pages) ? 'disabled' : ''; ?>">
-                    <a class="page-link" href="author.php?page=<?php echo $page + 1; ?><?php echo isset($_GET['filter']) ? '&filter=' . $_GET['filter'] : ''; ?><?php echo !empty($selected_sort) ? '&sort='.$selected_sort : ''; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" aria-label="Next">
+                    <?php 
+                    $next_params = "page=" . ($page + 1);
+                    if (isset($_GET['filter'])) $next_params .= "&filter=" . htmlspecialchars($_GET['filter']);
+                    if (!empty($selected_sort) && $selected_sort != 'name-asc') $next_params .= "&sort=" . htmlspecialchars($selected_sort);
+                    if (!empty($search_term)) $next_params .= "&search=" . urlencode($search_term);
+                    ?>
+                    <a class="page-link" href="author.php?<?php echo $next_params; ?>" aria-label="Next">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>

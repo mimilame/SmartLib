@@ -69,7 +69,7 @@ $books = $statement->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h2">My Books</h1>
-        <a href="book.php" class="btn btn-primary">Browse Library</a>
+        <a href="books.php" class="btn btn-primary">Browse Library</a>
     </div>
     
     <!-- Filter Tabs -->
@@ -217,19 +217,13 @@ $books = $statement->fetchAll(PDO::FETCH_ASSOC);
                             <?php endif; ?>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="book.php?book_id=<?php echo $book['book_id']; ?>" class="btn btn-sm btn-outline-secondary">
+                                    <a href="books.php?book_id=<?php echo $book['book_id']; ?>" class="btn btn-sm btn-outline-secondary open-modal" data-book-id="<?php echo $book['book_id'];?>">
                                         <i class="bi bi-info-circle"></i> Details
                                     </a>
                                     
-                                    <?php if ($status == 'Issue' && $book['days_remaining'] <= 5): ?>
-                                    <button class="btn btn-sm btn-outline-primary renew-book-btn" data-id="<?php echo $book['issue_book_id']; ?>">
-                                        <i class="bi bi-arrow-clockwise"></i> Renew
-                                    </button>
-                                    <?php endif; ?>
-                                    
                                     <?php if ($status == 'Overdue' && isset($book['fines_amount']) && $book['fines_amount'] > 0 && $book['fines_status'] == 'Unpaid'): ?>
                                     <a href="my_fines.php" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-cash"></i> Pay Fine
+                                        <i class="bi bi-cash"></i> See Fine
                                     </a>
                                     <?php endif; ?>
                                 </div>
@@ -243,124 +237,172 @@ $books = $statement->fetchAll(PDO::FETCH_ASSOC);
     </div>
     <?php endif; ?>
 
-<!-- Renew Book Modal -->
-<div class="modal fade" id="renewBookModal" tabindex="-1" aria-labelledby="renewBookModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="renewBookModalLabel">Renew Book</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to renew this book? This will extend your borrowing period by 14 days from today.</p>
-                <div id="renewSuccessMessage" class="alert alert-success d-none">
-                    Book successfully renewed! The new due date will be displayed after you close this dialog.
+    <!-- At the bottom of my_books.php, include the modal definition -->
+    <!-- Book Detail Modal -->
+    <div class="modal fade" id="bookModal" tabindex="-1" aria-labelledby="bookModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div id="renewErrorMessage" class="alert alert-danger d-none">
-                    There was an error renewing this book. Please try again later or contact the library.
+                <div class="modal-body p-0" id="book-detail-container">
+                    <!-- Book details will be loaded here -->
+                    <div class="d-flex justify-content-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmRenewBtn">Confirm Renewal</button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- JavaScript for Book Renewal -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize book renewal system
-    const renewButtons = document.querySelectorAll('.renew-book-btn');
-    const renewModal = new bootstrap.Modal(document.getElementById('renewBookModal'));
-    const confirmRenewBtn = document.getElementById('confirmRenewBtn');
-    let currentIssueBookId = null;
-    
-    // Add click listeners to all renew buttons
-    renewButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Store the issue book ID
-            currentIssueBookId = this.getAttribute('data-id');
-            // Show the modal
-            renewModal.show();
-        });
-    });
-    
-    // Add click listener to confirm button
-    confirmRenewBtn.addEventListener('click', function() {
-        // Disable button to prevent multiple clicks
-        confirmRenewBtn.disabled = true;
-        confirmRenewBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-        
-        // Reset message displays
-        document.getElementById('renewSuccessMessage').classList.add('d-none');
-        document.getElementById('renewErrorMessage').classList.add('d-none');
-        
-        // Send AJAX request to renew the book
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'renew_book.php', true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-            if (xhr.status === 200) {
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        // Show success message
-                        document.getElementById('renewSuccessMessage').classList.remove('d-none');
-                        
-                        // Set timeout to reload page after modal is closed
-                        setTimeout(function() {
-                            renewModal._element.addEventListener('hidden.bs.modal', function() {
-                                window.location.reload();
-                            }, { once: true });
-                            
-                            // Hide the confirm button and show close only
-                            confirmRenewBtn.style.display = 'none';
-                            document.querySelector('#renewBookModal .btn-secondary').textContent = 'Close';
-                        }, 1000);
-                    } else {
-                        // Show error message
-                        document.getElementById('renewErrorMessage').textContent = response.message || 'There was an error renewing this book.';
-                        document.getElementById('renewErrorMessage').classList.remove('d-none');
-                        
-                        // Reset button
-                        confirmRenewBtn.disabled = false;
-                        confirmRenewBtn.textContent = 'Confirm Renewal';
-                    }
-                } catch (e) {
-                    // Show error for invalid JSON
-                    document.getElementById('renewErrorMessage').textContent = 'Invalid response from server.';
-                    document.getElementById('renewErrorMessage').classList.remove('d-none');
+    <!-- Add JavaScript to handle the modal in my_books.php -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click event listeners to all book detail links with class 'open-modal'
+            document.querySelectorAll('.open-modal').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
                     
-                    // Reset button
-                    confirmRenewBtn.disabled = false;
-                    confirmRenewBtn.textContent = 'Confirm Renewal';
-                }
-            } else {
-                // Show error for non-200 status
-                document.getElementById('renewErrorMessage').textContent = 'Server error. Please try again later.';
-                document.getElementById('renewErrorMessage').classList.remove('d-none');
-                
-                // Reset button
-                confirmRenewBtn.disabled = false;
-                confirmRenewBtn.textContent = 'Confirm Renewal';
-            }
-        };
-        xhr.onerror = function() {
-            // Show error for network issues
-            document.getElementById('renewErrorMessage').textContent = 'Network error. Please check your connection.';
-            document.getElementById('renewErrorMessage').classList.remove('d-none');
+                    const bookId = this.getAttribute('data-book-id');
+                    const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+                    
+                    // Show loading spinner
+                    document.getElementById('book-detail-container').innerHTML = `
+                        <div class="d-flex justify-content-center p-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Load book details via AJAX
+                    fetch(`book_details_partial.php?book_id=${bookId}`)
+                        .then(response => response.text())
+                        .then(html => {
+                            document.getElementById('book-detail-container').innerHTML = html;
+                            
+                            // Update URL without reloading the page
+                            const newUrl = 'books.php?book_id=' + bookId;
+                            window.history.pushState({bookId: bookId}, '', newUrl);
+                            
+                            // Show the modal
+                            bookModal.show();
+                            
+                            // Add event listeners to links inside the modal content
+                            setupModalEventListeners(bookId);
+                        })
+                        .catch(error => {
+                            console.error('Error loading book details:', error);
+                            document.getElementById('book-detail-container').innerHTML = `
+                                <div class="alert alert-danger m-3">
+                                    Error loading book details. Please try again.
+                                </div>
+                            `;
+                            bookModal.show();
+                        });
+                });
+            });
             
-            // Reset button
-            confirmRenewBtn.disabled = false;
-            confirmRenewBtn.textContent = 'Confirm Renewal';
-        };
-        
-        // Send the request
-        xhr.send('issue_book_id=' + encodeURIComponent(currentIssueBookId) + '&action=renew');
-    });
-});
-</script>
+            // Function to set up event listeners inside the modal
+            function setupModalEventListeners(bookId) {
+                // Initialize any JS components inside the modal
+                const reviewForm = document.getElementById('review-form');
+                if (reviewForm) {
+                    reviewForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        // Handle form submission via AJAX
+                        const formData = new FormData(this);
+                        
+                        fetch('submit_review.php', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Review submitted successfully!');
+                                // Refresh reviews section
+                                loadBookDetails(bookId);
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error submitting review:', error);
+                            alert('Error submitting review. Please try again.');
+                        });
+                    });
+                }
+                
+                // Book details link handler for related books
+                const bookLinks = document.querySelectorAll('.book-details-link');
+                bookLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const newBookId = this.getAttribute('data-book-id');
+                        loadBookDetails(newBookId);
+                        
+                        // Update URL without reloading the page
+                        const newUrl = 'books.php?book_id=' + newBookId;
+                        window.history.pushState({bookId: newBookId}, '', newUrl);
+                    });
+                });
+                
+                // Author details link handler
+                const authorLinks = document.querySelectorAll('.author-details-link');
+                authorLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const authorId = this.getAttribute('data-author-id');
+                        // Redirect to author page
+                        window.location.href = 'author.php?author_id=' + authorId;
+                    });
+                });
+            }
+            
+            // Function to load book details
+            function loadBookDetails(bookId) {
+                // Show loading spinner
+                document.getElementById('book-detail-container').innerHTML = `
+                    <div class="d-flex justify-content-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Load book details via AJAX
+                fetch(`book_details_partial.php?book_id=${bookId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById('book-detail-container').innerHTML = html;
+                        
+                        // Add event listeners to links inside the modal content
+                        setupModalEventListeners(bookId);
+                    })
+                    .catch(error => {
+                        console.error('Error loading book details:', error);
+                        document.getElementById('book-detail-container').innerHTML = `
+                            <div class="alert alert-danger m-3">
+                                Error loading book details. Please try again.
+                            </div>
+                        `;
+                    });
+            }
+            
+            // Handle modal close event (reset URL)
+            document.getElementById('bookModal').addEventListener('hidden.bs.modal', function () {
+                // Reset URL to the page without book_id when modal is closed
+                if (window.history.state && window.history.state.bookId) {
+                    const currentUrl = window.location.href;
+                    const baseUrl = currentUrl.split('?')[0];
+                    window.history.pushState({}, '', baseUrl);
+                }
+            });
+        });
+    </script>
+
 
 <?php include '../footer.php';?>

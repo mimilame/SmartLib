@@ -1,27 +1,48 @@
 <?php
 //function.php
 
-function base_url()
-{
+
+/**
+ * Improved base_url function that works with Docker and various access methods
+ * This detects whether you're accessing via DuckDNS, local Docker, or direct WAMP
+ */
+function base_url($path = '') {
     // Get protocol (http vs https)
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
     
-    // Get host name (domain/IP)
-    $host = $_SERVER['HTTP_HOST'];
+    // Get host name (domain/IP) - check for proxy headers first
+    $host = isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : $_SERVER['HTTP_HOST'];
     
-    // Get base directory by extracting from script path
-    $base_dir = str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
+    // Initialize base directory path
+    $baseDir = '';
     
-    // Extract the project folder name from path
-    $path_parts = explode('/', trim($base_dir, '/'));
-    $project_folder = !empty($path_parts[0]) ? $path_parts[0] : '';
-    
-    // Construct complete base URL
-    if (!empty($project_folder)) {
-        return $protocol . $host . '/' . $project_folder . '/';
+    // Check if we're accessing through DuckDNS or other public domain
+    if (strpos($host, 'duckdns.org') !== false || strpos($host, 'ngrok') !== false || strpos($host, 'cloudflare') !== false) {
+        // When accessed through public domain, we need to include /smartlib in path
+        $baseDir = '/smartlib';
+    } else if ($host === 'localhost' || strpos($host, '192.168.') === 0) {
+        // Local access via WAMP - keep the /smartlib path
+        $baseDir = '/smartlib';
     } else {
-        return $protocol . $host . '/';
+        // Docker container direct access - files are at root already
+        $baseDir = '';
     }
+    
+    // Normalize path parameter
+    if (!empty($path)) {
+        // Remove leading slash if present
+        $path = ltrim($path, '/');
+    }
+    
+    // Build the final URL - ensure no double slashes
+    $url = $protocol . $host . $baseDir;
+    if (!empty($path)) {
+        $url .= '/' . $path;
+    } else {
+        $url .= '/';
+    }
+    
+    return $url;
 }
 
 function startUserSession($user_unique_id, $user_id, $role_id, $user_email, $role_name, $user_name,$profile_img) {
@@ -2659,16 +2680,15 @@ function countTotalBooks($connect, $category_id = null) {
 function countTotalAuthors($connect, $filter = null) {
     $query = "
         SELECT 
-            COUNT(*) as total
+            COUNT(DISTINCT a.author_id) as total
         FROM 
-            lms_author
+            lms_author a
         WHERE 
-            author_status = 'Enable'
+            a.author_status = 'Enable'
     ";
     
-    // Add letter filter if provided
     if ($filter !== null) {
-        $query .= " AND author_name LIKE :filter";
+        $query .= " AND a.author_name LIKE :filter";
     }
     
     $statement = $connect->prepare($query);
@@ -2679,10 +2699,10 @@ function countTotalAuthors($connect, $filter = null) {
     }
     
     $statement->execute();
-    $result = $statement->fetch(PDO::FETCH_ASSOC);
     
-    return $result['total'];
+    return $statement->fetch(PDO::FETCH_ASSOC)['total'];
 }
+
 
 // Function to get books by author - add this to function.php
 function getBooksByAuthor($connect, $author_id, $limit = 0) {
@@ -2736,7 +2756,7 @@ function getAllCategories($connect) {
     return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
 function getTopAuthorsWithBooks($connect, $limit = 5) {
-    // First get the top authors based on borrowing stats
+    // First get the top authors by borrow count
     $query = "
         SELECT 
             a.author_id,
@@ -2756,39 +2776,45 @@ function getTopAuthorsWithBooks($connect, $limit = 5) {
         GROUP BY 
             a.author_id, a.author_name, a.author_profile
         ORDER BY 
-            borrow_count DESC, a.author_name ASC
+            borrow_count DESC
         LIMIT :limit
     ";
     
     $statement = $connect->prepare($query);
     $statement->bindParam(':limit', $limit, PDO::PARAM_INT);
     $statement->execute();
+    
     $authors = $statement->fetchAll(PDO::FETCH_ASSOC);
     
-    // For each author, get their books
+    // For each author, get their top books
     foreach ($authors as &$author) {
-        $books_query = "
+        $bookQuery = "
             SELECT 
                 b.book_id,
                 b.book_name,
-                b.book_isbn_number,
-                b.book_img
+                b.book_img,
+                COUNT(ib.issue_book_id) as borrow_count
             FROM 
                 lms_book b
             JOIN 
                 lms_book_author ba ON b.book_id = ba.book_id
+            LEFT JOIN 
+                lms_issue_book ib ON b.book_id = ib.book_id
             WHERE 
                 ba.author_id = :author_id
                 AND b.book_status = 'Enable'
+            GROUP BY 
+                b.book_id, b.book_name, b.book_img
             ORDER BY 
-                b.book_id DESC
+                borrow_count DESC
             LIMIT 3
         ";
         
-        $books_statement = $connect->prepare($books_query);
-        $books_statement->bindParam(':author_id', $author['author_id'], PDO::PARAM_INT);
-        $books_statement->execute();
-        $author['books'] = $books_statement->fetchAll(PDO::FETCH_ASSOC);
+        $bookStatement = $connect->prepare($bookQuery);
+        $bookStatement->bindParam(':author_id', $author['author_id'], PDO::PARAM_INT);
+        $bookStatement->execute();
+        
+        $author['books'] = $bookStatement->fetchAll(PDO::FETCH_ASSOC);
     }
     
     return $authors;
@@ -4385,6 +4411,7 @@ function getAuthorBorrowStats($connect, $author_id) {
     
     return $stats;
 }
+
 function searchAuthors($connect, $searchTerm, $limit = 20, $offset = 0) {
     $query = "
         SELECT 
@@ -4483,6 +4510,25 @@ function getSortedAuthors($connect, $limit = 20, $offset = 0, $sort = 'name-asc'
     $statement->execute();
     
     return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function countSearchAuthors($connect, $searchTerm) {
+    $query = "
+        SELECT 
+            COUNT(DISTINCT a.author_id) as total
+        FROM 
+            lms_author a
+        WHERE 
+            a.author_status = 'Enable'
+            AND a.author_name LIKE :search
+    ";
+    
+    $statement = $connect->prepare($query);
+    $searchParam = '%' . $searchTerm . '%';
+    $statement->bindParam(':search', $searchParam, PDO::PARAM_STR);
+    $statement->execute();
+    
+    return $statement->fetch(PDO::FETCH_ASSOC)['total'];
 }
 
 // Get user's current books
@@ -4630,4 +4676,105 @@ function getUserReadingStats($connect, $userId) {
         'on_time' => $onTime['returned_on_time'] ?? 0,
         'late' => $late['returned_late'] ?? 0
     ];
+}
+function getFilteredAuthors($connect, $limit, $offset, $sort, $letter) {
+    $query = "
+        SELECT 
+            a.author_id, 
+            a.author_name, 
+            a.author_profile,
+            (SELECT COUNT(book_id) FROM lms_book_author WHERE author_id = a.author_id) as book_count,
+            (
+                SELECT COUNT(ib.issue_book_id) 
+                FROM lms_book_author ba 
+                JOIN lms_book b ON ba.book_id = b.book_id 
+                JOIN lms_issue_book ib ON b.book_id = ib.book_id
+                WHERE ba.author_id = a.author_id
+            ) as borrow_count
+        FROM lms_author a
+        WHERE 
+            a.author_status = 'Enable' 
+            AND a.author_name LIKE :letter
+    ";
+    
+    // Add sorting
+    switch ($sort) {
+        case 'name-desc':
+            $query .= " ORDER BY a.author_name DESC";
+            break;
+        case 'popular':
+            $query .= " ORDER BY borrow_count DESC, a.author_name ASC";
+            break;
+        case 'books-count':
+            $query .= " ORDER BY book_count DESC, a.author_name ASC";
+            break;
+        default: // name-asc
+            $query .= " ORDER BY a.author_name ASC";
+    }
+    
+    $query .= " LIMIT :limit OFFSET :offset";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindValue(':letter', $letter . '%');
+    $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+function countFilteredAuthors($connect, $letter) {
+    $query = "
+        SELECT COUNT(*) as total
+        FROM lms_author
+        WHERE author_status = 'Enable' AND author_name LIKE :letter
+    ";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindValue(':letter', $letter . '%');
+    $statement->execute();
+    $result = $statement->fetch(PDO::FETCH_ASSOC);
+    
+    return $result['total'];
+}
+function getAllSortedAuthors($connect, $limit, $offset, $sort) {
+    $query = "
+        SELECT 
+            a.author_id, 
+            a.author_name, 
+            a.author_profile,
+            (SELECT COUNT(book_id) FROM lms_book_author WHERE author_id = a.author_id) as book_count,
+            (
+                SELECT COUNT(ib.issue_book_id) 
+                FROM lms_book_author ba 
+                JOIN lms_book b ON ba.book_id = b.book_id 
+                JOIN lms_issue_book ib ON b.book_id = ib.book_id
+                WHERE ba.author_id = a.author_id
+            ) as borrow_count
+        FROM lms_author a
+        WHERE a.author_status = 'Enable'
+    ";
+    
+    // Add sorting
+    switch ($sort) {
+        case 'name-desc':
+            $query .= " ORDER BY a.author_name DESC";
+            break;
+        case 'popular':
+            $query .= " ORDER BY borrow_count DESC, a.author_name ASC";
+            break;
+        case 'books-count':
+            $query .= " ORDER BY book_count DESC, a.author_name ASC";
+            break;
+        default: // name-asc
+            $query .= " ORDER BY a.author_name ASC";
+    }
+    
+    $query .= " LIMIT :limit OFFSET :offset";
+    
+    $statement = $connect->prepare($query);
+    $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $statement->execute();
+    
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
 }
