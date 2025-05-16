@@ -9,8 +9,8 @@
 
     // Fetch library settings for fine calculation
     $query = "
-        SELECT library_total_book_issue_day, library_one_day_fine, library_open_hours, 
-            library_max_fine_per_book, library_timezone
+        SELECT loan_days, fine_rate_per_day, library_hours, 
+            max_fine_per_book, library_timezone
         FROM lms_setting
         LIMIT 1
     ";
@@ -19,10 +19,10 @@
     $library_setting = $statement->fetch(PDO::FETCH_ASSOC);
 
     // Get fine rate per day from library settings
-    $fine_rate_per_day = $library_setting['library_one_day_fine'];
-    $max_days_allowed = $library_setting['library_total_book_issue_day'];
-    $max_fine_per_book = $library_setting['library_max_fine_per_book'] ?? 50; // Default to 50 if not set
-    $library_hours = json_decode($library_setting['library_open_hours'] ?? '{}', true);
+    $fine_rate_per_day = $library_setting['fine_rate_per_day'];
+    $max_days_allowed = $library_setting['loan_days'];
+    $max_fine_per_book = $library_setting['max_fine_per_book'] ?? 50; // Default to 50 if not set
+    $library_hours = json_decode($library_setting['library_hours'] ?? '{}', true);
     $library_timezone = $library_setting['library_timezone'] ?? 'UTC';
 
     // Set timezone for date calculations

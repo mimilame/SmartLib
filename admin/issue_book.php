@@ -295,8 +295,15 @@
             $statement->execute([':book_id' => $book_id]);
         }
 
-        header('location:issue_book.php?msg=edit');
+        if ($issue_book_status === 'Returned') {
+            header('location:return_book.php?tab=returned&msg=edit');
+        } elseif ($issue_book_status === 'Lost') {
+            header('location:return_book.php?tab=lost&msg=edit');
+        } else {
+            header('location:issue_book.php?msg=edit');
+        }
         exit;
+        
     }
 
     // Fetch all issued books with user and book details - EXCLUDE RETURNED BOOKS
@@ -313,7 +320,7 @@
         FROM lms_issue_book AS ib
         LEFT JOIN lms_book AS b ON ib.book_id = b.book_id 
         LEFT JOIN lms_user AS u ON ib.user_id = u.user_id
-        WHERE ib.issue_book_status != 'Returned'
+        WHERE ib.issue_book_status NOT IN ('Returned', 'Lost')
         ORDER BY ib.issue_book_id ASC
     ";
 
@@ -742,10 +749,16 @@
                             const statusSelect = document.getElementById('issue_book_status');
                             const conditionFields = document.getElementById('condition_fields');
                             
-                            statusSelect.addEventListener('change', function() {
-                                if (this.value === 'Returned') {
-                                    conditionFields.style.display = 'block';
-                                } else {
+                           statusSelect.addEventListener('change', function() {
+                             const status = this.value;
+
+                         if (status === 'Returned') {
+                        // Redirect to Return Book page, open "Return" tab
+                        window.location.href = `return_books.php?tab=return&issue_id=${issueId}`;
+                        } else if (status === 'Lost') {
+                        // Redirect to Return Book page, open "Lost" tab
+                          window.location.href = `return_books.php?tab=lost&issue_id=${issueId}`;
+                        } else {
                                     conditionFields.style.display = 'none';
                                 }
                             });

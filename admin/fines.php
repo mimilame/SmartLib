@@ -374,165 +374,165 @@ $lost_books = $lost_books_statement->fetchAll(PDO::FETCH_ASSOC);
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3">
         <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="fas fa-table me-2"></i>Fines List</h5>                      
-                    <?php if (!isset($_GET['action'])): ?>            
-                        <a href="add_fines.php?action=add" class="btn btn-sm btn-success">
-                            <i class="fas fa-plus-circle me-2"></i>Add Fines
-                        </a>
-                    <?php endif; ?>
-                </div>
-
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>Fines List</h5>                      
+            <?php if (!isset($_GET['action'])): ?>            
+                <a href="add_fines.php?action=add" class="btn btn-sm btn-success">
+                    <i class="fas fa-plus-circle me-2"></i>Add Fines
+                </a>
+            <?php endif; ?>
+        </div>
     </div>
     <div class="card-body">
-    <div class="table-responsive">
-        <table id="dataTable" class="display nowrap">
-            <thead>
-                <tr>
-                    <th>Fine ID</th>
-                    <th>Borrower Name</th>
-                    <th>Issue Book ID</th>
-                    <th>Status</th>
-                    <th>Expected Return Date</th>
-                    <th>Return Date</th>
-                    <th>Days Late</th>
-                    <th>Fines Amount</th>
-                    <th>Payment Status</th>
-                    <th>Created On</th>
-                    <th>Updated On</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($fines)): ?>
-                    <?php foreach ($fines as $row): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($row['fines_id']) ?></td>
-                            <td><?= htmlspecialchars($row['user_name']) ?></td>
-                            <td><?= htmlspecialchars($row['issue_book_id']) ?></td>
-                            <td>
-                                <?php
-                                    if ($row['issue_book_status'] === 'Lost') {
-                                        echo '<span class="badge bg-warning">Lost</span>';
-                                    } elseif ($row['issue_book_status'] === 'Overdue') {
-                                        echo '<span class="badge bg-danger">Overdue</span>';
-                                    } else {
-                                        echo '<span class="badge bg-success">' . htmlspecialchars($row['issue_book_status']) . '</span>';
-                                    }
-                                ?>
-                            </td>
-                            <td><?= date('M d, Y', strtotime($row['expected_return_date'])) ?></td>
-                            <!-- Return Date -->
-                            <td>
-                            <?php
-    $status = $row['issue_book_status'];
-    $return_date = $row['return_date'];
+        <div class="table-responsive">
+            <table id="dataTable" class="display nowrap table-sm" style="width:100%">
+                <thead>
+                    <tr>
+                        <th style="width:5%">ID</th>
+                        <th style="width:12%">Borrower</th>
+                        <th style="width:6%">Book ID</th>
+                        <th style="width:8%">Status</th>
+                        <th style="width:10%">Expected Return</th>
+                        <th style="width:10%">Return Date</th>
+                        <th style="width:7%">Days Late</th>
+                        <th style="width:8%">Amount</th>
+                        <th style="width:8%">Payment</th>
+                        <th style="width:10%">Created</th>
+                        <th style="width:10%">Updated</th>
+                        <th style="width:6%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($fines)): ?>
+                        <?php foreach ($fines as $row): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['fines_id']) ?></td>
+                                <td class="text-nowrap"><?= htmlspecialchars($row['user_name']) ?></td>
+                                <td><?= htmlspecialchars($row['issue_book_id']) ?></td>
+                                <td>
+                                    <?php
+                                        if ($row['issue_book_status'] === 'Lost') {
+                                            echo '<span class="badge bg-warning">Lost</span>';
+                                        } elseif ($row['issue_book_status'] === 'Overdue') {
+                                            echo '<span class="badge bg-danger">Overdue</span>';
+                                        } else {
+                                            echo '<span class="badge bg-success">' . htmlspecialchars($row['issue_book_status']) . '</span>';
+                                        }
+                                    ?>
+                                </td>
+                                <td class="text-nowrap"><?= date('M d, Y', strtotime($row['expected_return_date'])) ?></td>
+                                <td class="text-nowrap">
+                                    <?php
+                                        $status = $row['issue_book_status'];
+                                        $return_date = $row['return_date'];
 
-    if ($status === 'Lost' || $status === 'Overdue') {
-        echo '<span class="badge bg-secondary">Not Returned</span>';
-    } else if (!empty($return_date) && $return_date !== '0000-00-00') {
-        echo date('M d, Y', strtotime($return_date));
-    } else {
-        echo '<span class="badge bg-secondary">Not Returned</span>';
-    }
-?>
-
-
-</td>
-
-
-<!-- Days Late -->
-<td>
-    <?php
-        if (!is_null($row['days_late']) && $row['days_late'] > 0) {
-            echo htmlspecialchars($row['days_late']) . ' day(s)';
-        } else {
-            echo '<span class="text-muted">None</span>';
-        }
-    ?>
-</td>
-
-                            <td><?= get_currency_symbol($connect) . htmlspecialchars($row['fines_amount']) ?></td>
-                            <td>
-                                <?php
-                                    if ($row['fines_status'] === 'Paid') {
-                                        echo '<span class="badge bg-success">Paid</span>';
-                                    } else {
-                                        echo '<span class="badge bg-danger">Unpaid</span>';
-                                    }
-                                ?>
-                            </td>
-                            <td><?= date('M d, Y', strtotime($row['fines_created_on'])) ?></td>
-                            <td><?= date('M d, Y', strtotime($row['fines_updated_on'])) ?></td>
-                            <td>
-    <div class="btn-group btn-group-sm">
-        <a href="fines_action.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm mb-1">
-            <i class="fa fa-eye"></i>
-        </a>
-        <a href="fines_action.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm mb-1">
-            <i class="fa fa-edit"></i>
-        </a>
-        <?php if ($row['fines_status'] !== 'Paid'): ?>
-    <a href="fines.php?action=update_fine_status&status=Paid&code=<?= $row['fines_id'] ?>"
-       class="btn btn-success btn-sm mb-1"
-       title="Mark as Paid">
-        <i class="fa fa-check-circle"></i>
-    </a>
-<?php else: ?>
-    <a href="fines.php?action=update_fine_status&status=Unpaid&code=<?= $row['fines_id'] ?>"
-       class="btn btn-danger btn-sm mb-1"
-       title="Mark as Unpaid">
-        <i class="fa fa-times"></i>
-    </a>
-<?php endif; ?>
-
-
-    </div>
-</td>
-
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                                        if ($status === 'Lost' || $status === 'Overdue') {
+                                            echo '<span class="badge bg-secondary">Not Returned</span>';
+                                        } else if (!empty($return_date) && $return_date !== '0000-00-00') {
+                                            echo date('M d, Y', strtotime($return_date));
+                                        } else {
+                                            echo '<span class="badge bg-secondary">Not Returned</span>';
+                                        }
+                                    ?>
+                                </td>
+                                <td>
+                                    <?php
+                                        if (!is_null($row['days_late']) && $row['days_late'] > 0) {
+                                            echo htmlspecialchars($row['days_late']) . ' day(s)';
+                                        } else {
+                                            echo '<span class="text-muted">None</span>';
+                                        }
+                                    ?>
+                                </td>
+                                <td><?= get_currency_symbol($connect) . htmlspecialchars($row['fines_amount']) ?></td>
+                                <td>
+                                    <?php
+                                        if ($row['fines_status'] === 'Paid') {
+                                            echo '<span class="badge bg-success">Paid</span>';
+                                        } else {
+                                            echo '<span class="badge bg-danger">Unpaid</span>';
+                                        }
+                                    ?>
+                                </td>
+                                <td class="text-nowrap"><?= date('M d, Y', strtotime($row['fines_created_on'])) ?></td>
+                                <td class="text-nowrap"><?= date('M d, Y', strtotime($row['fines_updated_on'])) ?></td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="fines_action.php?action=view&code=<?= $row['fines_id'] ?>" class="btn btn-info btn-sm" title="View">
+                                            <i class="fa fa-eye"></i>
+                                        </a>
+                                        <a href="fines_action.php?action=edit&code=<?= $row['fines_id'] ?>" class="btn btn-primary btn-sm" title="Edit">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                        <?php if ($row['fines_status'] !== 'Paid'): ?>
+                                            <a href="fines.php?action=update_fine_status&status=Paid&code=<?= $row['fines_id'] ?>"
+                                               class="btn btn-success btn-sm"
+                                               title="Mark as Paid">
+                                                <i class="fa fa-check-circle"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="fines.php?action=update_fine_status&status=Unpaid&code=<?= $row['fines_id'] ?>"
+                                               class="btn btn-danger btn-sm"
+                                               title="Mark as Unpaid">
+                                                <i class="fa fa-times"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
-    $(document).ready(function() {    
-        const table = $('#dataTable').DataTable({
-            responsive: true,
-            columnDefs: [
-            { responsivePriority: 1, targets: [0, 1, 3, 7, 11] },
-            { responsivePriority: 2, targets: [2, 8] }
-            ],
-            order: [[0, 'asc']],
-            autoWidth: false,
-            language: {
+$(document).ready(function() {
+    const table = $('#dataTable').DataTable({
+        responsive: true,
+        scrollX: true,
+        scrollY: '500px',
+        scrollCollapse: true,
+        autoWidth: false,
+        fixedHeader: true,
+        stateSave: true,
+        info: true,
+        paging: true,
+        searching: false,
+        order: [[0, 'asc']],
+        language: {
             emptyTable: "No fines available"
-            },
-            
-            // Scroll and pagination settings
-            info: true,
-            paging: true, 
-            scrollY: '500px',       // Vertical scroll
-            scrollCollapse: true,   // Collapse height when less data
-            searching: false,          // Enable pagination
-            fixedHeader: true,
-            stateSave: true,
-            // Fix alignment issues on draw and responsive changes
-            drawCallback: function() {
-                setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
-            }
-        });
-        // Handle window resize to maintain column alignment
-        $(window).on('resize', function() {
-            table.columns.adjust().responsive.recalc();
-        });
-        
-        // Force alignment after a short delay to ensure proper rendering
-        setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
+        },
+        columnDefs: [
+            { width: '5%', targets: 0, responsivePriority: 1 },
+            { width: '12%', targets: 1, responsivePriority: 1 },
+            { width: '6%', targets: 2, responsivePriority: 2 },
+            { width: '8%', targets: 3, responsivePriority: 1 },
+            { width: '10%', targets: 4 },
+            { width: '10%', targets: 5 },
+            { width: '7%', targets: 6 },
+            { width: '8%', targets: 7, responsivePriority: 1 },
+            { width: '8%', targets: 8, responsivePriority: 2 },
+            { width: '10%', targets: 9 },
+            { width: '10%', targets: 10 },
+            { width: '6%', targets: 11, orderable: false, responsivePriority: 1 }
+        ],
+        drawCallback: function() {
+            setTimeout(() => table.columns.adjust().responsive.recalc(), 100);
+        }
     });
+
+    // Maintain alignment on window resize
+    $(window).on('resize', function() {
+        table.columns.adjust().responsive.recalc();
+    });
+
+    // Initial adjustment after short delay
+    setTimeout(() => table.columns.adjust().responsive.recalc(), 300);
+});
 </script>
+
 
 <script>
     // Lost books modal functionality
