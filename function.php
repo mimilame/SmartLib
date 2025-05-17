@@ -3727,6 +3727,12 @@ function calculateExpectedReturnDate($issue_date, $loan_days, $library_hours) {
     return $return_date->format('Y-m-d') . ' ' . $close_time;
 }
 
+function getCurrentDateForIssue() {
+    return date('Y-m-d');
+}
+
+
+
 function checkAndUpdateOverdueBooks($connect, $settings) {
     // Get current date and time
     $current_date = date('Y-m-d H:i:s');

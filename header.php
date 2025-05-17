@@ -240,6 +240,11 @@
                     <i class="fas fa-book-reader me-2"></i>
                     <span class="nav-text">Return/Lost Book</span>
                 </a>
+                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/fines.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
+                data-bs-title="Fines">
+                    <i class="fas fa-dollar-sign me-2"></i>
+                    <span class="nav-text">Fines</span>
+                </a>
                 <?php if ($role_id == 1): ?>
                     <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'librarian.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/librarian.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
                     data-bs-title="Librarian">
@@ -256,11 +261,6 @@
                 data-bs-title="Reports">
                     <i class="fas fa-chart-bar me-2"></i>
                     <span class="nav-text">Reports</span>
-                </a>
-                <a class="nav-link text-light tooltip-nav <?php echo (basename($_SERVER['PHP_SELF']) == 'fines.php') ? 'active' : ''; ?>" href="<?php echo base_url(); ?>admin/fines.php" data-bs-toggle="tooltip"  data-bs-placement="right" 
-                data-bs-title="Fines">
-                    <i class="fas fa-dollar-sign me-2"></i>
-                    <span class="nav-text">Fines</span>
                 </a>
             </nav>
         </div>
