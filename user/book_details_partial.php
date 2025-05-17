@@ -248,11 +248,13 @@
                     <!-- Reviews Tab -->
                     <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
                         <!-- Add review form (for logged-in users) -->
-                        <?php if (isset($_SESSION['user_id'])): ?>
+                        <?php if (isset($_SESSION['user_id'])): 
+                            include 'review_form.php';
+                            ?>
                             <div class="card mb-4 border-0 shadow-sm">
                                 <div class="card-body">
                                     <h5 class="card-title">Write a Review</h5>
-                                    <form id="review-form" action="add_review.php" method="post">
+                                    <form id="review-form" action="review_form.php" method="post">
                                         <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
                                         <div class="mb-3">
                                             <label for="rating" class="form-label">Your Rating</label>

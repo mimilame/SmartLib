@@ -4,40 +4,41 @@
     include '../function.php';
     include '../header.php';
     authenticate_user();
+// Pagination parameters
+$limit = 50; // Number of authors per page
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $limit;
+
+// Handle search
+$search_term = isset($_GET['search']) ? $_GET['search'] : '';
+
+// Handle sorting
+$sort_options = ['name-asc', 'name-desc', 'popular', 'books-count'];
+$selected_sort = isset($_GET['sort']) && in_array($_GET['sort'], $sort_options) ? $_GET['sort'] : 'name-asc';
+
+// Handle letter filter
+$letter_filter = isset($_GET['filter']) ? $_GET['filter'] : null;
+
+// Consolidated approach - use a single function for all author queries
+$authors = getAuthors($connect, [
+    'limit' => $limit,
+    'offset' => $offset,
+    'sort' => $selected_sort,
+    'filter' => $letter_filter,
+    'search' => $search_term
+]);
+
+$total_authors = countAuthors($connect, [
+    'filter' => $letter_filter,
+    'search' => $search_term
+]);
+
+$total_pages = ceil($total_authors / $limit);
+$base_url = base_url();
+
+// Get top authors for featured section
+$featured_authors = getTopAuthorsWithBooks($connect);
     
-    // Get pagination parameters
-    $limit = 30; // Number of authors per page
-    $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-    $offset = ($page - 1) * $limit;
-
-    // Handle search
-    $search_term = isset($_GET['search']) ? $_GET['search'] : '';
-
-    // Handle sorting
-    $sort_options = ['name-asc', 'name-desc', 'popular', 'books-count'];
-    $selected_sort = isset($_GET['sort']) && in_array($_GET['sort'], $sort_options) ? $_GET['sort'] : 'name-asc';
-
-    // Handle letter filter
-    $letter_filter = isset($_GET['filter']) ? $_GET['filter'] : null;
-
-    // Get authors based on filters
-    if (!empty($search_term)) {
-        $authors = searchAuthors($connect, $search_term, $limit, $offset, $selected_sort);
-        $total_authors = countSearchAuthors($connect, $search_term);
-    } elseif ($letter_filter !== null) {
-        $authors = getFilteredAuthors($connect, $limit, $offset, $selected_sort, $letter_filter);
-        $total_authors = countFilteredAuthors($connect, $letter_filter);
-    } else {
-        $authors = getAllSortedAuthors($connect, $limit, $offset, $selected_sort);
-        $total_authors = countTotalAuthors($connect);
-    }
-
-    $total_pages = ceil($total_authors / $limit);
-    
-    // Featured authors section - Always load these regardless of filters
-    $featured_authors = getTopAuthorsWithBooks($connect, 5);
-    
-    $base_url = base_url();
 ?>
     <!-- Hero Section - Consistent with book.php -->
     <div class="card bg-dark text-white mb-4 border-0 rounded-3 overflow-hidden">
@@ -68,6 +69,7 @@
             </div>
         </div>
     </div>
+    <?php if (empty($search_term)): ?>
     <div class="row mb-4">        
         <h2 class="mb-4">Featured Authors</h2>    
         <div class="row">            
@@ -202,8 +204,8 @@
                             <?php
                             $author = $authors[1];
                             $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
-                            $authorImgPath = getAuthorImagePath($authorData);
-                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                             ?>
                             <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
                             <div class="podium-block silver">
@@ -218,8 +220,8 @@
                             <?php
                             $author = $authors[0];
                             $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
-                            $authorImgPath = getAuthorImagePath($authorData);
-                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                             ?>
                             <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
                             <div class="podium-block gold">
@@ -234,8 +236,8 @@
                             <?php
                             $author = $authors[2];
                             $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
-                            $authorImgPath = getAuthorImagePath($authorData);
-                            $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                            $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                             ?>
                             <img src="<?php echo $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="author-image">
                             <div class="podium-block bronze">
@@ -261,8 +263,8 @@
                                 <?php for($i = 3; $i < count($authors); $i++): 
                                     $author = $authors[$i];
                                     $authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
-                                    $authorImgPath = getAuthorImagePath($authorData);
-                                    $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
+                                    $authorImgPath = getAuthorImagePath($author);
+                                $authorImgUrl = str_replace('../', $base_url, $authorImgPath);
                                 ?>
                                 <li class="list-group-item">
                                     <div class="d-flex align-items-center">
@@ -287,7 +289,8 @@
             </div>
         </div>
     </div>
-
+    <?php endif; ?>
+    
     <!-- Search Results Header -->
     <?php if (!empty($search_term)): ?>
     <div class="alert alert-info">
@@ -303,8 +306,8 @@
             <div class="d-flex flex-wrap gap-2">
                 <!-- Alphabetical Index -->
                 <a href="author.php<?php echo !empty($selected_sort) && $selected_sort != 'name-asc' ? '?sort='.$selected_sort : ''; ?>" 
-                   class="btn <?php echo !isset($_GET['filter']) ? 'btn-primary' : 'btn-outline-primary'; ?>">
-                    All
+                class="btn <?php echo !isset($_GET['filter']) ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                    All Authors
                 </a>
                 <?php
                 $alphabet = range('A', 'Z');
@@ -313,14 +316,14 @@
                     $sortParam = !empty($selected_sort) && $selected_sort != 'name-asc' ? '&sort='.$selected_sort : '';
                 ?>
                 <a href="author.php?filter=<?php echo $letter; ?><?php echo $sortParam; ?>" 
-                   class="btn <?php echo $isActive ? 'btn-primary' : 'btn-outline-primary'; ?>">
+                class="btn <?php echo $isActive ? 'btn-primary' : 'btn-outline-primary'; ?>">
                     <?php echo $letter; ?>
                 </a>
                 <?php endforeach; ?>
             </div>
         </div>
         <div class="col-md-3">
-            <form id="sort-form" action="author.php" method="GET" class="mb-3">
+            <form id="sort-form" action="author.php" method="GET">
                 <!-- Preserve existing filter parameters -->
                 <?php if (isset($_GET['filter'])): ?>
                     <input type="hidden" name="filter" value="<?php echo htmlspecialchars($_GET['filter']); ?>">
@@ -329,30 +332,24 @@
                     <input type="hidden" name="search" value="<?php echo htmlspecialchars($search_term); ?>">
                 <?php endif; ?>
                 
-                <div class="input-group">
-                    <select class="form-select" id="sort-authors" name="sort" onchange="document.getElementById('sort-form').submit();">
-                        <option value="name-asc" <?php echo $selected_sort == 'name-asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
-                        <option value="name-desc" <?php echo $selected_sort == 'name-desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
-                        <option value="popular" <?php echo $selected_sort == 'popular' ? 'selected' : ''; ?>>Most Popular</option>
-                        <option value="books-count" <?php echo $selected_sort == 'books-count' ? 'selected' : ''; ?>>Number of Books</option>
-                    </select>
-                </div>
+                <select class="form-select" id="sort-authors" name="sort" onchange="document.getElementById('sort-form').submit();">
+                    <option value="name-asc" <?php echo $selected_sort == 'name-asc' ? 'selected' : ''; ?>>Name (A-Z)</option>
+                    <option value="name-desc" <?php echo $selected_sort == 'name-desc' ? 'selected' : ''; ?>>Name (Z-A)</option>
+                    <option value="popular" <?php echo $selected_sort == 'popular' ? 'selected' : ''; ?>>Most Popular</option>
+                    <option value="books-count" <?php echo $selected_sort == 'books-count' ? 'selected' : ''; ?>>Number of Books</option>
+                </select>
             </form>
         </div>
     </div>
 
-    <!-- Authors Grid - Filtered based on search/sort/filter -->
-    <div class="row">
-        <div class="col-12">
-            <h3 class="mb-4"><?php echo !empty($search_term) ? 'Search Results' : (!empty($letter_filter) ? 'Authors Starting with "' . htmlspecialchars($letter_filter) . '"' : 'All Authors'); ?></h3>
-        </div>
-    </div>
-    
-    <div class="d-flex flex-wrap justify-content-center gap-3" id="author-grid">
+    <!-- FIXED AUTHOR GRID: Replaced flex layout with Bootstrap grid for more consistent display -->
+    <div class="row row-col justify-content" id="author-grid">
         <?php if (empty($authors)): ?>
-            <div class="alert alert-info w-100 text-center">
-                <h4>No authors found</h4>
-                <p>Try a different search term or filter</p>
+            <div class="col-12">
+                <div class="alert alert-info w-100 text-center">
+                    <h4>No authors found</h4>
+                    <p>Try a different search term or filter</p>
+                </div>
             </div>
         <?php else: ?>
             <?php foreach ($authors as $author):             
@@ -361,31 +358,33 @@
                 $bookCount = isset($author['book_count']) ? $author['book_count'] : 0;
                 $borrowCount = isset($author['borrow_count']) ? $author['borrow_count'] : 0;
             ?>
-            <div class="author-card card shadow-sm" style="width: 220px;" data-id="<?php echo $author['author_id']; ?>">
-                <div class="position-relative overflow-hidden">
-                    <img src="<?php echo $authorImgUrl; ?>" class="card-img-top author-img" alt="<?php echo htmlspecialchars($author['author_name']); ?>" style="width: 100%;height: 200px; object-fit: cover;">
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <span class="author-name fw-bold"><?php echo htmlspecialchars($author['author_name']); ?></span>
-                    <div class="author-stats my-2">
-                        <p class="card-text text-muted mb-0">
-                            <i class="bi bi-book"></i> <?php echo $bookCount; ?> books
-                        </p>
-                        <p class="card-text text-muted mb-0">
-                            <i class="bi bi-graph-up"></i> <?php echo $borrowCount; ?> borrows
-                        </p>
+            <div class="col">
+                <div class="author-card card shadow-sm h-100" data-id="<?php echo $author['author_id']; ?>">
+                    <div class="position-relative overflow-hidden">
+                        <img src="<?php echo $authorImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($author['author_name']); ?>" style="height: 200px; object-fit: cover;">
                     </div>
-                    <div class="mt-auto text-end">
-                        <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
-                            View Profile
-                        </button>
+                    <div class="card-body d-flex flex-column">
+                        <span class="author-name fw-bold"><?php echo htmlspecialchars($author['author_name']); ?></span>
+                        <div class="author-stats my-2">
+                            <p class="card-text text-muted mb-0">
+                                <i class="bi bi-book"></i> <?php echo $bookCount; ?> books
+                            </p>
+                            <p class="card-text text-muted mb-0">
+                                <i class="bi bi-graph-up"></i> <?php echo $borrowCount; ?> borrows
+                            </p>
+                        </div>
+                        <div class="mt-auto text-end">
+                            <button class="btn btn-primary view-author-btn" data-id="<?php echo $author['author_id']; ?>">
+                                View Profile
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    
+
     <!-- Pagination with preserved filters -->
     <?php if ($total_pages > 1): ?>
     <div class="d-flex justify-content-center mt-5">
@@ -465,8 +464,8 @@
         </nav>
     </div>
     <?php endif; ?>
-    
 
+    <div class="p-5 mt-5 mb-5"></div>
 
 <!-- Author Detail Modal -->
 <div class="modal fade" id="authorModal" tabindex="-1" aria-labelledby="authorModalLabel" aria-hidden="true">

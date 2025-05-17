@@ -47,7 +47,9 @@ $total_borrows = $total_borrows_result['total_borrows'];
 
 // Base URL for images
 $base_url = base_url();
-$author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_profile'] : 'asset/img/author.png';
+$authorData = ['author_id' => $author['author_id'], 'author_profile' => $author['author_profile'] ?? ''];
+$authorImgPath = getAuthorImagePath($authorData);
+$authorImgUrl = str_replace('../', $base_url, $authorImgPath);
 ?>
 
 <div class="container-fluid p-0">
@@ -56,12 +58,12 @@ $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_pr
         <div class="col-md-4 bg-light">
             <div class="sticky-top" style="top: 1rem;">
                 <div class="p-4 text-center">
-                    <img src="<?php echo $author_img; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="img-fluid rounded-circle shadow" style="max-height: 250px; width: 250px; object-fit: cover;">
+                    <img src="<?php echo  $authorImgUrl; ?>" alt="<?php echo htmlspecialchars($author['author_name']); ?>" class="img-fluid rounded-circle shadow" style="max-height: 250px; width: 250px; object-fit: cover;">
                     
                     <div class="mt-4">
                         <h2 class="fw-bold"><?php echo htmlspecialchars($author['author_name']); ?></h2>
                         
-                        <button class="btn btn-outline-primary w-100 mt-3" id="back-to-catalog-btn">
+                        <button class="btn btn-outline-primary w-100 mt-3" data-bs-dismiss="modal">
                             <i class="bi bi-arrow-left"></i> Back to Catalog
                         </button>
                     </div>
@@ -124,9 +126,11 @@ $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_pr
                             <div class="col">
                                 <div class="card h-100 border-0 shadow-sm">
                                     <?php 
-                                    $book_img = !empty($book['book_img']) ? 'upload/' . $book['book_img'] : 'asset/img/book_placeholder.png';
+                                    $bookImgPath = getBookImagePath($book);
+                                    $bookImgUrl = str_replace('../', $base_url, $bookImgPath);
+                                    
                                     ?>
-                                    <img src="<?php echo $book_img; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 180px; object-fit: cover;">
+                                    <img src="<?php echo $bookImgUrl; ?>" class="card-img-top" alt="<?php echo htmlspecialchars($book['book_name']); ?>" style="height: 180px; object-fit: cover;">
                                     <div class="card-body">
                                         <span class="fw-bold"><?php echo htmlspecialchars($book['book_name']); ?></span>
                                         <p class="card-text small text-muted"><?php echo htmlspecialchars($book['category_name']); ?></p>
@@ -162,12 +166,6 @@ $author_img = !empty($author['author_profile']) ? 'upload/' . $author['author_pr
 <script>
 // This will ensure the script runs when this content is loaded
 (function() {
-    // Handle back to catalog button
-    document.getElementById('back-to-catalog-btn').onclick = function(e) {
-        e.preventDefault();
-        document.querySelector('.modal-body').innerHTML = '';
-        document.querySelector('.modal').querySelector('[data-bs-dismiss="modal"]').click();
-    };
 
     // Handle book detail button clicks
     var bookButtons = document.querySelectorAll('.book-details-btn');

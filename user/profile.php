@@ -1,226 +1,373 @@
 <?php
-
 //profile.php
 
 include '../database_connection.php';
-
 include '../function.php';
 include '../header.php';
 authenticate_user();
 
 $message = '';
+$error = '';
+$role_id = $_SESSION['role_id'] ?? 0;
+$user_unique_id = $_SESSION['user_unique_id'] ?? '';
 
-$success = '';
 
-if(isset($_POST['save_button']))
-{
-	$formdata = array();
+// Get user details
+$user_data = get_complete_user_details($user_unique_id, $connect);
 
-	if(empty($_POST['user_email']))
-	{
-		$message .= '<li>Email Address is required</li>';
-	}
-	else
-	{
-		if(!filter_var($_POST["user_email"], FILTER_VALIDATE_EMAIL))
-		{
-			$message .= '<li>Invalid Email Address</li>';
-		}
-		else
-		{
-			$formdata['user_email'] = trim($_POST['user_email']);
-		}
-	}
+// Process form submission
+if (isset($_POST['edit_profile'])) {
+    $formdata = array();
 
-	if(empty($_POST['user_password']))
-	{
-		$message .= '<li>Password is required</li>';
-	}
-	else
-	{
-		$formdata['user_password'] = trim($_POST['user_password']);
-	}
+    // Validate email
+    if (empty($_POST['email'])) {
+        $error .= '<li>Email Address is required</li>';
+    } else if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        $error .= '<li>Invalid Email Address</li>';
+    } else {
+        $formdata['email'] = $_POST['email'];
+    }
 
-	if(empty($_POST['user_name']))
-	{
-		$message .= '<li>User Name is required</li>';
-	}
-	else
-	{
-		$formdata['user_name'] = trim($_POST['user_name']);
-	}
+    // Validate password
+    if (!empty($_POST['password'])) {
+        if (strlen($_POST['password']) < 6) {
+            $error .= '<li>Password must be at least 6 characters</li>';
+        } else {
+            $formdata['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
+        }
+    }
 
-	if(empty($_POST['user_address']))
-	{
-		$message .= '<li>User Address Detail is required</li>';
-	}
-	else
-	{
-		$formdata['user_address'] = trim($_POST['user_address']);
-	}
+    // Validate name for non-admin users
+    if (isset($_POST['name']) && $user_data['role_id'] != 1) {
+        if (empty($_POST['name'])) {
+            $error .= '<li>Full Name is required</li>';
+        } else {
+            $formdata['name'] = $_POST['name'];
+        }
+    }
 
-	if(empty($_POST['user_contact_no']))
-	{
-		$message .= '<li>User Address Detail is required</li>';
-	}
-	else
-	{
-		$formdata['user_contact_no'] = $_POST['user_contact_no'];
-	}
+    // Validate address for non-admin users
+    if (isset($_POST['address']) && $user_data['role_id'] != 1) {
+        if (empty($_POST['address'])) {
+            $error .= '<li>Address is required</li>';
+        } else {
+            $formdata['address'] = $_POST['address'];
+        }
+    }
 
-	$formdata['user_profile'] = $_POST['hidden_user_profile'];
+    // Validate contact number for non-admin users
+    if (isset($_POST['contact_no']) && $user_data['role_id'] != 1) {
+        if (empty($_POST['contact_no'])) {
+            $error .= '<li>Contact Number is required</li>';
+        } else {
+            $formdata['contact_no'] = $_POST['contact_no'];
+        }
+    }
 
-	if(!empty($_FILES['user_profile']['name']))
-	{
-		$img_name = $_FILES['user_profile']['name'];
-		$img_type = $_FILES['user_profile']['type'];
-		$tmp_name = $_FILES['user_profile']['tmp_name'];
-		$fileinfo = @getimagesize($tmp_name);
-		$width = $fileinfo[0];
-		$height = $fileinfo[1];
-		$image_size = $_FILES['user_profile']['size'];
-		$img_explode = explode(".", $img_name);
-		$img_ext = strtolower(end($img_explode));
-		$extensions = ["jpeg", "png", "jpg"];
-		if(in_array($img_ext, $extensions))
-		{
-			if($image_size <= 2000000)
-			{
-				if($width == 225 && $height == 225)
-				{
-					$new_img_name = time() . '-' . rand() . '.'  . $img_ext;
+    // Process profile image if uploaded
+    if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] == 0) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $filename = $_FILES['profile_image']['name'];
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
 
-					if(move_uploaded_file($tmp_name, "upload/" . $new_img_name))
-					{
-						$formdata['user_profile'] = $new_img_name;
-					}
-				}
-				else
-				{
-					$message .= '<li>Image dimension should be within 225 X 225</li>';
-				}
-			}
-			else
-			{
-				$message .= '<li>Image size exceeds 2MB</li>';
-			}
-		}
-		else
-		{
-			$message .= '<li>Invalid Image File</li>';
-		}
-	}
+        if (!in_array($ext, $allowed)) {
+            $error .= '<li>Only JPG, JPEG, PNG, and GIF files are allowed</li>';
+        } else {
+            $new_filename = 'admin_' . time() . '.' . $ext;
+            $upload_path = '../upload/' . $new_filename;
+            
+            if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $upload_path)) {
+                $formdata['profile_image'] = $new_filename;
+            } else {
+                $error .= '<li>Failed to upload profile image</li>';
+            }
+        }
+    }
 
-	if($message == '')
-	{
-		$data = array(
-			':user_name'			=>	$formdata['user_name'],
-			':user_address'			=>	$formdata['user_address'],
-			':user_contact_no'		=>	$formdata['user_contact_no'],
-			':user_profile'			=>	$formdata['user_profile'],
-			':user_email'	=>	$formdata['user_email'],
-			':user_password'		=>	$formdata['user_password'],
-			':user_updated_on'		=>	get_date_time($connect),
-			':user_unique_id'		=>	$_SESSION['user_unique_id']
-		);
+    // Update profile if no errors
+    if ($error == '') {
+        $data = array();
+        $table_prefix = $user_data['table_prefix'];
+        
+        // Define table and column mappings based on role
+        $table_mapping = [
+            'admin' => [
+                'table' => 'lms_admin',
+                'unique_id' => 'admin_unique_id',
+                'email' => 'admin_email',
+                'password' => 'admin_password',
+                'profile' => 'admin_profile',
+                'updated_on' => null,
+            ],
+            'librarian' => [
+                'table' => 'lms_librarian',
+                'unique_id' => 'librarian_unique_id',
+                'email' => 'librarian_email',
+                'password' => 'librarian_password',
+                'profile' => 'librarian_profile',
+                'name' => 'librarian_name',
+                'address' => 'librarian_address',
+                'contact' => 'librarian_contact_no',
+                'updated_on' => 'lib_updated_on',
+            ],
+            'user' => [
+                'table' => 'lms_user',
+                'unique_id' => 'user_unique_id',
+                'email' => 'user_email',
+                'password' => 'user_password',
+                'profile' => 'user_profile',
+                'name' => 'user_name',
+                'address' => 'user_address',
+                'contact' => 'user_contact_no',
+                'updated_on' => 'user_updated_on',
+            ]
+        ];
+        
+        $table_config = $table_mapping[$table_prefix];
+        
+        // Build query based on form data
+        $query = "UPDATE {$table_config['table']} SET ";
+        $query_parts = [];
+        
+        // Always update email
+        $query_parts[] = "{$table_config['email']} = :email";
+        $data[':email'] = $formdata['email'];
+        
+        // Update password only if provided
+        if (isset($formdata['password'])) {
+            $query_parts[] = "{$table_config['password']} = :password";
+            $data[':password'] = $formdata['password'];
+        }
+        
+        // Update profile image if uploaded
+        if (isset($formdata['profile_image'])) {
+            $query_parts[] = "{$table_config['profile']} = :profile_image";
+            $data[':profile_image'] = $formdata['profile_image'];
+            
+            // Update session profile image
+            $_SESSION['profile_img'] = $formdata['profile_image'];
+        }
+        
+        // Update additional fields for non-admin users
+        if ($user_data['role_id'] != 1) {
+            if (isset($formdata['name'])) {
+                $query_parts[] = "{$table_config['name']} = :name";
+                $data[':name'] = $formdata['name'];
+                
+                // Update session user name
+                $_SESSION['user_name'] = $formdata['name'];
+            }
+            
+            if (isset($formdata['address'])) {
+                $query_parts[] = "{$table_config['address']} = :address";
+                $data[':address'] = $formdata['address'];
+            }
+            
+            if (isset($formdata['contact_no'])) {
+                $query_parts[] = "{$table_config['contact']} = :contact_no";
+                $data[':contact_no'] = $formdata['contact_no'];
+            }
+        }
+        
+        // Add timestamp for update
+        if ($table_config['updated_on'] !== null) {
+            $query_parts[] = "{$table_config['updated_on']} = :updated_on";
+            $data[':updated_on'] = date('Y-m-d H:i:s');
+        }
+        
+        // Complete the query
+        $query .= implode(", ", $query_parts);
+        $query .= " WHERE {$table_config['unique_id']} = :unique_id";
+        $data[':unique_id'] = $user_unique_id;
 
-		$query = "
-		UPDATE lms_user 
-            SET user_name = :user_name, 
-            user_address = :user_address, 
-            user_contact_no = :user_contact_no, 
-            user_profile = :user_profile, 
-            user_email = :user_email, 
-            user_password = :user_password, 
-            user_updated_on = :user_updated_on 
-            WHERE user_unique_id = :user_unique_id
-		";
+        // Execute query
+        $statement = $connect->prepare($query);
+        $statement->execute($data);
 
-		$statement = $connect->prepare($query);
-
-		$statement->execute($data);
-
-		$success = 'Data Change Successfully';
-	}
+        // Update session email
+        $_SESSION['email'] = $formdata['email'];
+        
+        $message = 'Profile Updated Successfully';
+        
+        // Refresh user data
+        $user_data = get_complete_user_details($user_unique_id, $connect);
+    }
 }
-
-
-$query = "
-	SELECT * FROM lms_user 
-	WHERE user_unique_id = '".$_SESSION['user_unique_id']."'
-";
-
-$result = $connect->query($query);
-
-
-
 ?>
 
-<div class="d-flex align-items-center justify-content-center mt-5 mb-5" style="min-height:700px;">
-	<div class="col-md-6">
-		<?php 
-		if($message != '')
-		{
-			echo '<div class="alert alert-danger"><ul>'.$message.'</ul></div>';
-		}
-
-		if($success != '')
-		{
-			echo '<div class="alert alert-success">'.$success.'</div>';
-		}
-		?>
-		<div class="card">
-			<div class="card-header">Profile</div>
-			<div class="card-body">
-			<?php 
-			foreach($result as $row)
-			{
-			?>
-				<form method="POST" enctype="multipart/form-data">
-					<div class="mb-3">
-						<label class="form-label">Email address</label>
-						<input type="text" name="user_email" id="user_email" class="form-control" value="<?php echo $row['user_email']; ?>" />
-					</div>
-					<div class="mb-3">
-						<label class="form-label">Password</label>
-						<input type="password" name="user_password" id="user_password" class="form-control" value="<?php echo $row['user_password']; ?>" />
-					</div>
-					<div class="mb-3">
-						<label class="form-label">User Name</label>
-						<input type="text" name="user_name" id="user_name" class="form-control" value="<?php echo $row['user_name']; ?>" />
-					</div>
-					<div class="mb-3">
-						<label class="form-label">User Contact No.</label>
-						<input type="text" name="user_contact_no" id="user_contact_no" class="form-control" value="<?php echo $row['user_contact_no']; ?>" />
-					</div>
-					<div class="mb-3">
-						<label class="form-label">User Address</label>
-						<textarea name="user_address" id="user_address" class="form-control"><?php echo $row['user_address']; ?></textarea>
-					</div>
-					<div class="mb-3">
-						<label class="form-label">User Photo</label><br />
-						<input type="file" name="user_profile" id="user_profile" />
-						<br />
-						<span class="text-muted">Only .jpg & .png image allowed. Image size must be 225 x 225</span>
-						<br />
-						<input type="hidden" name="hidden_user_profile" value="<?php echo $row['user_profile']; ?>" />
-						<img src="upload/<?php echo $row['user_profile']; ?>" width="100" class="img-thumbnail" />
-					</div>
-					<div class="text-center mt-4 mb-2">
-						<input type="submit" name="save_button" class="btn btn-primary" value="Save" />
-					</div>
-				</form>
-
-			<?php
-			}
-			?>
-			</div>
-		</div>
-	</div>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <?php
+            if ($error != '' || $message != '') {
+                echo '<script>';
+                
+                if ($error != '') {
+                    echo 'document.addEventListener("DOMContentLoaded", function() {
+                        Swal.fire({
+                            title: "Error",
+                            html: "<ul class=\"list-unstyled mb-0\">' . $error . '</ul>",
+                            icon: "error",
+                            confirmButtonColor: "#d33",
+                            confirmButtonText: "OK"
+                        });
+                    });';
+                }
+                
+                if ($message != '') {
+                    echo 'document.addEventListener("DOMContentLoaded", function() {
+                        Swal.fire({
+                            title: "Success",
+                            text: "' . $message . '",
+                            icon: "success",
+                            confirmButtonColor: "#3085d6",
+                            confirmButtonText: "OK"
+                        });
+                    });';
+                }
+                
+                echo '</script>';
+            }
+        ?>
+        
+        <div class="card profile-card mb-4">
+            <div class="card-body p-4">   
+                <div class="d-flex justify-content-end">
+                    <?php
+                    $dashboard_path = '../';
+                    switch ($user_data['role_id']) {
+                        case 1:
+                        case 2:
+                            $dashboard_path .= 'admin';
+                            break;
+                        case 5:
+                            $dashboard_path .= 'guest';
+                            break;
+                        default:
+                            $dashboard_path .= 'user';
+                            break;
+                    }
+                    $dashboard_path .= '/index.php';
+                    ?>
+                    <a href="<?php echo $dashboard_path; ?>" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back
+                    </a>
+                </div>
+                <form method="post" enctype="multipart/form-data">
+                        
+                    <div class="row">
+                        <div class="col-md-5 text-center mb-4">
+                            <div class="profile-image-container mb-3">
+                                <img src="../upload/<?php echo htmlspecialchars($user_data['profile_image']); ?>" class="profile-image" id="profile-preview">
+                                <label for="profile_image" class="edit-image-overlay">
+                                    <i class="fas fa-camera"></i>
+                                </label>
+                                <input type="file" name="profile_image" id="profile_image" class="d-none" accept="image/*">
+                            </div>
+                            
+                            <h3 class="mb-1"><?php echo htmlspecialchars($user_data['name']); ?></h3>
+                            <div class="role-badge badge-<?php echo strtolower($user_data['role_name']); ?>">
+                                <?php echo htmlspecialchars($user_data['role_name']); ?>
+                            </div>
+                            <div class="user-id mt-2">
+                                <small class="text-muted">ID: <?php echo htmlspecialchars($user_data['unique_id']); ?></small>
+                            </div>
+                            <?php if (isset($user_data['created_on'])): ?>
+                            <div class="user-info mt-2">
+                                <small class="text-muted">Member since: <?php echo date('M d, Y', strtotime($user_data['created_on'])); ?></small>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="row mb-4">
+                                <div class="col-md-9 mb-3">
+                                    <label class="form-label">Email Address</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                        <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($user_data['email']); ?>" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-9 mb-3">
+                                    <label class="form-label">Password</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="password" name="password" class="form-control" placeholder="Leave blank to keep current password">
+                                        <button class="btn btn-outline-secondary toggle-password" type="button" id="toggle-password">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Leave blank to keep your current password</div>
+                                </div>
+                                
+                                <?php if ($user_data['role_id'] != 1) { ?>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($user_data['name']); ?>" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Contact Number</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                        <input type="text" name="contact_no" class="form-control" value="<?php echo htmlspecialchars($user_data['contact_no']); ?>" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">Address</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                        <textarea name="address" class="form-control" rows="3" required><?php echo htmlspecialchars($user_data['address']); ?></textarea>
+                                    </div>
+                                </div>
+                                <?php } ?>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 justify-content-center">
+                            <button type="submit" name="edit_profile" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Update Profile
+                            </button>
+                        </div>
+                            
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+</main>
 
-<?php 
+<script>
+document.getElementById('profile_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('profile-preview').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+});
 
-include '../footer.php';
+// Toggle password visibility
+document.getElementById('toggle-password').addEventListener('click', function() {
+    const passwordField = document.querySelector('input[name="password"]');
+    const icon = this.querySelector('i');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+});
+</script>
 
-?>
+
+<?php include '../footer.php'; ?>
