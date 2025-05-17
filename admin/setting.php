@@ -25,41 +25,49 @@ if (isset($_POST['edit_setting'])) {
     }
     
     // Convert hours to JSON for storage
-    $library_hours_json = json_encode($library_hours);
+    $library_hours_json = json_encode($library_hours, JSON_UNESCAPED_UNICODE);
     
-    $data = array(
-        ':library_name'                   => $_POST['library_name'],
-        ':library_address'                => $_POST['library_address'],
-        ':library_contact_number'         => $_POST['library_contact_number'],
-        ':library_email_address'          => $_POST['library_email_address'],
-        ':library_hours'                  => $library_hours_json,
-        ':loan_days'                      => $_POST['loan_days'] ?? 0,
-        ':fine_rate_per_day'              => $_POST['fine_rate_per_day'] ?? 0,
-        ':max_fine_per_book'      => $_POST['max_fine_per_book'] ?? 0, // New field for max fine cap
-        ':library_currency'               => $_POST['library_currency'],
-        ':library_timezone'               => $_POST['library_timezone'],
-        ':max_books_per_user'     => $_POST['max_books_per_user'] ?? 0
-    );
-    
-    $query = "
-    UPDATE lms_setting 
-    SET library_name = :library_name,
-        library_address = :library_address, 
-        library_contact_number = :library_contact_number, 
-        library_email_address = :library_email_address, 
-        library_hours = :library_hours, 
-        loan_days = :loan_days, 
-        fine_rate_per_day = :fine_rate_per_day, 
-        max_fine_per_book = :max_fine_per_book, 
-        library_currency = :library_currency, 
-        library_timezone = :library_timezone, 
-        max_books_per_user = :max_books_per_user
-    ";
-    $statement = $connect->prepare($query);
-    $statement->execute($data);
-    $message = 'general_success';
-    $active_tab = 'general';
-}
+    // Check if JSON encoding was successful
+    if ($library_hours_json === false) {
+        // Handle JSON encoding error
+        $message = 'json_encoding_error';
+        $active_tab = 'general';
+    } else {
+        $data = array(
+            ':library_name'              => $_POST['library_name'],
+            ':library_address'           => $_POST['library_address'],
+            ':library_contact_number'    => $_POST['library_contact_number'],
+            ':library_email_address'     => $_POST['library_email_address'],
+            ':library_hours'             => $library_hours_json,
+            ':loan_days'                 => $_POST['loan_days'] ?? 0,
+            ':fine_rate_per_day'         => $_POST['fine_rate_per_day'] ?? 0,
+            ':max_fine_per_book'         => $_POST['max_fine_per_book'] ?? 0,
+            ':library_currency'          => $_POST['library_currency'],
+            ':library_timezone'          => $_POST['library_timezone'],
+            ':max_books_per_user'        => $_POST['max_books_per_user'] ?? 0
+        );
+        
+        $query = "
+        UPDATE lms_setting 
+        SET library_name = :library_name,
+            library_address = :library_address, 
+            library_contact_number = :library_contact_number, 
+            library_email_address = :library_email_address, 
+            library_hours = :library_hours, 
+            loan_days = :loan_days, 
+            fine_rate_per_day = :fine_rate_per_day, 
+            max_fine_per_book = :max_fine_per_book, 
+            library_currency = :library_currency, 
+            library_timezone = :library_timezone, 
+            max_books_per_user = :max_books_per_user
+        WHERE setting_id = 1
+        ";
+        $statement = $connect->prepare($query);
+        $statement->execute($data);
+        $message = 'general_success';
+        $active_tab = 'general';
+    }
+}   
 
 // Library Features - Add Feature
 if (isset($_POST['add_feature'])) {
@@ -487,11 +495,24 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                             </div>
                                         </div>  
                                         <div class="card-body">                              
-                                            <div class="row mb-2">
-                                                <?php
-                                                $open_hours = json_decode($settings['library_hours'] ?? '{}', true);
+                                            <?php
+                                                // In the display part, fix the way library hours are processed
                                                 $days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-                                                ?>
+                                                $library_hours = [];
+
+                                                // Check if the library hours is a string that needs to be decoded
+                                                if (isset($settings['library_hours'])) {
+                                                    if (is_string($settings['library_hours'])) {
+                                                        // If it's a string, decode it
+                                                        $library_hours = json_decode($settings['library_hours'], true) ?: [];
+                                                    } elseif (is_array($settings['library_hours'])) {
+                                                        // If it's already an array, use it directly
+                                                        $library_hours = $settings['library_hours'];
+                                                    }
+                                                }
+                                            ?>
+
+                                            <div class="row mb-2">
                                                 <div class="table-responsive">
                                                     <table class="table table-bordered">
                                                         <thead class="bg-light">
@@ -502,27 +523,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'view_feature' && isset($_GET[
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            <?php $library_hours = $settings['library_hours'] ?? [];
-                                                                foreach ($days as $day): 
-                                                                    // Format the time values properly for the time input
-                                                                    $open_time = !empty($library_hours[$day]['open']) ? 
-                                                                        substr($library_hours[$day]['open'], 0, 5) : '';
-                                                                    $close_time = !empty($library_hours[$day]['close']) ? 
-                                                                        substr($library_hours[$day]['close'], 0, 5) : '';
+                                                            <?php foreach ($days as $day): 
+                                                                // Format the time values properly for the time input
+                                                                $open_time = isset($library_hours[$day]['open']) && $library_hours[$day]['open'] !== null ?
+                                                                    substr($library_hours[$day]['open'], 0, 5) : '';
+                                                                $close_time = isset($library_hours[$day]['close']) && $library_hours[$day]['close'] !== null ?
+                                                                    substr($library_hours[$day]['close'], 0, 5) : '';
                                                             ?>
                                                             <tr>
                                                                 <td class="align-middle fw-medium"><?= $day ?></td>
                                                                 <td>
                                                                     <div class="input-group">
                                                                         <span class="input-group-text"><i class="fas fa-door-open"></i></span>
-                                                                        <input type="time" name="library_hours[<?= $day ?>][open]" 
+                                                                        <input type="time" name="library_hours[<?= $day ?>][open]"
                                                                             class="form-control" value="<?= $open_time ?>">
                                                                     </div>
                                                                 </td>
                                                                 <td>
                                                                     <div class="input-group">
                                                                         <span class="input-group-text"><i class="fas fa-door-closed"></i></span>
-                                                                        <input type="time" name="library_hours[<?= $day ?>][close]" 
+                                                                        <input type="time" name="library_hours[<?= $day ?>][close]"
                                                                             class="form-control" value="<?= $close_time ?>">
                                                                     </div>
                                                                 </td>

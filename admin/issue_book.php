@@ -6,6 +6,10 @@
     include '../function.php';
     include '../header.php';
     authenticate_admin();
+
+   // Add the timezone setting here
+date_default_timezone_set('Asia/Manila');
+
     $message = ''; // Feedback message
 
     // Fetch issued books data
@@ -58,8 +62,9 @@
         $issue_date = trim($_POST['issue_date']);
         $status = trim($_POST['issue_book_status']);
         
-        // Calculate expected return date based on issue date and library settings
-        $expected_return_date = calculateExpectedReturnDate($issue_date, $loan_days, $library_hours);
+        // Set expected return date directly without recalculating
+$expected_return_date = trim($_POST['expected_return_date']);
+
         
         // Check for duplicate issued book
         $duplicate_check = "
@@ -514,10 +519,11 @@
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="mb-3">
-                                                    <label for="issue_date" class="form-label fw-bold">Issue Date</label>
-                                                    <input type="date" id="issue_date" name="issue_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                                                    <div class="invalid-feedback">Please select an issue date.</div>
-                                                </div>
+    <label for="issue_date" class="form-label fw-bold">Issue Date</label>
+    <input type="date" id="issue_date" name="issue_date" class="form-control" 
+           value="<?= date('Y-m-d') ?>" required>
+    <div class="invalid-feedback">Please select an issue date.</div>
+</div>
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="mb-3">
@@ -529,13 +535,13 @@
                                         </div>
                                         
                                         <div class="mb-3">
-                                            <label for="issue_book_status" class="form-label fw-bold">Status</label>
-                                            <select name="issue_book_status" id="issue_book_status" class="form-select">
-                                                <option value="Issued">Issued</option>
-                                                <option value="Overdue">Overdue</option>
-                                                <option value="Lost">Lost</option>
-                                            </select>
-                                        </div>
+    <label for="issue_book_status" class="form-label fw-bold">Status</label>
+    <select name="issue_book_status" id="issue_book_status" class="form-select">
+        <option value="Issued" selected>Issued</option>
+        <!-- Remove the Overdue option from here -->
+        <option value="Lost">Lost</option>
+    </select>
+</div>
                                     </div>
                                 </div>
                             </div>
@@ -1251,229 +1257,267 @@ if (document.getElementById('issue_date') && !document.querySelector('form.edit-
 </script>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const issueDateInput = document.getElementById('issue_date');
-        const returnDateInput = document.getElementById('expected_return_date');
+ document.addEventListener("DOMContentLoaded", function () {
+    const issueDateInput = document.getElementById('issue_date');
+    const returnDateInput = document.getElementById('expected_return_date');
 
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
-        }
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
 
-        const today = new Date();
-        const tomorrow = new Date();
-        tomorrow.setDate(today.getDate() + 1);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
 
-        if (issueDateInput) {
-            issueDateInput.setAttribute('min', formatDate(today));
+    if (issueDateInput) {
+        // Set today as minimum date
+        // Force today's date regardless of library open/closed status
+        issueDateInput.value = formatDate(today);
+        
+        // Force today's date regardless of what day of the week it is
+        issueDateInput.value = formatDate(today);
 
-            issueDateInput.addEventListener('change', function () {
-                const issueDate = new Date(this.value);
-                const minReturnDate = new Date(issueDate);
-                minReturnDate.setDate(issueDate.getDate() + 1);
-                returnDateInput.value = '';
-                returnDateInput.setAttribute('min', formatDate(minReturnDate));
-            });
-        }
+        issueDateInput.addEventListener('change', function () {
+            const issueDate = new Date(this.value);
+            const minReturnDate = new Date(issueDate);
+            minReturnDate.setDate(issueDate.getDate() + 1);
+            returnDateInput.value = '';
+            returnDateInput.setAttribute('min', formatDate(minReturnDate));
+        });
+    }
 
-        if (returnDateInput && issueDateInput) {
-            returnDateInput.addEventListener('change', function () {
-                const issueDate = new Date(issueDateInput.value);
-                const returnDate = new Date(this.value);
+    if (returnDateInput && issueDateInput) {
+        returnDateInput.addEventListener('change', function () {
+            const issueDate = new Date(issueDateInput.value);
+            const returnDate = new Date(this.value);
 
-                if (returnDate <= issueDate) {
-                    alert("Expected return date must be at least one day after the issue date.");
-                    this.value = '';
-                }
-            });
-        }
-    });
+            if (returnDate <= issueDate) {
+                alert("Expected return date must be at least one day after the issue date.");
+                this.value = '';
+            }
+        });
+    }
+});
 </script>
+
 <script>
-    // Date validation and dynamic calculations for library system
+document.addEventListener("DOMContentLoaded", function() {
+    // Get form elements
+    const issueDateInput = document.getElementById('issue_date');
+    const returnDateInput = document.getElementById('expected_return_date');
+    const actualReturnDateInput = document.getElementById('return_date');
+    const statusSelect = document.getElementById('issue_book_status');
+    const bookConditionContainer = document.getElementById('book-condition-container');
+    const finesContainer = document.getElementById('fines-container');
+    const daysLateInput = document.getElementById('days_late');
+    const finesAmountInput = document.getElementById('fines_amount');
+    
+    // Library settings (these will be populated from PHP)
+    const librarySettings = {
+        libraryHours: window.libraryHours || {},
+        fineRatePerDay: window.fineRatePerDay || 5,
+        maxFinePerBook: window.maxFinePerBook || 500,
+        loanDays: window.loanDays || 7
+    };
+    
+    // Format date for input fields
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+    
+    // Get day name from date
+    function getDayName(date) {
+        return date.toLocaleDateString('en-US', { weekday: 'long' });
+    }
+    
+    // Modified: Check if the library is closed on a specific date
+    // Added forIssueDate parameter to override library hours for issue dates
+    function isLibraryClosed(date, forIssueDate = false) {
+        // If it's for an issue date, always return false (never closed for issuing)
+        if (forIssueDate) {
+            return false;
+        }
+        
+        const dayName = getDayName(date);
+        return !librarySettings.libraryHours[dayName] || 
+            !librarySettings.libraryHours[dayName].open || 
+            !librarySettings.libraryHours[dayName].close;
+    }
+    
+    // Find next open day
+    function getNextOpenDay(date) {
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        while (isLibraryClosed(nextDay)) {
+            nextDay.setDate(nextDay.getDate() + 1);
+        }
+        
+        return nextDay;
+    }
+    
+    // Calculate expected return date based on issue date
+    function calculateExpectedReturnDate(issueDate) {
+        if (!issueDate) return null;
+        
+        const date = new Date(issueDate);
+        date.setDate(date.getDate() + librarySettings.loanDays);
+        
+        // Find next open day if return date falls on closed day
+        while (isLibraryClosed(date)) {
+            date.setDate(date.getDate() + 1);
+        }
+        
+        return date;
+    }
+    
+    // Calculate fine amount
+    function calculateFine() {
+        if (!expectedReturnDateInput || !actualReturnDateInput) return;
+        
+        const expectedDate = new Date(expectedReturnDateInput.value);
+        const actualDate = new Date(actualReturnDateInput.value);
+        
+        if (isNaN(expectedDate.getTime()) || isNaN(actualDate.getTime())) return;
+        
+        // Check if return is after hours or on closed day
+        let adjustedDate = new Date(actualDate);
+        const dayName = getDayName(actualDate);
+        
+        const isAfterHours = 
+            isLibraryClosed(actualDate) || 
+            (librarySettings.libraryHours[dayName]?.close && 
+            actualDate.getHours() >= parseInt(librarySettings.libraryHours[dayName].close.split(':')[0]));
+        
+        if (isAfterHours) {
+            adjustedDate = getNextOpenDay(actualDate);
+        }
+        
+        // Calculate days late
+        const timeDiff = adjustedDate.getTime() - expectedDate.getTime();
+        let daysLate = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+        
+        // Calculate fine amount with cap
+        let fineAmount = daysLate * librarySettings.fineRatePerDay;
+        fineAmount = Math.min(fineAmount, librarySettings.maxFinePerBook);
+        
+        // Update form fields
+        if (daysLateInput) daysLateInput.value = daysLate;
+        if (finesAmountInput) finesAmountInput.value = fineAmount.toFixed(2);
+        
+        // Show cap message if applicable
+        const fineInfo = document.getElementById('fine-info');
+        if (fineInfo) {
+            if (daysLate * librarySettings.fineRatePerDay > librarySettings.maxFinePerBook) {
+                fineInfo.textContent = `Fine capped at maximum amount: ${librarySettings.maxFinePerBook}`;
+                fineInfo.style.display = 'block';
+            } else {
+                fineInfo.style.display = 'none';
+            }
+        }
+        
+        return { daysLate, fineAmount };
+    }
+    
+    // Initialize date inputs with validation
+    if (issueDateInput) {
+        // Set minimum date to today
+        const today = new Date();
+        
+        // IMPORTANT: Always force the issue date to today's date
+        // This happens regardless of library hours
+        issueDateInput.value = formatDate(today);
+        
+        // Update expected return date when issue date changes
+        issueDateInput.addEventListener('change', function() {
+            if (!returnDateInput) return;
+            
+            const issueDate = new Date(this.value);
+            if (isNaN(issueDate.getTime())) return;
+            
+            const expectedReturnDate = calculateExpectedReturnDate(issueDate);
+            if (expectedReturnDate) {
+                returnDateInput.value = formatDate(expectedReturnDate);
+            }
+        });
+    }
+    
+    // Validate that return date is after issue date
+    if (returnDateInput && issueDateInput) {
+        returnDateInput.addEventListener('change', function() {
+            const issueDate = new Date(issueDateInput.value);
+            const returnDate = new Date(this.value);
+            
+            if (isNaN(issueDate.getTime()) || isNaN(returnDate.getTime())) return;
+            
+            if (returnDate <= issueDate) {
+                alert("Expected return date must be after the issue date");
+                this.value = '';
+            }
+        });
+    }
+    
+    // Toggle book condition fields based on status
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            const status = this.value;
+            
+            // Show/hide book condition fields
+            if (bookConditionContainer) {
+                bookConditionContainer.style.display = (status === 'Returned') ? 'block' : 'none';
+            }
+            
+            // Show/hide fines when status is Returned or Overdue
+            if (finesContainer) {
+                finesContainer.style.display = (status === 'Returned' || status === 'Overdue') ? 'block' : 'none';
+            }
+            
+            // Add return date if status is Returned
+            if (status === 'Returned' && actualReturnDateInput) {
+                actualReturnDateInput.value = formatDate(new Date());
+                calculateFine();
+            }
+        });
+    }
+    
+    // Calculate fine when return date changes
+    if (actualReturnDateInput) {
+        actualReturnDateInput.addEventListener('change', calculateFine);
+    }
+    
+    // Initial calculation on page load
+    if (actualReturnDateInput && expectedReturnDateInput) {
+        calculateFine();
+    }
+    
+    // Trigger status change event to initialize display
+    if (statusSelect) {
+        const event = new Event('change');
+        statusSelect.dispatchEvent(event);
+    }
+});
+</script>
+
+<script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Get form elements
         const issueDateInput = document.getElementById('issue_date');
         const returnDateInput = document.getElementById('expected_return_date');
-        const actualReturnDateInput = document.getElementById('return_date');
-        const statusSelect = document.getElementById('issue_book_status');
-        const bookConditionContainer = document.getElementById('book-condition-container');
-        const finesContainer = document.getElementById('fines-container');
-        const daysLateInput = document.getElementById('days_late');
-        const finesAmountInput = document.getElementById('fines_amount');
+        const loanDays = <?= $loan_days ?>; // Get from PHP settings
         
-        // Library settings (these will be populated from PHP)
-        const librarySettings = {
-            libraryHours: window.libraryHours || {},
-            fineRatePerDay: window.fineRatePerDay || 5,
-            maxFinePerBook: window.maxFinePerBook || 500,
-            loanDays: window.loanDays || 7
-        };
-        
-        // Format date for input fields
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
-        }
-        
-        // Get day name from date
-        function getDayName(date) {
-            return date.toLocaleDateString('en-US', { weekday: 'long' });
-        }
-        
-        // Check if the library is closed on a specific date
-        function isLibraryClosed(date) {
-            const dayName = getDayName(date);
-            return !librarySettings.libraryHours[dayName] || 
-                !librarySettings.libraryHours[dayName].open || 
-                !librarySettings.libraryHours[dayName].close;
-        }
-        
-        // Find next open day
-        function getNextOpenDay(date) {
-            const nextDay = new Date(date);
-            nextDay.setDate(nextDay.getDate() + 1);
-            
-            while (isLibraryClosed(nextDay)) {
-                nextDay.setDate(nextDay.getDate() + 1);
-            }
-            
-            return nextDay;
-        }
-        
-        // Calculate expected return date based on issue date
-        function calculateExpectedReturnDate(issueDate) {
-            if (!issueDate) return null;
-            
-            const date = new Date(issueDate);
-            date.setDate(date.getDate() + librarySettings.loanDays);
-            
-            // Find next open day if return date falls on closed day
-            while (isLibraryClosed(date)) {
-                date.setDate(date.getDate() + 1);
-            }
-            
-            return date;
-        }
-        
-        // Calculate fine amount
-        function calculateFine() {
-            if (!expectedReturnDateInput || !actualReturnDateInput) return;
-            
-            const expectedDate = new Date(expectedReturnDateInput.value);
-            const actualDate = new Date(actualReturnDateInput.value);
-            
-            if (isNaN(expectedDate.getTime()) || isNaN(actualDate.getTime())) return;
-            
-            // Check if return is after hours or on closed day
-            let adjustedDate = new Date(actualDate);
-            const dayName = getDayName(actualDate);
-            
-            const isAfterHours = 
-                isLibraryClosed(actualDate) || 
-                (librarySettings.libraryHours[dayName]?.close && 
-                actualDate.getHours() >= parseInt(librarySettings.libraryHours[dayName].close.split(':')[0]));
-            
-            if (isAfterHours) {
-                adjustedDate = getNextOpenDay(actualDate);
-            }
-            
-            // Calculate days late
-            const timeDiff = adjustedDate.getTime() - expectedDate.getTime();
-            let daysLate = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-            
-            // Calculate fine amount with cap
-            let fineAmount = daysLate * librarySettings.fineRatePerDay;
-            fineAmount = Math.min(fineAmount, librarySettings.maxFinePerBook);
-            
-            // Update form fields
-            if (daysLateInput) daysLateInput.value = daysLate;
-            if (finesAmountInput) finesAmountInput.value = fineAmount.toFixed(2);
-            
-            // Show cap message if applicable
-            const fineInfo = document.getElementById('fine-info');
-            if (fineInfo) {
-                if (daysLate * librarySettings.fineRatePerDay > librarySettings.maxFinePerBook) {
-                    fineInfo.textContent = `Fine capped at maximum amount: ${librarySettings.maxFinePerBook}`;
-                    fineInfo.style.display = 'block';
-                } else {
-                    fineInfo.style.display = 'none';
-                }
-            }
-            
-            return { daysLate, fineAmount };
-        }
-        
-        // Initialize date inputs with validation
-        if (issueDateInput) {
-            // Set minimum date to today
-            const today = new Date();
-            issueDateInput.setAttribute('min', formatDate(today));
-            
-            // Update expected return date when issue date changes
+        // Calculate default return date when issue date changes
+        if (issueDateInput && returnDateInput) {
             issueDateInput.addEventListener('change', function() {
-                if (!returnDateInput) return;
-                
                 const issueDate = new Date(this.value);
-                if (isNaN(issueDate.getTime())) return;
-                
-                const expectedReturnDate = calculateExpectedReturnDate(issueDate);
-                if (expectedReturnDate) {
-                    returnDateInput.value = formatDate(expectedReturnDate);
+                if (!isNaN(issueDate.getTime())) {
+                    // Add loan days to issue date
+                    const expectedDate = new Date(issueDate);
+                    expectedDate.setDate(expectedDate.getDate() + loanDays);
+                    
+                    // Format date for input field (YYYY-MM-DD)
+                    const formattedDate = expectedDate.toISOString().split('T')[0];
+                    returnDateInput.value = formattedDate;
                 }
             });
-        }
-        
-        // Validate that return date is after issue date
-        if (returnDateInput && issueDateInput) {
-            returnDateInput.addEventListener('change', function() {
-                const issueDate = new Date(issueDateInput.value);
-                const returnDate = new Date(this.value);
-                
-                if (isNaN(issueDate.getTime()) || isNaN(returnDate.getTime())) return;
-                
-                if (returnDate <= issueDate) {
-                    alert("Expected return date must be after the issue date");
-                    this.value = '';
-                }
-            });
-        }
-        
-        // Toggle book condition fields based on status
-        if (statusSelect) {
-            statusSelect.addEventListener('change', function() {
-                const status = this.value;
-                
-                // Show/hide book condition fields
-                if (bookConditionContainer) {
-                    bookConditionContainer.style.display = (status === 'Returned') ? 'block' : 'none';
-                }
-                
-                // Show/hide fines when status is Returned or Overdue
-                if (finesContainer) {
-                    finesContainer.style.display = (status === 'Returned' || status === 'Overdue') ? 'block' : 'none';
-                }
-                
-                // Add return date if status is Returned
-                if (status === 'Returned' && actualReturnDateInput) {
-                    actualReturnDateInput.value = formatDate(new Date());
-                    calculateFine();
-                }
-            });
-        }
-        
-        // Calculate fine when return date changes
-        if (actualReturnDateInput) {
-            actualReturnDateInput.addEventListener('change', calculateFine);
-        }
-        
-        // Initial calculation on page load
-        if (actualReturnDateInput && expectedReturnDateInput) {
-            calculateFine();
-        }
-        
-        // Trigger status change event to initialize display
-        if (statusSelect) {
-            const event = new Event('change');
-            statusSelect.dispatchEvent(event);
         }
     });
 </script>

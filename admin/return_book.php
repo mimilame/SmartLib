@@ -890,83 +890,88 @@ if (isset($_GET['tab']) && $_GET['tab'] === 'lost') {
 
         <?php if ($current_tab === 'returned'): ?>
             <!-- Returned Books Table -->
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light py-3">
-                    <h5 class="mb-0"><i class="fas fa-book-reader me-2 text-primary"></i>Returned Book Records</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (empty($returned_books)): ?>
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>No returned books found with the given criteria.
-                        </div>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Issue ID</th>
-                                        <th>Book Name</th>
-                                        <th>Borrowed By</th>
-                                        <th>Issue Date</th>
-                                        <th>Return Date</th>
-                                        <th>Condition</th>
-                                        <th>Fine</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($returned_books as $book): ?>
-                                        <tr>
-                                            <td><?= $book['issue_book_id'] ?></td>
-                                            <td><?= htmlspecialchars($book['book_name']) ?></td>
-                                            <td><?= htmlspecialchars($book['user_name']) ?></td>
-                                            <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
-                                            <td><?= date('M d, Y', strtotime($book['return_date'])) ?></td>
-                                            <td>
-                                                <?php
-                                                $badge_class = 'bg-success';
-                                                switch ($book['book_condition']) {
-                                                    case 'Damaged':
-                                                    case 'Missing Pages':
-                                                    case 'Water Damaged':
-                                                    case 'Binding Loose':
-                                                        $badge_class = 'bg-warning';
-                                                        break;
-                                                    case 'Lost':
-                                                        $badge_class = 'bg-danger';
-                                                        break;
-                                                }
-                                                ?>
-                                                <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($book['book_condition']) ?></span>
-                                            </td>
-                                            <td>
-                                                <?php if (isset($fines[$book['issue_book_id']])): ?>
-                                                    <span class="badge <?= $fines[$book['issue_book_id']]['status'] === 'Paid' ? 'bg-success' : 'bg-danger' ?>">
-                                                    ₱<?= number_format($fines[$book['issue_book_id']]['amount'], 2) ?>
-                                                        (<?= $fines[$book['issue_book_id']]['status'] ?>)
-                                                    </span>
-                                                <?php else: ?>
-                                                    <span class="badge bg-secondary">No Fine</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-    <div class="btn-group btn-group-sm">
-        <a href="return_book.php?action=view&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-info btn-sm" title="View Details">
-            <i class="fas fa-eye"></i>
-        </a>
-        <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-primary btn-sm" title="Edit Return">
-            <i class="fas fa-edit"></i>
-        </a>
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-light py-3">
+        <h5 class="mb-0"><i class="fas fa-book-reader me-2 text-primary"></i>Returned Book Records</h5>
     </div>
-</td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
+    <div class="card-body">
+        <?php if (empty($returned_books)): ?>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No returned books found with the given criteria.
             </div>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Issue ID</th>
+                            <th>Book Name</th>
+                            <th>Borrowed By</th>
+                            <th>Issue Date</th>
+                            <th>Return Date</th>
+                            <th>Condition</th>
+                            <th>Fine</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($returned_books as $book): ?>
+                            <tr>
+                                <td><?= $book['issue_book_id'] ?></td>
+                                <td><?= htmlspecialchars($book['book_name']) ?></td>
+                                <td><?= htmlspecialchars($book['user_name']) ?></td>
+                                <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
+                                <td><?= date('M d, Y', strtotime($book['return_date'])) ?></td>
+                                <td>
+                                    <?php
+                                    $badge_class = 'bg-success';
+                                    switch ($book['book_condition']) {
+                                        case 'Damaged':
+                                        case 'Missing Pages':
+                                        case 'Water Damaged':
+                                        case 'Binding Loose':
+                                            $badge_class = 'bg-warning';
+                                            break;
+                                        case 'Lost':
+                                            $badge_class = 'bg-danger';
+                                            break;
+                                    }
+                                    ?>
+                                    <span class="badge <?= $badge_class ?>"><?= htmlspecialchars($book['book_condition']) ?></span>
+                                </td>
+                                <td>
+                                    <?php if ($book['book_condition'] === 'Good'): ?>
+                                        <span class="badge bg-success">No Fine (Good Condition)</span>
+                                    <?php else: ?>
+                                        <?php if (isset($fines[$book['issue_book_id']])): ?>
+                                            <span class="badge <?= $fines[$book['issue_book_id']]['status'] === 'Paid' ? 'bg-success' : 'bg-danger' ?>">
+                                                ₱<?= number_format($fines[$book['issue_book_id']]['amount'], 2) ?>
+                                                (<?= $fines[$book['issue_book_id']]['status'] ?>)
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning">Fine Not Set</span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="return_book.php?action=view&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-info btn-sm" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="return_book.php?action=edit&code=<?= $book['issue_book_id'] ?>&tab=returned" class="btn btn-primary btn-sm" title="Edit Return">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+
         <?php else: ?>
             <!-- Lost Books Table -->
             <div class="card shadow-sm border-0">

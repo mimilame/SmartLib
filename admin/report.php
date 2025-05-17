@@ -326,11 +326,6 @@ foreach ($combinedReviews as $review) {
                         <i class="bi bi-question-circle text-danger"></i> Lost
                     </button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="damaged-tab" data-bs-toggle="tab" data-bs-target="#damaged" type="button" role="tab" aria-controls="damaged" aria-selected="false">
-                        <i class="bi bi-tools text-secondary"></i> Defective
-                    </button>
-                </li>
             </ul>
         </div>
         <div class="card-body">
@@ -425,7 +420,8 @@ foreach ($combinedReviews as $review) {
                                     <td><?= htmlspecialchars($book['user_name']) ?></td>
                                     <td><?= date('M d, Y', strtotime($book['issue_date'])) ?></td>
                                     <td><?= date('M d, Y', strtotime($book['expected_return_date'])) ?></td>
-                                    <td><?= isset($book['lost_date']) ? date('M d, Y', strtotime($book['lost_date'])) : 'N/A' ?></td>
+                                    <td><?= date('M d, Y') ?></td>
+
                                     <td>₱<?= number_format($replacementCost, 2) ?></td>
                                 </tr>
                                 <?php endforeach; ?>

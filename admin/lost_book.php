@@ -21,6 +21,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['code']))
             ib.book_id, 
             ib.user_id, 
             ib.return_date AS reported_date,
+            ib.issue_book_status,
             b.book_name,
             u.user_name,
             f.fines_amount,
@@ -38,7 +39,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'edit' && isset($_GET['code']))
 }
 
 // Redirect if record not found
-if (!$issue) {
+if (isset($_GET['action']) && $_GET['action'] != 'view' && !$issue) {
     $_SESSION['error_message'] = 'Lost book record not found';
     header('Location: return_book.php?tab=lost');
     exit();
@@ -52,12 +53,19 @@ if (isset($_POST['edit_lost_book'])) {
     $fines_amount = $_POST['fines_amount'] ?? 0;
     $fines_status = $_POST['fines_status'] ?? 'Unpaid';
     $reported_date = $_POST['reported_date'];
+    $issue_book_status = $_POST['issue_book_status'] ?? 'Lost';
+    $return_date = null;
+    
+    // If status is Returned, use the return_date
+    if ($issue_book_status == 'Returned') {
+        $return_date = $_POST['return_date'] ?? date('Y-m-d H:i:s');
+    }
 
     // Update the fines table
     $query = "
         UPDATE lms_fines 
         SET fines_amount = :fines_amount,
-            fines_status = :fines_status,
+            fines_ = :fines_,
             updated_on = NOW()
         WHERE issue_book_id = :issue_book_id
     ";
@@ -69,22 +77,38 @@ if (isset($_POST['edit_lost_book'])) {
         ':issue_book_id' => $issue_book_id
     ]);
 
-    // Update the return date in the issue_book table
+    // Update the status and return date in the issue_book table
     $query = "
         UPDATE lms_issue_book 
-        SET return_date = :reported_date,
+        SET status = :status,
+            return_date = :return_date,
             updated_on = NOW()
         WHERE issue_book_id = :issue_book_id
     ";
     
     $statement = $connect->prepare($query);
     $statement->execute([
-        ':reported_date' => $reported_date,
+        ':issue_book_status' => $issue_book_status,
+        ':return_date' => ($issue_book_status == 'Returned') ? $return_date : $reported_date,
         ':issue_book_id' => $issue_book_id
     ]);
 
-    $_SESSION['success_message'] = 'Lost book record has been updated';
-    header('Location: return_book.php?tab=lost');
+    // If book is returned, update book status to available
+    if ($issue_book_status == 'Returned') {
+        $query = "
+            UPDATE lms_book 
+            SET issue_book_status = 'Available',
+                updated_on = NOW()
+            WHERE book_id = :book_id
+        ";
+        
+        $statement = $connect->prepare($query);
+        $statement->execute([':book_id' => $book_id]);
+    }
+
+    $_SESSION['success_message'] = ($issue_book_status == 'Returned') ? 'Book has been marked as returned' : 'Lost book record has been updated';
+    $tab = ($issue_book_status == 'Returned') ? 'return' : 'lost';
+    header("Location: return_book.php?tab=$tab");
     exit();
 }
 
@@ -104,6 +128,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
             $issue = $statement->fetch(PDO::FETCH_ASSOC);
 
             $book_details = getBookDetails($connect, $issue['book_id']);
+            
+            // Fetch fine details if any
+            $fines_query = "
+                SELECT * FROM lms_fines 
+                WHERE issue_book_id = :issue_book_id
+            ";
+            $fines_stmt = $connect->prepare($fines_query);
+            $fines_stmt->execute([':issue_book_id' => $id]);
+            $fines = $fines_stmt->fetch(PDO::FETCH_ASSOC);
         ?>
 
 
@@ -130,6 +163,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
                             <input type="hidden" name="issue_book_id" value="<?= $issue['issue_book_id'] ?>">
                             <input type="hidden" name="book_id" value="<?= $issue['book_id'] ?>">
                             <input type="hidden" name="user_id" value="<?= $issue['user_id'] ?>">
+                            <input type="hidden" name="fines_amount" value="<?= $fines['fines_amount'] ?? 0 ?>">
+                            <input type="hidden" name="fines_status" value="<?= $fines['fines_status'] ?? 'Unpaid' ?>">
 
 
                         <div class="row">
@@ -225,7 +260,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
                                                             <span class="input-group-text bg-light">
                                                                 <i class="fas fa-calendar-check text-danger"></i>
                                                             </span>
-                                                            <input type="datetime-local" name="reported_date" class="form-control" value="<?= date('Y-m-d\TH:i') ?>" readonly>
+                                                            <input type="datetime-local" name="reported_date" class="form-control" value="<?= date('Y-m-d\TH:i', strtotime($issue['return_date'] ?? date('Y-m-d H:i:s'))) ?>">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -236,11 +271,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
             <label class="form-label fw-bold">Status</label>
             <div class="input-group">
                 <span class="input-group-text bg-light">
-                    <i class="fas fa-calendar-check text-danger"></i>
+                    <i class="fas fa-info-circle text-primary"></i>
                 </span>
-                <select name="status" class="form-select" id="status" onchange="toggleReturnDate()" required>
-                    <option value="Lost" selected>Lost</option>
-                    <option value="Returned">Returned</option>
+                <select name="issue_book_status" class="form-select" id="issue_book_status" onchange="toggleReturnDate()" required>
+                    <option value="Lost" <?= ($issue['issue_book_status'] === 'Lost' || empty($issue['issue_book_status'])) ? 'selected' : '' ?>>Lost</option>
+                    <option value="Returned" <?= ($issue['issue_book_status'] === 'Returned') ? 'selected' : '' ?>>Returned</option>
                 </select>
             </div>
         </div>
@@ -252,7 +287,34 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
                 <span class="input-group-text bg-light">
                     <i class="fas fa-calendar text-primary"></i>
                 </span>
-                <input type="datetime-local" name="return_date" class="form-control" value="<?= date('Y-m-d\TH:i') ?>" readonly>
+                <input type="datetime-local" name="return_date" class="form-control" value="<?= date('Y-m-d\TH:i') ?>">
+            </div>
+        </div>
+    </div>
+
+    <!-- Fine Information -->
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Fine Amount</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light">
+                    <i class="fas fa-money-bill-alt text-primary"></i>
+                </span>
+                <input type="number" step="0.01" name="fines_amount" class="form-control" value="<?= $fines['fines_amount'] ?? 0 ?>">
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="mb-3">
+            <label class="form-label fw-bold">Fine Status</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light">
+                    <i class="fas fa-receipt text-primary"></i>
+                </span>
+                <select name="fines_status" class="form-select">
+                    <option value="Unpaid" <?= (!isset($fines['fines_status']) || $fines['fines_status'] === 'Unpaid') ? 'selected' : '' ?>>Unpaid</option>
+                    <option value="Paid" <?= (isset($fines['fines_status']) && $fines['fines_status'] === 'Paid') ? 'selected' : '' ?>>Paid</option>
+                </select>
             </div>
         </div>
     </div>
@@ -260,9 +322,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['code'])
 
 <script>
     function toggleReturnDate() {
-        const status = document.getElementById('status').value;
+        const issue_book_status = document.getElementById('issue_book_status').value;
         const returnDateContainer = document.getElementById('returnDateContainer');
-        if (status === 'Returned') {
+        if (issue_book_status === 'Returned') {
             returnDateContainer.style.display = 'block';
         } else {
             returnDateContainer.style.display = 'none';
@@ -327,17 +389,45 @@ elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['cod
                 FROM lms_issue_book ib
                 LEFT JOIN lms_book b ON ib.book_id = b.book_id
                 LEFT JOIN lms_user u ON ib.user_id = u.user_id
+                LEFT JOIN lms_fines f ON f.issue_book_id = ib.issue_book_id
                 WHERE ib.issue_book_id = :id LIMIT 1
             ";
             $statement = $connect->prepare($query);
             $statement->execute([':id' => $id]);
             $issue = $statement->fetch(PDO::FETCH_ASSOC);
 
+            // If record not found, show error
+            if (!$issue) {
+                echo '<script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Record Not Found",
+                            text: "The lost book record you are looking for does not exist.",
+                            confirmButtonText: "Back to Lost Books",
+                            confirmButtonColor: "#6c757d",
+                            timer: 2000,
+                            customClass: {
+                                confirmButton: "btn btn-outline-secondary"
+                            },
+                            buttonsStyling: false
+                        }).then((result) => {
+                            window.location.href = "return_book.php?tab=lost";
+                        });
+                    });
+                </script>';
+                exit;
+            }
+
             $book_details = getBookDetails($connect, $issue['book_id']);
+            
+            // Get fines information
+            $fines_query = "SELECT * FROM lms_fines WHERE issue_book_id = :issue_book_id";
+            $fines_statement = $connect->prepare($fines_query);
+            $fines_statement->execute([':issue_book_id' => $id]);
+            $fines = $fines_statement->fetch(PDO::FETCH_ASSOC);
         ?>
 
-        <?php if ($issue): ?>
-            
         <!-- View Lost Book Form with Modern UI -->
          <div class="py-4">
     <div class="d-flex justify-content-between align-items-center my-4">
@@ -395,7 +485,9 @@ elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['cod
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <p class="mb-2"><strong>Issue Date:</strong> <?= date('F d, Y h:i A', strtotime($issue['issue_date'])) ?></p>
-                                                <p class="mb-2"><strong>Status:</strong> <span class="badge bg-danger">Lost</span></p>
+                                                <p class="mb-2"><strong>Expected Return:</strong> <?= date('F d, Y h:i A', strtotime($issue['expected_return_date'])) ?></p>
+                                                <p class="mb-2"><strong>Reported Lost:</strong> <?= date('F d, Y h:i A', strtotime($issue['return_date'])) ?></p>
+                                                <p class="mb-2"><strong>Status:</strong> <span class="badge bg-danger"><?= $issue['status'] ?? 'Lost' ?></span></p>
                                             </div>
                                         </div>
                                     </div>
@@ -407,14 +499,20 @@ elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['cod
                                     </div>
                                     <div class="card-body">
                                         <p class="mb-2"><strong>Fine Amount:</strong> 
-                                            <?php if (!empty($issue['fines_amount'])): ?>
-                                                ₱ <?= number_format($issue['fines_amount'], 2) ?>
+                                            <?php if (!empty($fines['fines_amount'])): ?>
+                                                ₱ <?= number_format($fines['fines_amount'], 2) ?>
                                             <?php else: ?>
                                                 No Fine Charged
                                             <?php endif; ?>
                                         </p>
-                                        <p class="mb-0"><strong>Payment Status:</strong> 
-                                            <?= !empty($issue['fines_status']) ? htmlspecialchars($issue['fines_status']) : 'Unpaid' ?>
+                                        <p class="mb-0"><strong>Payment :</strong> 
+                                            <?php if (!empty($fines['fines_'])): ?>
+                                                <span class="badge <?= ($fines['fines_'] == 'Paid') ? 'bg-success' : 'bg-warning' ?>">
+                                                    <?= htmlspecialchars($fines['fines_']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning">Unpaid</span>
+                                            <?php endif; ?>
                                         </p>
                                     </div>
                                 </div>
@@ -433,27 +531,6 @@ elseif (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['cod
                 </div>
             </div>
         </div>
-
-        <?php else: ?>
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Record Not Found',
-                    text: 'The lost book record you are looking for does not exist.',
-                    confirmButtonText: 'Back to Lost Books',
-                    confirmButtonColor: '#6c757d',
-                    timer: 2000,
-                    customClass: {
-                        confirmButton: 'btn btn-outline-secondary'
-                    },
-                    buttonsStyling: false
-                }).then((result) => {
-                    window.location.href = 'return_book.php?tab=lost';
-                });
-            });
-        </script>
-        <?php endif; ?>
 
 <?php endif; ?>
 
